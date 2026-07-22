@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stand de plantas · FT 26/27</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#F6F4ED; --panel:#FFFFFF; --ink:#26261F; --ink-2:#5C5B4E;
+  --line:#DED8C6; --sand:#EDE8DA;
+  --olive:#6B7A4F; --olive-dk:#48542F; --olive-lt:#E3E8D6;
+  --ok:#5F8B45; --warn:#C08A1E; --crit:#B0402B;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Geist',system-ui,sans-serif;font-size:14px;-webkit-text-size-adjust:100%}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1400px;margin:0 auto;padding:0 18px 60px}
+
+/* header */
+header{border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:50}
+.hd{max-width:1400px;margin:0 auto;padding:14px 18px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.hd h1{font-family:'Instrument Serif',serif;font-weight:400;font-size:30px;margin:0;letter-spacing:-.01em}
+.hd .sub{color:var(--ink-2);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.hd .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--crit);display:inline-block}
+.dot.live{background:var(--ok)}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 12px;border-radius:var(--r);font:inherit;font-size:13px;cursor:pointer}
+.btn:hover{background:var(--sand)}
+.btn.pri{background:var(--olive-dk);border-color:var(--olive-dk);color:#fff}
+.btn:focus-visible{outline:2px solid var(--olive);outline-offset:2px}
+
+/* tabs */
+nav.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:0 0 18px;overflow-x:auto}
+nav.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:12px 14px;font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--olive-dk);font-weight:600}
+
+/* filtros */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.f{display:flex;flex-direction:column;gap:4px}
+.f label{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.f select,.f input{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);min-width:120px}
+
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:20px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.kpi .lab{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.kpi .val{font-family:'Geist Mono',monospace;font-size:26px;font-weight:500;margin-top:6px;letter-spacing:-.02em}
+.kpi .val small{font-size:13px;color:var(--ink-2);font-weight:400}
+.kpi .hint{font-size:11px;color:var(--ink-2);margin-top:3px}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.card h2{font-family:'Instrument Serif',serif;font-weight:400;font-size:20px;margin:0 0 2px}
+.card .cap{font-size:12px;color:var(--ink-2);margin:0 0 14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+
+/* tabla */
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--ink)}
+td{padding:8px 10px;border-bottom:1px solid var(--sand);white-space:nowrap}
+tbody tr:hover{background:var(--sand)}
+td.num{font-family:'Geist Mono',monospace;text-align:right;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:500}
+.pill.ok{background:#E4EEDC;color:var(--ok)}
+.pill.atencion{background:#F7EBCF;color:#8A6110}
+.pill.critico{background:#F5DED8;color:var(--crit)}
+
+/* cobertura */
+.cov-row{display:grid;grid-template-columns:110px 1fr 150px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--sand)}
+.cov-row:last-child{border-bottom:0}
+.bar{height:9px;background:var(--sand);border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--olive);border-radius:5px}
+.cov-row .n{font-family:'Geist Mono',monospace;font-size:12px;color:var(--ink-2);text-align:right}
+
+/* grilla de lotes */
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-family:'Geist Mono',monospace;font-size:11px;padding:3px 6px;border-radius:5px;border:1px solid transparent;cursor:pointer}
+.chip.ok{background:#E4EEDC;color:#3E6B28}
+.chip.atencion{background:#F7EBCF;color:#8A6110}
+.chip.critico{background:#F5DED8;color:var(--crit)}
+.chip.sin{background:#fff;border-color:var(--line);color:#A9A493}
+.eq-group{margin-bottom:12px}
+.eq-group .eq-lab{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin-bottom:5px}
+
+.empty{padding:28px 14px;text-align:center;color:var(--ink-2);font-size:13px}
+.empty b{display:block;font-family:'Instrument Serif',serif;font-size:19px;color:var(--ink);font-weight:400;margin-bottom:4px}
+
+/* config */
+.cfg{max-width:520px;margin:60px auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px}
+.cfg h2{font-family:'Instrument Serif',serif;font-weight:400;font-size:24px;margin:0 0 6px}
+.cfg p{font-size:13px;color:var(--ink-2);margin:0 0 18px;line-height:1.5}
+.cfg label{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:12px 0 4px}
+.cfg input{width:100%;font:inherit;font-size:13px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-family:'Geist Mono',monospace}
+.err{background:#F5DED8;color:var(--crit);border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:14px}
+canvas{max-width:100%}
+</style>
+</head>
+<body>
+
+<!-- ================== CONFIG ==================
+  Completá estas dos constantes y subilo a GitHub Pages.
+  La anon key es pública por diseño: la protección real es RLS.
+============================================== -->
+<script>
+const SUPABASE_URL = "https://bnaurkovjdnclxtzvdsf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuYXVya292amRuY2x4dHp2ZHNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NTc3NTksImV4cCI6MjA5OTUzMzc1OX0.BWug5kNc4T3HkKd31_NA9DVyRGkn5sRGbECyCJNrOrk";   // <-- pegá acá la anon key
+</script>
+
+<header>
+  <div class="hd">
+    <h1>Stand de plantas</h1>
+    <span class="sub">Finca Tolloche · 26/27</span>
+    <div class="right">
+      <span id="live"><span class="dot"></span> <span id="liveTxt" class="mono" style="font-size:12px;color:var(--ink-2)">sin conectar</span></span>
+      <button class="btn" id="btnRefresh">Actualizar</button>
+    </div>
+  </div>
+</header>
+
+<div id="cfgScreen" style="display:none">
+  <div class="cfg">
+    <h2>Conectar con Supabase</h2>
+    <p>La app lee en vivo el proyecto <span class="mono">liag-balance-hidrico</span>. Pegá la anon key para esta sesión, o cargala en la constante <span class="mono">SUPABASE_ANON_KEY</span> del archivo antes de publicarlo.</p>
+    <div id="cfgErr"></div>
+    <label>URL del proyecto</label>
+    <input id="cfgUrl" value="https://bnaurkovjdnclxtzvdsf.supabase.co">
+    <label>Anon key</label>
+    <input id="cfgKey" placeholder="eyJhbGciOi...">
+    <div style="margin-top:18px"><button class="btn pri" id="cfgGo">Conectar</button></div>
+  </div>
+</div>
+
+<div class="wrap" id="app" style="display:none">
+  <nav class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="panel">Panel</button>
+    <button role="tab" aria-selected="false" data-tab="lotes">Lotes</button>
+    <button role="tab" aria-selected="false" data-tab="analisis">Análisis</button>
+    <button role="tab" aria-selected="false" data-tab="bandeja">Bandeja</button>
+  </nav>
+
+  <div class="filters" id="filters">
+    <div class="f"><label>Cultivo</label><select id="fCultivo"><option value="">Todos</option></select></div>
+    <div class="f"><label>Sistema</label><select id="fSistema"><option value="">Todos</option></select></div>
+    <div class="f"><label>Equipo</label><select id="fEquipo"><option value="">Todos</option></select></div>
+    <div class="f"><label>Semáforo</label><select id="fSem"><option value="">Todos</option><option value="ok">OK</option><option value="atencion">Atención</option><option value="critico">Crítico</option></select></div>
+    <div class="f"><label>Desde</label><input type="date" id="fDesde"></div>
+    <div class="f"><label>Hasta</label><input type="date" id="fHasta"></div>
+    <div class="f"><label>&nbsp;</label><button class="btn" id="fReset">Limpiar</button></div>
+  </div>
+
+  <!-- PANEL -->
+  <section id="tab-panel">
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="card">
+        <h2>Cobertura de monitoreo</h2>
+        <p class="cap">Lotes con al menos un conteo sobre el total sembrado de la campaña.</p>
+        <div id="cobertura"></div>
+      </div>
+      <div class="card">
+        <h2>Últimos conteos</h2>
+        <p class="cap">Los diez registros más recientes que entraron por el agente.</p>
+        <div class="tbl-wrap"><table id="tblUlt"><thead><tr><th>Fecha</th><th>Lote</th><th>Cultivo</th><th>pl/ha</th><th>Logro</th><th>Operador</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Mapa de logro por equipo</h2>
+      <p class="cap">Cada lote sembrado, en su orden de equipo. Blanco = sin conteo todavía.</p>
+      <div id="grillaLotes"></div>
+    </div>
+  </section>
+
+  <!-- LOTES -->
+  <section id="tab-lotes" style="display:none">
+    <div class="card">
+      <h2>Detalle por conteo</h2>
+      <p class="cap" id="capLotes"></p>
+      <div class="tbl-wrap"><table id="tblLotes">
+        <thead><tr>
+          <th data-k="fecha">Fecha</th><th data-k="lote">Lote</th><th data-k="sistema">Sistema</th>
+          <th data-k="equipo">Equipo</th><th data-k="superficie_ha">ha</th><th data-k="cultivo_nombre">Cultivo</th>
+          <th data-k="n_rep">Rep</th><th data-k="dist_surco_cm">Surco cm</th>
+          <th data-k="plantas_ha">pl/ha</th><th data-k="objetivo_pl_ha">Objetivo</th>
+          <th data-k="logro_pct">Logro %</th><th data-k="cv_pct">CV %</th>
+          <th data-k="semaforo">Estado</th><th data-k="operador_nombre">Operador</th>
+        </tr></thead><tbody></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ANALISIS -->
+  <section id="tab-analisis" style="display:none">
+    <div class="grid2">
+      <div class="card"><h2>Logro por cultivo</h2><p class="cap">Promedio ponderado por superficie del lote.</p><canvas id="chLogro" height="220"></canvas></div>
+      <div class="card"><h2>Objetivo vs. logrado</h2><p class="cap">Cada punto es un conteo. La diagonal es el 100 %.</p><canvas id="chDisp" height="220"></canvas></div>
+      <div class="card"><h2>Uniformidad</h2><p class="cap">Distribución del coeficiente de variación entre repeticiones.</p><canvas id="chCv" height="220"></canvas></div>
+      <div class="card"><h2>Conteos por semana</h2><p class="cap">Ritmo de carga del agente de WhatsApp.</p><canvas id="chTiempo" height="220"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Lotes a revisar</h2>
+      <p class="cap">Logro por debajo del 85 % o uniformidad muy irregular. Ordenados por hectáreas comprometidas.</p>
+      <div class="tbl-wrap"><table id="tblAlerta"><thead><tr><th>Lote</th><th>Cultivo</th><th>ha</th><th>pl/ha</th><th>Objetivo</th><th>Logro %</th><th>CV %</th><th>Motivo</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- BANDEJA -->
+  <section id="tab-bandeja" style="display:none">
+    <div class="card">
+      <h2>Bandeja de eventos</h2>
+      <p class="cap">Mensajes crudos que llegaron al webhook y no terminaron en un conteo confirmado.</p>
+      <div class="tbl-wrap"><table id="tblRaw"><thead></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ============ estado ============ */
+const S = { url:"", key:"", stand:[], siembras:[], lotes:[], raw:[], sort:{k:"fecha",dir:-1}, charts:{} };
+
+const nf = (v,d=0)=> v==null||isNaN(v) ? "–" : Number(v).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const nfM = v => v==null||isNaN(v) ? "–" : (v/1e6).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const fdate = s => { if(!s) return "–"; const d=new Date(s); return isNaN(d)?String(s).slice(0,10):d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"}); };
+const el = id => document.getElementById(id);
+
+/* ============ acceso a datos ============ */
+async function q(path){
+  const r = await fetch(`${S.url}/rest/v1/${path}`,{
+    headers:{ apikey:S.key, Authorization:`Bearer ${S.key}`, Accept:"application/json" }
+  });
+  if(!r.ok) throw new Error(`${path.split("?")[0]}: ${r.status} ${await r.text()}`);
+  return r.json();
+}
+async function qSoft(path){ try{ return await q(path); }catch(e){ console.warn(e.message); return []; } }
+
+async function cargar(){
+  el("liveTxt").textContent = "cargando…";
+  S.stand   = await q("v_stand_lote?select=*&order=fecha.desc&limit=5000");
+  S.lotes   = await qSoft("lotes?select=*&limit=5000");
+  S.siembras= await qSoft("siembras?select=*&limit=5000");
+  S.raw     = await qSoft("eventos_raw?select=*&order=created_at.desc&limit=300");
+  el("live").querySelector(".dot").classList.add("live");
+  el("liveTxt").textContent = new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+  poblarFiltros(); render();
+}
+
+/* siembras: los nombres de columna pueden variar, los detectamos */
+function colDe(obj, cands){ if(!obj) return null; const ks=Object.keys(obj); for(const c of cands){ const k=ks.find(x=>x.toLowerCase()===c); if(k) return k; } return ks.find(x=>cands.some(c=>x.toLowerCase().includes(c)))||null; }
+function mapSiembras(){
+  if(!S.siembras.length) return [];
+  const s0=S.siembras[0];
+  const kL=colDe(s0,["lote"]), kC=colDe(s0,["cultivo"]), kH=colDe(s0,["ha_sembradas","ha","superficie"]);
+  return S.siembras.map(r=>({ lote:r[kL], cultivo:r[kC], ha:Number(r[kH])||0 })).filter(r=>r.lote);
+}
+
+/* ============ filtros ============ */
+function poblarFiltros(){
+  const set=(id,vals)=>{ const s=el(id), cur=s.value; s.innerHTML='<option value="">Todos</option>'+[...new Set(vals.filter(Boolean))].sort().map(v=>`<option>${v}</option>`).join(""); s.value=cur; };
+  set("fCultivo",S.stand.map(r=>r.cultivo_nombre||r.cultivo));
+  set("fSistema",S.stand.map(r=>r.sistema));
+  set("fEquipo", S.stand.map(r=>r.equipo));
+}
+function filtrados(){
+  const c=el("fCultivo").value, si=el("fSistema").value, eq=el("fEquipo").value,
+        sm=el("fSem").value, d1=el("fDesde").value, d2=el("fHasta").value;
+  return S.stand.filter(r=>{
+    if(c && (r.cultivo_nombre||r.cultivo)!==c) return false;
+    if(si && r.sistema!==si) return false;
+    if(eq && r.equipo!==eq) return false;
+    if(sm && r.semaforo!==sm) return false;
+    const f=(r.fecha||"").slice(0,10);
+    if(d1 && f<d1) return false;
+    if(d2 && f>d2) return false;
+    return true;
+  });
+}
+
+/* ============ render ============ */
+function render(){ kpis(); cobertura(); ultimos(); grilla(); tablaLotes(); analisis(); bandeja(); }
+
+function kpis(){
+  const d=filtrados();
+  const lotesMon=new Set(d.map(r=>r.lote));
+  const sm=mapSiembras();
+  const totalSemb = sm.length || new Set(S.lotes.map(l=>l.lote)).size;
+  const haMon=[...lotesMon].reduce((a,l)=>{ const r=d.find(x=>x.lote===l); return a+(Number(r?.superficie_ha)||0); },0);
+  const conObj=d.filter(r=>r.logro_pct!=null);
+  const wSum=conObj.reduce((a,r)=>a+(Number(r.superficie_ha)||1),0);
+  const logro=wSum? conObj.reduce((a,r)=>a+r.logro_pct*(Number(r.superficie_ha)||1),0)/wSum : null;
+  const crit=d.filter(r=>r.semaforo==="critico").length;
+  const pend=S.raw.filter(r=>["pendiente","incompleto","error","esperando_surco"].includes(r.estado)).length;
+
+  el("kpis").innerHTML=[
+    ["Conteos",nf(d.length),`${lotesMon.size} lotes distintos`],
+    ["Cobertura", totalSemb? nf(lotesMon.size/totalSemb*100,0)+"%" : "–", `${lotesMon.size} de ${nf(totalSemb)} sembrados`],
+    ["Superficie monitoreada",nf(haMon,0)+" <small>ha</small>",""],
+    ["Logro promedio", logro==null?"–":nf(logro,1)+"<small>%</small>","ponderado por hectárea"],
+    ["Lotes críticos",nf(crit),"logro < 85 %"],
+    ["En bandeja",nf(pend),"eventos sin confirmar"]
+  ].map(([l,v,h])=>`<div class="kpi"><div class="lab">${l}</div><div class="val">${v}</div><div class="hint">${h}</div></div>`).join("");
+}
+
+function cobertura(){
+  const sm=mapSiembras();
+  const box=el("cobertura");
+  if(!sm.length){ box.innerHTML='<div class="empty"><b>Falta el maestro de siembras</b>No pude leer la tabla <span class="mono">siembras</span>; la cobertura se calcula cuando esté disponible.</div>'; return; }
+  const mon=new Set(S.stand.map(r=>r.lote));
+  const agg={};
+  sm.forEach(r=>{ const c=r.cultivo||"sin cultivo"; (agg[c]=agg[c]||{t:0,m:0,ha:0,haM:0}); agg[c].t++; agg[c].ha+=r.ha; if(mon.has(r.lote)){agg[c].m++; agg[c].haM+=r.ha;} });
+  box.innerHTML=Object.entries(agg).sort((a,b)=>b[1].ha-a[1].ha).map(([c,v])=>{
+    const p=v.t? v.m/v.t*100:0;
+    return `<div class="cov-row"><div style="font-size:13px">${c}</div>
+      <div class="bar"><i style="width:${p.toFixed(1)}%"></i></div>
+      <div class="n">${v.m}/${v.t} · ${nf(p,0)}% · ${nf(v.haM,0)} ha</div></div>`;
+  }).join("");
+}
+
+function ultimos(){
+  const d=filtrados().slice(0,10);
+  const tb=el("tblUlt").querySelector("tbody");
+  tb.innerHTML = d.length? d.map(r=>`<tr>
+      <td class="mono">${fdate(r.fecha)}</td><td class="mono">${r.lote}</td>
+      <td>${r.cultivo_nombre||r.cultivo||"–"}</td>
+      <td class="num">${nfM(r.plantas_ha)} M</td>
+      <td class="num">${r.logro_pct==null?"–":nf(r.logro_pct,0)+"%"}</td>
+      <td>${r.operador_nombre||"–"}</td></tr>`).join("")
+    : `<tr><td colspan="6"><div class="empty"><b>Todavía no entró ningún conteo</b>Apenas el agente reciba el primer mensaje de WhatsApp, aparece acá.</div></td></tr>`;
+}
+
+function grilla(){
+  const sm=mapSiembras();
+  const mapStand={}; S.stand.forEach(r=>{ if(!mapStand[r.lote] || r.fecha>mapStand[r.lote].fecha) mapStand[r.lote]=r; });
+  const infoLote={}; S.lotes.forEach(l=>infoLote[l.lote]=l);
+  const base = sm.length? sm.map(r=>r.lote) : Object.keys(mapStand);
+  const grupos={};
+  base.forEach(lo=>{ const g=(infoLote[lo]?.equipo)||(mapStand[lo]?.equipo)||(infoLote[lo]?.sistema)||"Sin equipo"; (grupos[g]=grupos[g]||[]).push(lo); });
+  const box=el("grillaLotes");
+  if(!base.length){ box.innerHTML='<div class="empty"><b>Sin lotes para dibujar</b>Se arma con el maestro de siembras de la campaña.</div>'; return; }
+  box.innerHTML=Object.keys(grupos).sort().map(g=>{
+    const chips=grupos[g].map(lo=>{
+      const r=mapStand[lo];
+      const cl=r? (r.semaforo||"sin") : "sin";
+      const t=r? `${lo} · ${nfM(r.plantas_ha)}M pl/ha · logro ${nf(r.logro_pct,0)}%` : `${lo} · sin conteo`;
+      return `<span class="chip ${cl}" title="${t}">${lo}</span>`;
+    }).join("");
+    return `<div class="eq-group"><div class="eq-lab">${g} · ${grupos[g].length} lotes</div><div class="chips">${chips}</div></div>`;
+  }).join("");
+}
+
+function tablaLotes(){
+  const d=[...filtrados()].sort((a,b)=>{
+    const k=S.sort.k, va=a[k], vb=b[k];
+    if(va==null) return 1; if(vb==null) return -1;
+    return (typeof va==="number"? va-vb : String(va).localeCompare(String(vb)))*S.sort.dir;
+  });
+  el("capLotes").textContent=`${d.length} conteos. Tocá el encabezado para ordenar.`;
+  el("tblLotes").querySelector("tbody").innerHTML = d.length? d.map(r=>`<tr>
+    <td class="mono">${fdate(r.fecha)}</td><td class="mono">${r.lote}</td><td>${r.sistema||"–"}</td>
+    <td class="mono">${r.equipo||"–"}</td><td class="num">${nf(r.superficie_ha,0)}</td>
+    <td>${r.cultivo_nombre||r.cultivo||"–"}</td><td class="num">${r.n_rep??"–"}</td>
+    <td class="num">${nf(r.dist_surco_cm,0)}</td><td class="num">${nf(r.plantas_ha,0)}</td>
+    <td class="num">${nf(r.objetivo_pl_ha,0)}</td><td class="num">${r.logro_pct==null?"–":nf(r.logro_pct,1)}</td>
+    <td class="num">${r.cv_pct==null?"–":nf(r.cv_pct,1)}</td>
+    <td><span class="pill ${r.semaforo||''}">${r.semaforo||"–"}</span></td>
+    <td>${r.operador_nombre||"–"}</td></tr>`).join("")
+    : `<tr><td colspan="14"><div class="empty"><b>Sin conteos con estos filtros</b>Probá limpiar los filtros.</div></td></tr>`;
+}
+
+function chart(id,cfg){ if(S.charts[id]) S.charts[id].destroy(); const c=el(id); if(!c) return; S.charts[id]=new Chart(c,cfg); }
+const CO="#6B7A4F", CC="#B0402B", CW="#C08A1E";
+
+function analisis(){
+  const d=filtrados().filter(r=>r.logro_pct!=null);
+  const gr={}; d.forEach(r=>{ const c=r.cultivo_nombre||r.cultivo||"–"; const w=Number(r.superficie_ha)||1; (gr[c]=gr[c]||{s:0,w:0}); gr[c].s+=r.logro_pct*w; gr[c].w+=w; });
+  const labs=Object.keys(gr);
+  chart("chLogro",{type:"bar",data:{labels:labs,datasets:[{data:labs.map(c=>gr[c].s/gr[c].w),backgroundColor:labs.map(c=>{const v=gr[c].s/gr[c].w;return v>=95?CO:v>=85?CW:CC;}),borderRadius:4}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,suggestedMin:60,suggestedMax:110,title:{display:true,text:"logro %"}}},maintainAspectRatio:false}});
+
+  chart("chDisp",{type:"scatter",data:{datasets:[
+      {label:"conteos",data:d.map(r=>({x:r.objetivo_pl_ha/1e6,y:r.plantas_ha/1e6,lote:r.lote})),backgroundColor:"rgba(107,122,79,.65)",pointRadius:4},
+      {label:"100 %",type:"line",data:(()=>{const m=Math.max(1,...d.map(r=>Math.max(r.objetivo_pl_ha,r.plantas_ha)/1e6));return [{x:0,y:0},{x:m,y:m}];})(),borderColor:"#C9C3B0",borderDash:[5,4],pointRadius:0,fill:false}
+    ]},
+    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.lote?`${c.raw.lote}: ${c.raw.y.toFixed(2)}M vs ${c.raw.x.toFixed(2)}M`:""}}},
+      scales:{x:{title:{display:true,text:"objetivo M pl/ha"}},y:{title:{display:true,text:"logrado M pl/ha"}}},maintainAspectRatio:false}});
+
+  const bins=[0,5,10,15,20,30,100], lb=["0-5","5-10","10-15","15-20","20-30","+30"];
+  const cnt=lb.map((_,i)=>filtrados().filter(r=>r.cv_pct!=null&&r.cv_pct>=bins[i]&&r.cv_pct<bins[i+1]).length);
+  chart("chCv",{type:"bar",data:{labels:lb,datasets:[{data:cnt,backgroundColor:lb.map((_,i)=>i<2?CO:i<4?CW:CC),borderRadius:4}]},
+    options:{plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:"CV %"}},y:{beginAtZero:true,title:{display:true,text:"conteos"}}},maintainAspectRatio:false}});
+
+  const sem={}; filtrados().forEach(r=>{ const dt=new Date(r.fecha); if(isNaN(dt))return; const on=new Date(dt); on.setDate(dt.getDate()-((dt.getDay()+6)%7)); const k=on.toISOString().slice(0,10); sem[k]=(sem[k]||0)+1; });
+  const ks=Object.keys(sem).sort();
+  chart("chTiempo",{type:"bar",data:{labels:ks.map(k=>fdate(k)),datasets:[{data:ks.map(k=>sem[k]),backgroundColor:CO,borderRadius:4}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:"conteos"}}},maintainAspectRatio:false}});
+
+  const al=filtrados().filter(r=>(r.logro_pct!=null&&r.logro_pct<85)||(r.cv_pct!=null&&r.cv_pct>20))
+    .sort((a,b)=>(Number(b.superficie_ha)||0)-(Number(a.superficie_ha)||0));
+  el("tblAlerta").querySelector("tbody").innerHTML= al.length? al.map(r=>{
+    const m=[]; if(r.logro_pct!=null&&r.logro_pct<85)m.push("stand bajo"); if(r.cv_pct!=null&&r.cv_pct>20)m.push("muy irregular");
+    return `<tr><td class="mono">${r.lote}</td><td>${r.cultivo_nombre||r.cultivo||"–"}</td>
+      <td class="num">${nf(r.superficie_ha,0)}</td><td class="num">${nf(r.plantas_ha,0)}</td>
+      <td class="num">${nf(r.objetivo_pl_ha,0)}</td><td class="num">${nf(r.logro_pct,1)}</td>
+      <td class="num">${r.cv_pct==null?"–":nf(r.cv_pct,1)}</td><td>${m.join(" · ")}</td></tr>`;
+  }).join("") : `<tr><td colspan="8"><div class="empty"><b>Nada para revisar</b>Ningún conteo cayó por debajo del umbral.</div></td></tr>`;
+}
+
+function bandeja(){
+  const t=el("tblRaw");
+  const d=S.raw.filter(r=>r.estado!=="confirmado");
+  if(!d.length){ t.querySelector("thead").innerHTML=""; t.querySelector("tbody").innerHTML=`<tr><td><div class="empty"><b>Bandeja limpia</b>No hay eventos crudos sin resolver.</div></td></tr>`; return; }
+  const cols=Object.keys(d[0]).filter(k=>!["id"].includes(k)).slice(0,9);
+  t.querySelector("thead").innerHTML=`<tr>${cols.map(c=>`<th>${c.replace(/_/g," ")}</th>`).join("")}</tr>`;
+  t.querySelector("tbody").innerHTML=d.map(r=>`<tr>${cols.map(c=>{
+    let v=r[c]; if(v&&typeof v==="object") v=JSON.stringify(v);
+    v=v==null?"–":String(v); if(v.length>90) v=v.slice(0,90)+"…";
+    return `<td${c.includes("fecha")||c.includes("created")?' class="mono"':''}>${v}</td>`;
+  }).join("")}</tr>`).join("");
+}
+
+/* ============ eventos ============ */
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
+  ["panel","lotes","analisis","bandeja"].forEach(t=>el("tab-"+t).style.display = t===b.dataset.tab?"":"none");
+  el("filters").style.display = b.dataset.tab==="bandeja"?"none":"flex";
+}));
+["fCultivo","fSistema","fEquipo","fSem","fDesde","fHasta"].forEach(id=>el(id).addEventListener("change",render));
+el("fReset").addEventListener("click",()=>{["fCultivo","fSistema","fEquipo","fSem","fDesde","fHasta"].forEach(id=>el(id).value="");render();});
+el("btnRefresh").addEventListener("click",()=>cargar().catch(e=>alert(e.message)));
+el("tblLotes").querySelectorAll("th").forEach(th=>th.addEventListener("click",()=>{
+  const k=th.dataset.k; S.sort = {k, dir: S.sort.k===k? -S.sort.dir : 1}; tablaLotes();
+}));
+
+/* ============ arranque ============ */
+function arrancar(url,key){
+  S.url=url.replace(/\/+$/,""); S.key=key;
+  el("cfgScreen").style.display="none"; el("app").style.display="";
+  cargar().catch(e=>{
+    el("app").style.display="none"; el("cfgScreen").style.display="";
+    el("cfgErr").innerHTML=`<div class="err">No pude leer los datos. ${e.message}<br>Revisá que la anon key sea la del proyecto y que las políticas RLS permitan lectura a <span class="mono">anon</span>.</div>`;
+  });
+}
+el("cfgGo").addEventListener("click",()=>arrancar(el("cfgUrl").value.trim(), el("cfgKey").value.trim()));
+if(SUPABASE_ANON_KEY) arrancar(SUPABASE_URL,SUPABASE_ANON_KEY);
+else { el("cfgScreen").style.display=""; el("cfgUrl").value=SUPABASE_URL; }
+setInterval(()=>{ if(S.key) cargar().catch(()=>{}); }, 120000);
+</script>
+</body>
+</html>
