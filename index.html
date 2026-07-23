@@ -40,6 +40,34 @@ header{background:var(--panel);border-bottom:1px solid var(--line);position:stic
 .btn:focus-visible{outline:2px solid var(--olive);outline-offset:2px}
 .btn.sm{padding:4px 9px;font-size:12px}
 
+/* ---- inicio ---- */
+.home{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:22px 0}
+.hcard{display:flex;flex-direction:column;gap:5px;text-align:left;background:var(--panel);
+  border:1px solid var(--line);border-radius:14px;padding:22px 20px;font:inherit;cursor:pointer;
+  min-height:132px;transition:border-color .12s,transform .12s}
+.hcard:hover{border-color:var(--olive);background:var(--sand)}
+.hcard:active{transform:scale(.99)}
+.hcard:focus-visible{outline:2px solid var(--olive);outline-offset:2px}
+.hcard .hi{font-family:'Instrument Serif',serif;font-size:27px;line-height:1.05;letter-spacing:-.01em}
+.hcard .hd2{font-size:12.5px;color:var(--ink2);line-height:1.4}
+.hcard .hs{margin-top:auto;font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--ink3);
+  padding-top:9px}
+.hcard .hs b{color:var(--crit)}
+@media(max-width:520px){
+  .home{grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}
+  .hcard{padding:16px 14px;min-height:118px;border-radius:12px}
+  .hcard .hi{font-size:21px}
+  .hcard .hd2{font-size:11px}
+}
+
+.volver{display:flex;align-items:center;gap:11px;padding:14px 0 4px}
+.volver #donde{font-family:'Instrument Serif',serif;font-size:21px}
+
+.pendiente{background:var(--sand);border-radius:10px;padding:14px 16px;font-size:13.5px;line-height:1.55}
+.pendiente p{margin:0 0 9px} .pendiente p:last-child{margin-bottom:0}
+.pendiente ul{margin:0 0 11px;padding-left:19px}
+.pendiente li{margin-bottom:3px}
+
 nav.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;margin-bottom:16px}
 nav.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:12px 14px;font:inherit;font-size:13px;color:var(--ink2);cursor:pointer;white-space:nowrap}
 nav.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--olivedk);font-weight:600}
@@ -171,6 +199,9 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
   padding:7px 2px;font:inherit;font-size:13px;font-family:'Geist Mono',monospace;cursor:pointer}
 .esc button:hover{background:var(--sand)}
 .esc button[aria-pressed=true]{background:var(--olivedk);border-color:var(--olivedk);color:#fff;font-weight:600}
+.umb{font-size:10px;color:var(--ink3);margin-top:3px;letter-spacing:.02em}
+.umb.ok{color:var(--ok)} .umb.atencion{color:var(--warn);font-weight:600}
+.umb.critico{color:var(--crit);font-weight:600}
 .leyenda{font-size:11px;color:var(--ink2);margin-top:10px;line-height:1.5}
 
 .fgrupos{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
@@ -249,12 +280,41 @@ const CAMPANIA = "26/27";
 </div></div>
 
 <div class="wrap" id="app" style="display:none">
-<nav class="tabs" role="tablist">
+<div class="volver" id="volver" style="display:none">
+  <button class="btn sm" id="btnHome">← Inicio</button>
+  <span id="donde"></span>
+</div>
+<!-- ===== INICIO ===== -->
+<section id="s-home">
+  <div class="home">
+    <button class="hcard" data-go="monitoreo">
+      <span class="hi">Monitoreo</span>
+      <span class="hd2">Fenología, humedad, malezas, plagas, enfermedades y stand</span>
+      <span class="hs" id="hsMon"></span>
+    </button>
+    <button class="hcard" data-go="siembra">
+      <span class="hi">Siembra</span>
+      <span class="hd2">Calidad de siembra y control a nivel semilla</span>
+      <span class="hs" id="hsSie"></span>
+    </button>
+    <button class="hcard" data-go="cosecha">
+      <span class="hi">Cosecha</span>
+      <span class="hd2">Control de pérdidas con aro o bandeja</span>
+      <span class="hs" id="hsCos"></span>
+    </button>
+    <button class="hcard" data-go="resumen">
+      <span class="hi">Resumen</span>
+      <span class="hd2">Estado de todos los lotes de la campaña</span>
+      <span class="hs" id="hsRes"></span>
+    </button>
+  </div>
+</section>
+
+<nav class="tabs" id="subtabs" role="tablist" style="display:none">
   <button role="tab" aria-selected="true"  data-t="resumen">Resumen</button>
   <button role="tab" aria-selected="false" data-t="registros">Registros</button>
   <button role="tab" aria-selected="false" data-t="stand">Stand</button>
   <button role="tab" aria-selected="false" data-t="notas">Notas y fotos</button>
-  <button role="tab" aria-selected="false" data-t="monitoreo">Monitoreo</button>
 </nav>
 
 <div class="filters" id="filters">
@@ -272,7 +332,7 @@ const CAMPANIA = "26/27";
 </div>
 
 <!-- ===== RESUMEN ===== -->
-<section id="s-resumen">
+<section id="s-resumen" style="display:none">
   <div class="kpis" id="kpis"></div>
   <div class="card">
     <h2>Estado por lote</h2>
@@ -335,6 +395,71 @@ const CAMPANIA = "26/27";
 <section id="s-notas" style="display:none">
   <div class="card"><h2>Fotos recientes</h2><p class="cap" id="capFotos"></p><div class="gal" id="gal"></div></div>
   <div class="card"><h2>Notas de campo</h2><p class="cap" id="capNotas"></p><div id="notas"></div></div>
+</section>
+
+<!-- ===== SIEMBRA ===== -->
+<section id="s-siembra" style="display:none">
+  <div class="card">
+    <h2>Siembra</h2>
+    <p class="cap">Todavía no está desarrollada. Va a cargar el control a nivel semilla.</p>
+    <div class="pendiente">
+      <p>Lo que va a tener, según lo que ya se registra hoy:</p>
+      <ul>
+        <li>Semillas por metro lineal, real contra objetivo</li>
+        <li>Desvío de dosis en kg/ha o semillas/ha</li>
+        <li>Eficiencia de siembra, fina y gruesa</li>
+        <li>Profundidad y calidad de tapado</li>
+        <li>Hectáreas sembradas en el día y porcentaje de avance del lote</li>
+      </ul>
+      <p>El maestro de siembras ya está cargado, así que la densidad objetivo de cada
+         lote y variedad sale sola. Falta definir qué se mide a campo y con qué umbral.</p>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Lo que ya hay cargado</h2>
+    <p class="cap">Del maestro de siembras de la campaña.</p>
+    <div class="tw" style="max-height:520px;overflow-y:auto"><table id="tSiembra"><thead><tr>
+      <th data-k="lote">Lote</th><th data-k="sistema">Sistema</th><th data-k="seccion">Secc.</th>
+      <th data-k="ha">ha</th><th data-k="cultivo">Cultivo</th><th data-k="variedad">Variedad</th>
+      <th data-k="fecha_siembra">Siembra</th><th data-k="densidad_obj">Densidad obj.</th>
+      <th data-k="antecesor">Antecesor</th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<!-- ===== COSECHA ===== -->
+<section id="s-cosecha" style="display:none">
+  <div class="card" id="cPaso1">
+    <h2>¿En qué lote estás controlando?</h2>
+    <p class="cap">Elegí el lote y el sistema trae el cultivo y el peso de mil granos de referencia.</p>
+    <div class="loteseek">
+      <input id="cQLote" placeholder="Escribí el lote: P54, NNa, G01…" autocapitalize="characters" autocomplete="off">
+      <div id="cQRes" class="qres"></div>
+    </div>
+  </div>
+  <div id="cPaso2" style="display:none">
+    <div class="card ctx" id="cCtx"></div>
+    <div id="cMsg"></div>
+    <div id="cBox"></div>
+    <div class="card">
+      <h2>Nota y fotos</h2>
+      <div class="fld"><textarea id="cNota" placeholder="Rastrojo, regulación, lo que haga falta."></textarea></div>
+      <input type="file" id="cFotos" accept="image/*" multiple capture="environment" style="font-size:13px;margin-top:10px">
+      <div class="thumbs" id="cThumbs"></div>
+    </div>
+    <div class="savebar">
+      <button class="btn pri" id="cGuardar">Guardar control</button>
+      <button class="btn" id="cOtro">Cambiar de lote</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Controles de la campaña</h2>
+    <p class="cap" id="cCap"></p>
+    <div class="tw"><table id="tCosecha"><thead><tr>
+      <th>Fecha</th><th>Lote</th><th>Cultivo</th><th>Granos</th><th>P1000</th>
+      <th>Rinde</th><th>Pérdida</th><th>%</th><th>Verde</th><th>Partido</th><th>Estado</th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
 </section>
 
 <!-- ===== MONITOREO (carga en campo) ===== -->
@@ -417,7 +542,8 @@ async function cargar(){
   ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
-  poblar(); render();
+  poblar();
+  if(vista==="home") pintarHome(); else ir(vista,subvista);
 }
 
 let _sbCache=null,_sbLen=-1;
@@ -445,6 +571,7 @@ function poblar(){
   set("fCat",S.cats.map(c=>c.nombre),"Todas");
   el("hdCamp").textContent=CAMPANIA;
   if(el("qRes")&&!el("qRes").children.length) buscarLote();
+  if(el("cQRes")&&!el("cQRes").children.length) cBuscar();
 }
 const F=()=>({cul:el("fCultivo").value,sec:el("fSeccion").value,lot:el("fLote").value,sis:el("fSistema").value,
               cat:el("fCat").value,sem:el("fSem").value,d1:el("fD1").value,d2:el("fD2").value});
@@ -948,6 +1075,22 @@ function escalaDe(cultivo){
   return null;
 }
 
+/* ventana fenológica para los umbrales de chinches (criterio LIAG) */
+function ventanaDe(fen){
+  const m=String(fen||"").toUpperCase().match(/R\s*(\d+)/);
+  if(!m) return "hasta R2";
+  const r=Number(m[1]);
+  if(r<=2) return "hasta R2";
+  if(r<=4) return "R3-R4";
+  if(r<=5) return "R5";
+  return "R6-R7";
+}
+function semDe(v,ind){
+  if(v==null||isNaN(v)||!ind||ind.umbral_control==null) return null;
+  if(ind.invertido) return v<=(ind.umbral_dano??-1e18)?"critico":v<=ind.umbral_control?"atencion":"ok";
+  return v>=(ind.umbral_dano??1e18)?"critico":v>=ind.umbral_control?"atencion":"ok";
+}
+
 const MODS=[
   {id:"fenologia", t:"Fenología",        d:"estadio del cultivo"},
   {id:"humedad",   t:"Humedad de suelo", d:"perfil por profundidad"},
@@ -955,7 +1098,6 @@ const MODS=[
   {id:"plagas",    t:"Plagas",           d:"conteo y daño"},
   {id:"enfermedades",t:"Enfermedades",   d:"incidencia y severidad"},
   {id:"stand",     t:"Stand de plantas", d:"plantas por metro"},
-  {id:"cosecha",   t:"Pérdida de cosecha",d:"granos caídos"},
   {id:"general",   t:"Estado general",   d:"del lote, 1 a 4"},
 ];
 function pintarMods(){
@@ -1071,14 +1213,37 @@ function cajaDe(m){
         <b>2</b> 75 % · <b>2+</b> capacidad de campo · <b>3</b> saturado.</div></div>`;}
 
   case "plagas":{
-    const rapidos=[["chinches","Chinches por paño","Chinches","chinches por paño de 1 m"],
-                   ["bolilleras","Bolilleras por paño","Bolillera",""],
-                   ["medidoras","Medidoras + anticarsia por paño","Medidoras y anticarsia",""],
-                   ["picudos","Picudos por paño","Picudo",""]];
-    const quick=rapidos.map(([k,nom,,ay])=>`<div class="fld">
-        <label>${esc(nom.replace(" por paño",""))}</label>
-        <input type="number" step="any" inputmode="decimal" data-m="plagas" data-campo="${k}"
-               value="${esc(d[k]||"")}" placeholder="por paño"></div>`).join("");
+    // El umbral de chinches depende del estadio: se elige la ventana según
+    // la fenología cargada, con los valores que LIAG tenía en Cropwise.
+    const fen=(M.mods.fenologia?.valor||M.ctx?.feno?.fenologia||"").toUpperCase();
+    const vent=ventanaDe(fen);
+    const CH=["Chinche verde","Chinche de alfalfa","Chinche de los cuernos","Chinche panza verde"];
+    const OR=[["Bolillera por metro","Bolillera"],["Medidora por metro","Isoca medidora"],
+              ["Falsa medidora por metro","Falsa Medidora"],
+              ["Oruga de las leguminosas por metro","Oruga de las leguminosas"],
+              ["Defoliación","Defoliación"]];
+
+    const chFila=CH.map(c=>{
+      const nom=`${c} ${vent}`;
+      const ind=S.inds.find(x=>x.categoria_id==="plagas"&&x.nombre===nom);
+      const val=d["ch_"+c]||"";
+      const est=ind&&val!==""?semDe(Number(val),ind):null;
+      return `<div class="fld"><label>${esc(c.replace("Chinche ","Ch. "))}</label>
+        <input type="number" step="any" inputmode="decimal" data-m="plagas" data-campo="ch_${esc(c)}"
+               value="${esc(val)}" placeholder="por metro">
+        <span class="umb ${est||''}">${ind?`umbral ${nf(ind.umbral_control,2)}`:"sin umbral"}</span></div>`;
+    }).join("");
+
+    const orFila=OR.map(([nom,occ])=>{
+      const ind=S.inds.find(x=>x.categoria_id==="plagas"&&x.nombre===nom);
+      const val=d["or_"+occ]||"";
+      const est=ind&&val!==""?semDe(Number(val),ind):null;
+      return `<div class="fld"><label>${esc(occ)}</label>
+        <input type="number" step="any" inputmode="decimal" data-m="plagas" data-campo="or_${esc(occ)}"
+               value="${esc(val)}" placeholder="${nom.includes("Defoli")?"%":"larvas/m"}">
+        <span class="umb ${est||''}">${ind?`umbral ${nf(ind.umbral_control,1)}`:""}</span></div>`;
+    }).join("");
+
     const inds=S.inds.filter(i=>i.categoria_id==="plagas");
     const occs=S.occs.filter(o=>o.categoria_id==="plagas"&&o.activo!==false);
     const filas=(d.filas=d.filas||[]);
@@ -1095,10 +1260,14 @@ function cajaDe(m){
                data-campo="val" value="${esc(f.val||"")}"></div>
       <div class="fld"><label>&nbsp;</label><button class="btn sm delesp" data-m="plagas" data-fila="${i}">✕</button></div>
     </div>`).join("");
-    return `<div class="modbox">${hd(m,"conteo por paño de 1 m")}
-      <div class="form" style="margin-bottom:4px">${quick}</div>
-      <div class="leyenda" style="margin-bottom:12px">Umbrales: chinches 0,8 · bolilleras 1,0 ·
-        medidoras y anticarsia 15 · picudos 1,0 por paño.</div>
+
+    return `<div class="modbox">${hd(m,`conteo en paño de 1 m · umbrales de ${vent}`)}
+      ${fen?`<div class="leyenda" style="margin-bottom:10px">Los umbrales de chinches se ajustan
+        al estadio <b>${esc(fen)}</b>. Si cargás la fenología primero, se actualizan solos.</div>`
+       :`<div class="leyenda" style="margin-bottom:10px">Sin fenología cargada se usan los umbrales
+        de <b>hasta R2</b>, los más exigentes. Cargá el estadio para afinarlos.</div>`}
+      <div class="form" style="margin-bottom:12px">${chFila}</div>
+      <div class="form" style="margin-bottom:8px">${orFila}</div>
       ${rows}
       <datalist id="dl-plagas">${occs.map(o=>`<option value="${esc(o.nombre)}">`).join("")}</datalist>
       <button class="btn sm addesp" data-m="plagas" style="margin-top:6px">+ Otra plaga del catálogo</button>
@@ -1286,11 +1455,14 @@ function valoresDe(){
     }
   }
   if(m.plagas){
-    [["chinches","Chinches por paño","Chinches"],
-     ["bolilleras","Bolilleras por paño","Bolillera"],
-     ["medidoras","Medidoras + anticarsia por paño","Medidoras y anticarsia"],
-     ["picudos","Picudos por paño","Picudo"]]
-    .forEach(([k,nom,occ])=>push("plagas",nom,m.plagas[k],occ));
+    const vent=ventanaDe(m.fenologia?.valor||M.ctx?.feno?.fenologia||"");
+    ["Chinche verde","Chinche de alfalfa","Chinche de los cuernos","Chinche panza verde"]
+      .forEach(c=>push("plagas",`${c} ${vent}`,m.plagas["ch_"+c],c));
+    [["Bolillera por metro","Bolillera"],["Medidora por metro","Isoca medidora"],
+     ["Falsa medidora por metro","Falsa Medidora"],
+     ["Oruga de las leguminosas por metro","Oruga de las leguminosas"],
+     ["Defoliación","Defoliación"]]
+      .forEach(([nom,occ])=>push("plagas",nom,m.plagas["or_"+occ],occ));
   }
   if(m.malezas?.enm) push("malezas","Enmalezamiento (1-3)",m.malezas.enm,"Evaluación general");
 
@@ -1386,37 +1558,263 @@ function reiniciarCarga(){
   el("qLote").value="";buscarLote();el("qLote").focus();
 }
 
+/* =========================== navegación =========================== */
+const SECC={
+  home:     {tit:"",          sub:false, filtros:false},
+  monitoreo:{tit:"Monitoreo", sub:false, filtros:false},
+  siembra:  {tit:"Siembra",   sub:false, filtros:false},
+  cosecha:  {tit:"Cosecha",   sub:false, filtros:false},
+  resumen:  {tit:"Resumen",   sub:true,  filtros:true},
+};
+const SUB=["resumen","registros","stand","notas"];
+let vista="home", subvista="resumen";
+
+function ir(v,sv){
+  vista=v; if(sv) subvista=sv;
+  const cfg=SECC[v]||SECC.home;
+  ["home","monitoreo","siembra","cosecha"].forEach(x=>{
+    const e=el("s-"+x); if(e) e.style.display=(x===v)?"":"none";});
+  SUB.forEach(x=>{const e=el("s-"+x);
+    if(e) e.style.display=(v==="resumen"&&x===subvista)?"":"none";});
+  el("volver").style.display = v==="home"?"none":"flex";
+  el("donde").textContent = cfg.tit;
+  el("subtabs").style.display = cfg.sub?"flex":"none";
+  el("filters").style.display = cfg.filtros?"flex":"none";
+  document.querySelectorAll("#subtabs button").forEach(b=>
+    b.setAttribute("aria-selected", b.dataset.t===subvista));
+  if(v==="home") pintarHome();
+  if(v==="siembra") tablaSiembra();
+  if(v==="cosecha") tablaCosecha();
+  if(v==="resumen") requestAnimationFrame(render);
+  window.scrollTo({top:0,behavior:"instant"});
+}
+
+function pintarHome(){
+  const R=resumenLotes();
+  const crit=R.filter(r=>r._peor==="critico").length;
+  const sin=R.filter(r=>r.sinMonitoreo).length;
+  const d7=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
+  el("hsMon").innerHTML=`${R.filter(r=>r.fecha&&r.fecha>=d7).length} lotes en los últimos 7 días`;
+  el("hsSie").innerHTML=`${S.siembras.length} lotes sembrados`;
+  const cos=controlesCosecha();
+  el("hsCos").innerHTML=cos.length?`${cos.length} controles en la campaña`:"sin controles todavía";
+  el("hsRes").innerHTML=`${R.length} lotes · ${crit?`<b>${crit} en crítico</b>`:"nada en crítico"} · ${sin} sin recorrer`;
+}
+
+/* =========================== siembra =========================== */
+function tablaSiembra(){
+  S.sort.sie=S.sort.sie||{k:"lote",dir:1};
+  const L=sortBy("lote",S.siembras.map(x=>({...x,ha:Number(x.ha)||null})),"sie");
+  el("tSiembra").querySelector("tbody").innerHTML=L.length?L.map(r=>`<tr>
+    <td class="mono"><b>${esc(r.lote)}</b></td><td>${esc(r.sistema||"–")}</td>
+    <td class="mono">${esc(r.seccion||"–")}</td><td class="num">${nf(r.ha,0)}</td>
+    <td>${esc(r.cultivo||"–")}</td><td>${esc(r.variedad||"–")}</td>
+    <td class="mono">${fd(r.fecha_siembra)}</td>
+    <td class="num">${r.densidad_obj?nf(r.densidad_obj,0):"–"}</td>
+    <td>${esc(r.antecesor||"–")}</td></tr>`).join("")
+    :`<tr><td colspan="9"><div class="empty"><b>Sin maestro de siembras</b>Se carga con el script 05.</div></td></tr>`;
+}
+
+/* =========================== cosecha =========================== */
+const C={lote:null,ctx:null,d:{},fotos:[]};
+
+function controlesCosecha(){
+  const b={};
+  S.vals.filter(v=>v.categoria_id==="cosecha").forEach(v=>{
+    const o=b[v.monitoreo_id]=b[v.monitoreo_id]||{fecha:v.fecha,lote:v.lote,cultivo:v.cultivo,
+      scouter:v.scouter,nota:v.nota};
+    switch(v.indicador){
+      case "Granos por aro":            o.granos=v.valor; break;
+      case "Peso de mil granos":        o.pmg=v.valor;    break;
+      case "Rinde en el lugar":         o.rinde=v.valor;  break;
+      case "Pérdida":                   o.kg=v.valor;     break;
+      case "Pérdida sobre rendimiento": o.pct=v.valor;    break;
+      case "Grano verde":               o.verde=v.valor;  break;
+      case "Grano partido":             o.partido=v.valor;break;
+    }
+  });
+  const L=Object.values(b);
+  L.forEach(o=>{o.sem=o.pct==null?null:o.pct>=3?"critico":o.pct>=1.5?"atencion":"ok";});
+  return L.sort((a,b2)=>String(b2.fecha).localeCompare(String(a.fecha)));
+}
+
+function tablaCosecha(){
+  const L=controlesCosecha();
+  el("cCap").textContent=`${L.length} ${L.length===1?"control":"controles"} cargados.`;
+  el("tCosecha").querySelector("tbody").innerHTML=L.length?L.map(o=>`<tr>
+    <td class="mono">${fd(o.fecha)}</td><td class="mono"><b>${esc(o.lote)}</b></td>
+    <td>${esc(o.cultivo||"–")}</td><td class="num">${nf(o.granos,0)}</td>
+    <td class="num">${nf(o.pmg,1)}</td><td class="num">${nf(o.rinde,0)}</td>
+    <td class="num">${nf(o.kg,1)}</td>
+    <td class="num">${o.pct==null?"–":nf(o.pct,2)}</td>
+    <td class="num">${nf(o.verde,1)}</td><td class="num">${nf(o.partido,1)}</td>
+    <td>${o.sem?`<span class="pill ${o.sem}">${o.sem}</span>`:'<span class="pill na">–</span>'}</td>
+  </tr>`).join("")
+  :`<tr><td colspan="11"><div class="empty"><b>Sin controles</b>Elegí un lote arriba para cargar el primero.</div></td></tr>`;
+}
+
+function cBuscar(){
+  const q=el("cQLote").value.trim().toUpperCase(), sb=idxSiembra(), box=el("cQRes");
+  let L=Object.values(sb);
+  if(!L.length) L=[...new Set(S.mons.map(m=>m.lote))].map(l=>({lote:l}));
+  if(q) L=L.filter(x=>String(x.lote).toUpperCase().includes(q));
+  L.sort((a,b)=>{const A=String(a.lote).toUpperCase(),B=String(b.lote).toUpperCase();
+    return (A.startsWith(q)?0:1)-(B.startsWith(q)?0:1)||A.localeCompare(B,"es");});
+  const top=L.slice(0,12);
+  box.innerHTML=top.length?top.map(x=>`<button data-lote="${esc(x.lote)}"><b>${esc(x.lote)}</b>
+      <small>${esc(x.cultivo||"sin cultivo")}${x.ha?" · "+nf(x.ha,0)+" ha":""}</small></button>`).join("")
+      +(L.length>top.length?`<div class="mas">y ${L.length-top.length} más</div>`:"")
+    :`<div class="mas">Ningún lote coincide con “${esc(q)}”.</div>`;
+  box.querySelectorAll("button").forEach(b=>b.onclick=()=>cElegir(b.dataset.lote));
+}
+
+function cElegir(lote){
+  C.lote=lote; C.d={}; C.fotos=[];
+  const sb=idxSiembra()[lote]||{};
+  C.ctx=sb;
+  el("cCtx").innerHTML=`
+    <div class="lot">${esc(lote)}<small>${esc(sb.sistema||"sistema sin dato")}${sb.seccion?" · sección "+esc(sb.seccion):""}</small></div>
+    <dl>
+      <div><dt>Cultivo</dt><dd>${esc(sb.cultivo||"–")}</dd></div>
+      <div><dt>Variedad</dt><dd>${esc(sb.variedad||"–")}</dd></div>
+      <div><dt>Superficie</dt><dd class="mono">${nf(sb.ha,0)} ha</dd></div>
+      <div><dt>Siembra</dt><dd class="mono">${fd(sb.fecha_siembra)}</dd></div>
+      <div><dt>P1000 de referencia</dt><dd class="mono">${p1000De(sb.cultivo)??"–"} g</dd></div>
+    </dl>`;
+  el("cPaso1").style.display="none"; el("cPaso2").style.display="";
+  cPintar(); window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function cPintar(){
+  // se reutiliza la misma caja del módulo de cosecha
+  const guarda=M.mods.cosecha, guardaCtx=M.ctx;
+  M.mods.cosecha=C.d; M.ctx=C.ctx;
+  el("cBox").innerHTML=cajaDe({id:"cosecha",t:"Control de pérdidas",d:""});
+  M.mods.cosecha=guarda; M.ctx=guardaCtx;
+
+  el("cBox").querySelectorAll(".fgrupo.marco").forEach(b=>b.onclick=()=>{C.d.marco=b.dataset.marco;cPintar();});
+  const cm=el("cBox").querySelector("#cambiarMarco");
+  if(cm) cm.onclick=()=>{C.d.marco=(C.d.marco==="aro")?"bandeja":"aro";cPintar();};
+  el("cBox").querySelectorAll(".quitar").forEach(b=>b.style.display="none");
+  el("cBox").querySelectorAll("[data-campo]").forEach(i=>{
+    const ev=i.tagName==="SELECT"?"onchange":"oninput";
+    i[ev]=()=>{C.d[i.dataset.campo]=i.value; if(i.tagName==="SELECT")cPintar();};
+    if(i.type==="number") i.onblur=()=>cPintar();
+  });
+}
+
+function cThumbs(){
+  el("cThumbs").innerHTML=C.fotos.map((f,i)=>
+    `<div class="thumb"><img src="${URL.createObjectURL(f)}" alt=""><button data-i="${i}">✕</button></div>`).join("");
+  el("cThumbs").querySelectorAll("button").forEach(b=>b.onclick=()=>{C.fotos.splice(+b.dataset.i,1);cThumbs();});
+}
+const cMsg=(t,cl)=>el("cMsg").innerHTML=t?`<div class="msg ${cl}">${esc(t)}</div>`:"";
+
+async function cGuardar(){
+  if(!C.lote) return cMsg("Elegí un lote.","err");
+  if(!C.d.marco) return cMsg("Elegí si medís con aro o con bandeja.","err");
+  const guarda=M.mods, guardaCtx=M.ctx, guardaLote=M.lote;
+  M.mods={cosecha:C.d}; M.ctx=C.ctx; M.lote=C.lote;
+  const V=valoresDe();
+  M.mods=guarda; M.ctx=guardaCtx; M.lote=guardaLote;
+
+  const nota=el("cNota").value.trim();
+  if(!V.length&&!nota&&!C.fotos.length) return cMsg("Cargá al menos los granos contados.","err");
+
+  el("cGuardar").disabled=true; cMsg("Guardando…","ok");
+  try{
+    const extra=[C.d.contratista?`contratista: ${C.d.contratista}`:null,
+                 C.d.maquinista?`maquinista: ${C.d.maquinista}`:null,
+                 `medido con ${C.d.marco}`].filter(Boolean).join(" · ");
+    const mon=(await api("mon_monitoreos",{method:"POST",body:JSON.stringify([{
+      fecha:new Date().toISOString().slice(0,10), lote:C.lote, campania:CAMPANIA,
+      cultivo:C.ctx?.cultivo||null, variedad:C.ctx?.variedad||null,
+      superficie_ha:C.ctx?.ha!=null?Number(C.ctx.ha):null,
+      scouter:null, nota:[nota,extra].filter(Boolean).join(" · ")||null,
+      lat:S.gps?.lat??null, lon:S.gps?.lon??null,
+      origen:"app", ext_id:"cos-"+crypto.randomUUID()}])}))[0];
+
+    if(V.length){
+      const byName={}; S.occs.forEach(o=>byName[(o.categoria_id+"|"+o.nombre).toLowerCase()]=o);
+      const rows=[];
+      for(const v of V){
+        let oid=null;
+        if(v.occ){ const o=byName[("cosecha|"+v.occ).toLowerCase()]; if(o) oid=o.id; }
+        rows.push({monitoreo_id:mon.id,indicador_id:v.ind,ocurrencia_id:oid,valor:v.val});
+      }
+      await api("mon_valores",{method:"POST",body:JSON.stringify(rows),prefer:"return=minimal"});
+    }
+    let okF=0;
+    const slug=x=>String(x).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9_-]/g,"_");
+    for(const f of C.fotos){
+      try{
+        const blob=await aJpeg(f);
+        const path=`${slug(CAMPANIA)}/${slug(C.lote)}/${Date.now()}-${Math.random().toString(36).slice(2,7)}.jpg`;
+        const up=await fetch(`${S.url}/storage/v1/object/monitoreo/${path}`,{method:"POST",
+          headers:{apikey:S.key,Authorization:`Bearer ${S.key}`,"Content-Type":"image/jpeg","x-upsert":"true"},body:blob});
+        if(!up.ok) throw new Error(await up.text());
+        await api("mon_fotos",{method:"POST",body:JSON.stringify([{monitoreo_id:mon.id,path}]),prefer:"return=minimal"});
+        okF++;
+      }catch(e){ console.error(e); }
+    }
+    const lote=C.lote;
+    await cargar(); cReiniciar(); tablaCosecha();
+    cMsg(`Control de ${lote} guardado${okF?`, ${okF} fotos`:""}.`,"ok");
+  }catch(e){ cMsg("No se pudo guardar. "+e.message,"err"); }
+  finally{ el("cGuardar").disabled=false; }
+}
+function cReiniciar(){
+  C.lote=null;C.d={};C.fotos=[];el("cNota").value="";cThumbs();
+  el("cPaso2").style.display="none";el("cPaso1").style.display="";
+  el("cQLote").value="";cBuscar();
+}
+
 /* =========================== eventos =========================== */
-document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{
-  document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
-  ["resumen","registros","stand","notas","monitoreo"].forEach(t=>
-    el("s-"+t).style.display=t===b.dataset.t?"":"none");
-  el("filters").style.display=b.dataset.t==="monitoreo"?"none":"flex";
-  requestAnimationFrame(render);});
+document.querySelectorAll(".hcard").forEach(b=>b.onclick=()=>ir(b.dataset.go));
+el("btnHome").onclick=()=>ir("home");
+document.querySelectorAll("#subtabs button").forEach(b=>b.onclick=()=>ir("resumen",b.dataset.t));
+
 ["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"].forEach(i=>el(i).onchange=render);
 el("fReset").onclick=()=>{["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"]
   .forEach(i=>el(i).value="");render();};
 el("btnRefresh").onclick=()=>cargar().catch(e=>alert(e.message));
+
+/* monitoreo */
 el("btnGuardar").onclick=e=>{e.preventDefault();guardar();};
 el("btnOtro").onclick=e=>{e.preventDefault();reiniciarCarga();};
 el("qLote").addEventListener("input",buscarLote);
 el("qLote").addEventListener("keydown",e=>{
   if(e.key!=="Enter")return;
   const b=el("qRes").querySelector("button");
-  if(b) b.click();
-  else if(el("qLote").value.trim()) elegirLote(el("qLote").value.trim().toUpperCase());
+  if(b) b.click(); else if(el("qLote").value.trim()) elegirLote(el("qLote").value.trim().toUpperCase());
 });
 el("nFotos").addEventListener("change",e=>{
   const n=e.target.files.length;
   [...e.target.files].forEach(f=>M.fotos.push(f)); e.target.value=""; pintarThumbs();
   if(n) fmsg(`${M.fotos.length} foto(s) listas. Se comprimen al guardar.`,"ok");});
+
+/* cosecha */
+el("cGuardar").onclick=e=>{e.preventDefault();cGuardar();};
+el("cOtro").onclick=e=>{e.preventDefault();cReiniciar();};
+el("cQLote").addEventListener("input",cBuscar);
+el("cQLote").addEventListener("keydown",e=>{
+  if(e.key!=="Enter")return;
+  const b=el("cQRes").querySelector("button");
+  if(b) b.click(); else if(el("cQLote").value.trim()) cElegir(el("cQLote").value.trim().toUpperCase());
+});
+el("cFotos").addEventListener("change",e=>{
+  [...e.target.files].forEach(f=>C.fotos.push(f)); e.target.value=""; cThumbs();});
+
+/* orden de las tablas */
+[["tRes","res",tablaRes],["tMon","mon",tablaMon],["tStand","st",stand],["tSiembra","sie",tablaSiembra]]
+ .forEach(([t,k,fn])=>{const e=el(t); if(!e)return;
+  e.querySelectorAll("th[data-k]").forEach(th=>th.onclick=()=>{
+    const c=S.sort[k]||{}; S.sort[k]={k:th.dataset.k,dir:c.k===th.dataset.k?-(c.dir||1):1}; fn();});});
+
 navigator.geolocation?.getCurrentPosition(
   p=>{S.gps={lat:p.coords.latitude,lon:p.coords.longitude};
-      el("gpsTxt").textContent=`GPS ${S.gps.lat.toFixed(5)}, ${S.gps.lon.toFixed(5)}`;},
-  ()=>{el("gpsTxt").textContent="sin GPS";},{timeout:8000});
-[["tRes","res",tablaRes],["tMon","mon",tablaMon],["tStand","st",stand]].forEach(([t,k,fn])=>
-  el(t).querySelectorAll("th[data-k]").forEach(th=>th.onclick=()=>{
-    const c=S.sort[k]||{}; S.sort[k]={k:th.dataset.k,dir:c.k===th.dataset.k?-(c.dir||1):1}; fn();}));
+      const g=el("gpsTxt"); if(g) g.textContent=`GPS ${S.gps.lat.toFixed(5)}, ${S.gps.lon.toFixed(5)}`;},
+  ()=>{const g=el("gpsTxt"); if(g) g.textContent="sin GPS";},{timeout:8000});
 
 /* =========================== arranque =========================== */
 function arrancar(u,k){
@@ -1431,7 +1829,7 @@ el("cfgGo").onclick=()=>arrancar(el("cfgUrl").value.trim(),el("cfgKey").value.tr
 el("cfgUrl").value=SUPABASE_URL;
 if(SUPABASE_ANON_KEY) arrancar(SUPABASE_URL,SUPABASE_ANON_KEY);
 else el("cfgScreen").style.display="";
-setInterval(()=>{if(S.key&&el("s-monitoreo").style.display==="none")cargar().catch(()=>{});},180000);
+setInterval(()=>{if(S.key&&vista!=="monitoreo"&&vista!=="cosecha")cargar().catch(()=>{});},180000);
 </script>
 </body>
 </html>
