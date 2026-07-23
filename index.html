@@ -127,6 +127,59 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .msg{padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px}
 .msg.ok{background:#E4EEDC;color:#3E6B28}
 .msg.err{background:#F5DED8;color:var(--crit)}
+
+/* ---- flujo de monitoreo en campo ---- */
+.loteseek{position:relative;max-width:460px}
+#qLote{width:100%;font:inherit;font-size:19px;padding:13px 15px;border:1px solid var(--line);
+  border-radius:10px;font-family:'Geist Mono',monospace;text-transform:uppercase;background:var(--panel)}
+#qLote:focus{outline:2px solid var(--olive);outline-offset:1px}
+.qres{margin-top:8px;display:flex;flex-direction:column;gap:1px;max-height:330px;overflow-y:auto}
+.qres button{display:flex;align-items:baseline;gap:9px;text-align:left;background:var(--panel);
+  border:1px solid var(--line);border-radius:8px;padding:10px 13px;font:inherit;font-size:14px;cursor:pointer}
+.qres button:hover,.qres button:focus-visible{background:var(--sand);outline:none;border-color:var(--olive)}
+.qres b{font-family:'Geist Mono',monospace;font-size:15px;min-width:56px}
+.qres small{color:var(--ink2);font-size:12px}
+.qres .mas{color:var(--ink3);font-size:12px;padding:6px 2px}
+
+.ctx{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start;padding:15px 16px}
+.ctx .lot{font-family:'Instrument Serif',serif;font-size:34px;line-height:1;letter-spacing:-.01em}
+.ctx .lot small{display:block;font-family:Geist,sans-serif;font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink2);margin-top:5px}
+.ctx dl{display:flex;flex-wrap:wrap;gap:18px;margin:0}
+.ctx dt{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2)}
+.ctx dd{margin:2px 0 0;font-size:14px}
+.ctx dd.mono{font-family:'Geist Mono',monospace}
+
+.mods{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px}
+.mods button{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 12px;
+  font:inherit;font-size:13.5px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.mods button:hover{background:var(--sand)}
+.mods button[aria-pressed=true]{background:var(--olive-lt,#E3E8D6);border-color:var(--olive);font-weight:600}
+.mods button small{font-size:10.5px;color:var(--ink2);font-weight:400}
+
+.modbox{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.modbox header{display:flex;align-items:baseline;gap:10px;margin-bottom:3px;background:none;border:0;position:static;padding:0}
+.modbox h3{font-family:'Instrument Serif',serif;font-weight:400;font-size:19px;margin:0}
+.modbox .quitar{margin-left:auto;border:0;background:none;color:var(--ink3);font:inherit;font-size:12px;cursor:pointer}
+.modbox .quitar:hover{color:var(--crit)}
+
+.hum{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:12px}
+.hum .prof{border:1px solid var(--line);border-radius:9px;padding:10px}
+.hum .prof .p{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2);margin-bottom:7px}
+.esc{display:flex;gap:3px;flex-wrap:wrap}
+.esc button{flex:1;min-width:34px;border:1px solid var(--line);background:var(--panel);border-radius:6px;
+  padding:7px 2px;font:inherit;font-size:13px;font-family:'Geist Mono',monospace;cursor:pointer}
+.esc button:hover{background:var(--sand)}
+.esc button[aria-pressed=true]{background:var(--olivedk);border-color:var(--olivedk);color:#fff;font-weight:600}
+.leyenda{font-size:11px;color:var(--ink2);margin-top:10px;line-height:1.5}
+
+.esprow{display:grid;grid-template-columns:1.5fr 1.3fr .7fr auto;gap:8px;align-items:end;
+  padding:9px 0;border-bottom:1px solid var(--sand)}
+@media(max-width:760px){.esprow{grid-template-columns:1fr 1fr}}
+.calc{background:var(--sand);border-radius:9px;padding:11px 13px;margin-top:12px;font-size:13px}
+.calc b{font-family:'Geist Mono',monospace;font-size:16px}
+.savebar{position:sticky;bottom:0;background:linear-gradient(transparent,var(--bg) 22%);
+  padding:16px 0 6px;display:flex;gap:9px;align-items:center;flex-wrap:wrap;z-index:20}
 .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px}
 .gal a{display:block;border-radius:8px;overflow:hidden;border:1px solid var(--line);aspect-ratio:4/3}
 .gal img{width:100%;height:100%;object-fit:cover;display:block}
@@ -174,10 +227,10 @@ const CAMPANIA = "26/27";
 <div class="wrap" id="app" style="display:none">
 <nav class="tabs" role="tablist">
   <button role="tab" aria-selected="true"  data-t="resumen">Resumen</button>
-  <button role="tab" aria-selected="false" data-t="monitoreo">Monitoreo</button>
+  <button role="tab" aria-selected="false" data-t="registros">Registros</button>
   <button role="tab" aria-selected="false" data-t="stand">Stand</button>
   <button role="tab" aria-selected="false" data-t="notas">Notas y fotos</button>
-  <button role="tab" aria-selected="false" data-t="cargar">Cargar</button>
+  <button role="tab" aria-selected="false" data-t="monitoreo">Monitoreo</button>
 </nav>
 
 <div class="filters" id="filters">
@@ -216,7 +269,7 @@ const CAMPANIA = "26/27";
 </section>
 
 <!-- ===== MONITOREO ===== -->
-<section id="s-monitoreo" style="display:none">
+<section id="s-registros" style="display:none">
   <div class="grid2">
     <div class="card"><h2>Ranking de presión</h2><p class="cap">Ocurrencias más frecuentes por encima del umbral de control.</p><div class="tw" style="max-height:330px;overflow-y:auto"><table id="tRank"><thead><tr><th>Ocurrencia</th><th>Categoría</th><th>Lotes</th><th>Máx.</th><th>Estado</th></tr></thead><tbody></tbody></table></div></div>
     <div class="card"><h2>Evolución</h2><p class="cap">Registros por semana, por categoría.</p><div class="chartbox"><canvas id="chEvo"></canvas></div></div>
@@ -258,35 +311,42 @@ const CAMPANIA = "26/27";
   <div class="card"><h2>Notas de campo</h2><p class="cap" id="capNotas"></p><div id="notas"></div></div>
 </section>
 
-<!-- ===== CARGAR ===== -->
-<section id="s-cargar" style="display:none">
-  <div class="card">
-    <h2>Nuevo monitoreo</h2>
-    <p class="cap">Se guarda en Supabase al instante. Los campos de abajo son opcionales: podés cargar solo una nota con fotos.</p>
+<!-- ===== MONITOREO (carga en campo) ===== -->
+<section id="s-monitoreo" style="display:none">
+
+  <!-- paso 1: elegir lote -->
+  <div class="card" id="paso1">
+    <h2>¿Qué lote estás monitoreando?</h2>
+    <p class="cap">Elegí el lote y el sistema trae solo el cultivo, la variedad y la fecha de siembra.</p>
+    <div class="loteseek">
+      <input id="qLote" placeholder="Escribí el lote: P54, NNa, G01…" autocapitalize="characters" autocomplete="off">
+      <div id="qRes" class="qres"></div>
+    </div>
+  </div>
+
+  <!-- paso 2: contexto + módulos -->
+  <div id="paso2" style="display:none">
+    <div class="card ctx" id="ctxCard"></div>
     <div id="formMsg"></div>
-    <div class="form">
-      <div class="fld"><label>Fecha</label><input type="date" id="nFecha"></div>
-      <div class="fld"><label>Lote</label><input id="nLote" list="dlLotes" placeholder="P54" autocapitalize="characters"><datalist id="dlLotes"></datalist></div>
-      <div class="fld"><label>Cultivo</label><input id="nCultivo" list="dlCultivos"><datalist id="dlCultivos"></datalist></div>
-      <div class="fld"><label>Variedad</label><input id="nVariedad"></div>
-      <div class="fld"><label>Fenología</label><input id="nFeno" placeholder="Z2.1 / R3"></div>
-      <div class="fld"><label>Monitoreador</label><input id="nScouter" list="dlScouters"><datalist id="dlScouters"></datalist></div>
-      <div class="fld full"><label>Nota / observación</label><textarea id="nNota" placeholder="Lo que verías escrito en el cuaderno de campo."></textarea></div>
+
+    <div class="card">
+      <h2>Qué vas a cargar</h2>
+      <p class="cap">Tocá los módulos que correspondan. Se abren solo los que uses.</p>
+      <div class="mods" id="mods"></div>
     </div>
 
-    <h2 style="font-size:17px;margin-top:6px">Mediciones</h2>
-    <p class="cap">Agregá una fila por cada cosa que midas. La ocurrencia solo hace falta en malezas, plagas y enfermedades.</p>
-    <div id="meds"></div>
-    <button class="btn sm" id="btnAddMed" style="margin-top:9px">+ Agregar medición</button>
+    <div id="modBoxes"></div>
 
-    <h2 style="font-size:17px;margin-top:20px">Fotos</h2>
-    <p class="cap">Desde el celular se abre la cámara directamente.</p>
-    <input type="file" id="nFotos" accept="image/*" multiple capture="environment" style="font-size:13px">
-    <div class="thumbs" id="thumbs"></div>
+    <div class="card">
+      <h2>Nota y fotos</h2>
+      <div class="fld"><textarea id="nNota" placeholder="Lo que anotarías en el cuaderno de campo."></textarea></div>
+      <input type="file" id="nFotos" accept="image/*" multiple capture="environment" style="font-size:13px;margin-top:10px">
+      <div class="thumbs" id="thumbs"></div>
+    </div>
 
-    <div style="margin-top:22px;display:flex;gap:9px;align-items:center">
+    <div class="savebar">
       <button class="btn pri" id="btnGuardar">Guardar monitoreo</button>
-      <button class="btn" id="btnLimpiar">Limpiar</button>
+      <button class="btn" id="btnOtro">Cambiar de lote</button>
       <span id="gpsTxt" class="mono" style="font-size:11px;color:var(--ink2)"></span>
     </div>
   </div>
@@ -358,14 +418,7 @@ function poblar(){
   set("fLote",[...S.siembras.map(s=>s.lote),...S.mons.map(m=>m.lote)]);
   set("fCat",S.cats.map(c=>c.nombre),"Todas");
   el("hdCamp").textContent=CAMPANIA;
-  el("dlLotes").innerHTML=[...new Set([...S.siembras.map(s=>s.lote),...S.mons.map(m=>m.lote)])]
-    .filter(Boolean).sort().map(l=>`<option value="${esc(l)}">`).join("");
-  el("dlCultivos").innerHTML=[...new Set([...S.siembras.map(s=>s.cultivo),...S.mons.map(m=>m.cultivo)])].filter(Boolean).sort()
-    .map(c=>`<option value="${esc(c)}">`).join("");
-  el("dlScouters").innerHTML=[...new Set(S.mons.map(m=>m.scouter))].filter(Boolean).sort()
-    .map(c=>`<option value="${esc(c)}">`).join("");
-  if(!el("nFecha").value) el("nFecha").value=new Date().toISOString().slice(0,10);
-  if(!el("meds").children.length) addMed();
+  if(el("qRes")&&!el("qRes").children.length) buscarLote();
 }
 const F=()=>({cul:el("fCultivo").value,sec:el("fSeccion").value,lot:el("fLote").value,sis:el("fSistema").value,
               cat:el("fCat").value,sem:el("fSem").value,d1:el("fD1").value,d2:el("fD2").value});
@@ -725,7 +778,7 @@ function stand(){
     <td>${o.sem?`<span class="pill ${o.sem}" ${o.dudoso?`title="${esc(o.dudoso)}"`:""}>${o.sem}</span>`
       :'<span class="pill na">sin objetivo</span>'}</td>
     <td>${esc(o.scouter||"–")}</td></tr>`).join("")
-    :`<tr><td colspan="15"><div class="empty"><b>Sin mediciones de stand</b>Cargá una desde la pestaña Cargar.</div></td></tr>`;
+    :`<tr><td colspan="15"><div class="empty"><b>Sin mediciones de stand</b>Cargá una desde la pestaña Monitoreo.</div></td></tr>`;
 }
 
 /* =========================== notas y fotos =========================== */
@@ -738,7 +791,7 @@ function notas(){
     const u=`${S.url}/storage/v1/object/public/monitoreo/${f.path}`;
     return `<a href="${u}" target="_blank" rel="noopener" title="${esc(m.lote||"")} · ${fd(m.fecha)}">
       <img src="${u}" alt="${esc(f.epigrafe||m.lote||"foto")}" loading="lazy"></a>`;}).join("")
-    :'<div class="empty"><b>Sin fotos</b>Se cargan desde la pestaña Cargar.</div>';
+    :'<div class="empty"><b>Sin fotos</b>Se cargan desde la pestaña Monitoreo.</div>';
 
   const N=ms.filter(m=>m.nota&&m.nota.trim());
   el("capNotas").textContent=`${N.length} notas.`;
@@ -750,117 +803,375 @@ function notas(){
     :'<div class="empty"><b>Sin notas</b>Todavía no se cargó ninguna observación.</div>';
 }
 
-/* =========================== formulario =========================== */
-function addMed(){
-  const i=document.createElement("div");i.className="medrow";
-  const cats=S.cats.map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join("");
-  i.innerHTML=`
-    <div class="fld"><label>Categoría</label><select class="mCat"><option value="">–</option>${cats}</select></div>
-    <div class="fld"><label>Indicador</label><select class="mInd"><option value="">–</option></select></div>
-    <div class="fld"><label>Ocurrencia</label><input class="mOcc" list="dlOcc" placeholder="opcional"></div>
-    <div class="fld"><label>Valor</label><input class="mVal" type="number" step="any" inputmode="decimal"></div>
-    <div class="fld"><label>&nbsp;</label><button class="btn sm mDel" title="Quitar">✕</button></div>`;
-  el("meds").appendChild(i);
-  const cs=i.querySelector(".mCat"),is=i.querySelector(".mInd");
-  cs.onchange=()=>{is.innerHTML='<option value="">–</option>'+S.inds.filter(x=>x.categoria_id===cs.value)
-    .map(x=>`<option value="${x.id}">${esc(x.nombre)}${x.unidad?" ("+esc(x.unidad)+")":""}</option>`).join("");};
-  i.querySelector(".mDel").onclick=e=>{e.preventDefault();i.remove();};
-  if(!el("dlOcc")){const dl=document.createElement("datalist");dl.id="dlOcc";document.body.appendChild(dl);}
-  el("dlOcc").innerHTML=S.occs.filter(o=>o.activo!==false)
-    .map(o=>`<option value="${esc(o.nombre)}">`).join("");
+/* =========================== monitoreo en campo =========================== */
+const M={lote:null,ctx:null,mods:{},fotos:[]};
+
+/* ---- paso 1: buscar el lote ---- */
+function buscarLote(){
+  const q=el("qLote").value.trim().toUpperCase();
+  const sb=idxSiembra(), box=el("qRes");
+  let L=Object.values(sb);
+  if(!L.length) L=[...new Set(S.mons.map(m=>m.lote))].map(l=>({lote:l}));
+  if(q) L=L.filter(x=>String(x.lote).toUpperCase().includes(q));
+  L.sort((a,b)=>{
+    const A=String(a.lote).toUpperCase(),B=String(b.lote).toUpperCase();
+    return (A.startsWith(q)?0:1)-(B.startsWith(q)?0:1) || A.localeCompare(B,"es");
+  });
+  const top=L.slice(0,12);
+  box.innerHTML = top.length
+    ? top.map(x=>`<button data-lote="${esc(x.lote)}"><b>${esc(x.lote)}</b>
+        <small>${esc(x.cultivo||"sin cultivo")}${x.variedad?" · "+esc(x.variedad):""}${x.ha?" · "+nf(x.ha,0)+" ha":""}</small></button>`).join("")
+      + (L.length>top.length?`<div class="mas">y ${L.length-top.length} lotes más — seguí escribiendo</div>`:"")
+    : `<div class="mas">Ningún lote coincide con “${esc(q)}”. Podés cargarlo igual escribiendo el nombre completo y tocando Enter.</div>`;
+  box.querySelectorAll("button").forEach(b=>b.onclick=()=>elegirLote(b.dataset.lote));
 }
 
-el("nFotos").addEventListener("change",e=>{
-  [...e.target.files].forEach(f=>S.fotosPend.push(f));
-  e.target.value="";pintarThumbs();});
+function elegirLote(lote){
+  M.lote=lote; M.mods={}; M.fotos=[];
+  const sb=idxSiembra()[lote]||{}, rg=idxRiego()[lote]||{};
+  const prev=S.mons.filter(m=>m.lote===lote).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  const feno=prev.find(m=>m.fenologia);
+  const st=standData().find(d=>d.lote===lote);
+  M.ctx={...sb,riego:rg,ultimo:prev[0]||null,feno:feno||null,stand:st||null};
+
+  el("ctxCard").innerHTML=`
+    <div class="lot">${esc(lote)}<small>${esc(sb.sistema||"sistema sin dato")}${sb.seccion?" · sección "+esc(sb.seccion):""}</small></div>
+    <dl>
+      <div><dt>Cultivo</dt><dd>${esc(sb.cultivo||"–")}</dd></div>
+      <div><dt>Variedad</dt><dd>${esc(sb.variedad||"–")}</dd></div>
+      <div><dt>Superficie</dt><dd class="mono">${nf(sb.ha,0)} ha</dd></div>
+      <div><dt>Siembra</dt><dd class="mono">${fd(sb.fecha_siembra)}</dd></div>
+      <div><dt>Fenología previa</dt><dd class="mono">${feno?esc(feno.fenologia)+` <span style="color:var(--ink3);font-size:11px">${fd(feno.fecha)}</span>`:"–"}</dd></div>
+      <div><dt>Riego acumulado</dt><dd class="mono">${rg.mm_aplicado!=null?nf(rg.mm_aplicado,0)+" mm":"–"}</dd></div>
+      <div><dt>Stand</dt><dd class="mono">${st&&st.coef!=null?nf(st.coef*100,0)+" %":"–"}</dd></div>
+      <div><dt>Última visita</dt><dd class="mono">${prev[0]?fd(prev[0].fecha)+` <span style="color:var(--ink3);font-size:11px">${prev[0].scouter||""}</span>`:"–"}</dd></div>
+    </dl>`;
+
+  el("paso1").style.display="none";
+  el("paso2").style.display="";
+  pintarMods(); pintarBoxes();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* ---- módulos disponibles ---- */
+const MODS=[
+  {id:"fenologia", t:"Fenología",        d:"estadio del cultivo"},
+  {id:"humedad",   t:"Humedad de suelo", d:"perfil por profundidad"},
+  {id:"malezas",   t:"Malezas",          d:"cobertura y altura"},
+  {id:"plagas",    t:"Plagas",           d:"conteo y daño"},
+  {id:"enfermedades",t:"Enfermedades",   d:"incidencia y severidad"},
+  {id:"stand",     t:"Stand de plantas", d:"plantas por metro"},
+  {id:"cosecha",   t:"Pérdida de cosecha",d:"granos caídos"},
+  {id:"general",   t:"Estado general",   d:"del lote, 1 a 4"},
+];
+function pintarMods(){
+  el("mods").innerHTML=MODS.map(m=>
+    `<button data-m="${m.id}" aria-pressed="${!!M.mods[m.id]}">${m.t}<small>${m.d}</small></button>`).join("");
+  el("mods").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.m;
+    if(M.mods[id]) delete M.mods[id]; else M.mods[id]={};
+    pintarMods(); pintarBoxes();
+  });
+}
+
+/* ---- cajas de cada módulo ---- */
+const ESC_HUM=[["1","seco"],["1+",""],["2","medio"],["2+",""],["3","húmedo"],["3+",""],["4","exceso"]];
+const HUM_VAL={"1":1,"1+":1.5,"2":2,"2+":2.5,"3":3,"3+":3.5,"4":4};
+const PROF=["0-20 cm","20-40 cm","40-60 cm","60-80 cm"];
+
+function pintarBoxes(){
+  const box=el("modBoxes"); box.innerHTML="";
+  MODS.filter(m=>M.mods[m.id]).forEach(m=>box.insertAdjacentHTML("beforeend",cajaDe(m)));
+  box.querySelectorAll(".quitar").forEach(b=>b.onclick=()=>{delete M.mods[b.dataset.m];pintarMods();pintarBoxes();});
+  // escala de humedad
+  box.querySelectorAll(".esc").forEach(e=>e.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    const p=b.closest(".prof").dataset.p;
+    M.mods.humedad[p]=(M.mods.humedad[p]===b.dataset.v)?null:b.dataset.v;
+    pintarBoxes();
+  }));
+  // filas de especies
+  box.querySelectorAll(".addesp").forEach(b=>b.onclick=()=>{
+    (M.mods[b.dataset.m].filas=M.mods[b.dataset.m].filas||[]).push({});
+    pintarBoxes();
+  });
+  box.querySelectorAll("[data-campo]").forEach(i=>{
+    i.oninput=()=>{
+      const {m,campo,fila}=i.dataset;
+      if(fila!=null){ M.mods[m].filas[+fila][campo]=i.value; }
+      else { M.mods[m][campo]=i.value; }
+      if(m==="cosecha"||m==="stand") pintarBoxes();
+    };
+  });
+  box.querySelectorAll(".delesp").forEach(b=>b.onclick=()=>{
+    M.mods[b.dataset.m].filas.splice(+b.dataset.fila,1); pintarBoxes();});
+  // recuperar foco tras redibujar
+  if(box.dataset.foco){const f=box.querySelector(`[data-k="${box.dataset.foco}"]`); if(f){f.focus();}}
+}
+
+function hd(m,extra=""){return `<header><h3>${m.t}</h3><span class="cap" style="margin:0">${extra}</span>
+  <button class="quitar" data-m="${m.id}">quitar</button></header>`;}
+
+function cajaDe(m){
+  const d=M.mods[m.id];
+  switch(m.id){
+
+  case "fenologia":{
+    const ej=(M.ctx?.cultivo||"").toLowerCase().includes("trigo")||
+             (M.ctx?.cultivo||"").toLowerCase().includes("cebada")?"Z2.1, Z3.2, Z5.5 (Zadoks)":"V4, R3, R5.3";
+    return `<div class="modbox">${hd(m,"escala del cultivo")}
+      <div class="fld" style="max-width:260px"><label>Estadio</label>
+        <input data-m="fenologia" data-campo="valor" data-k="feno" value="${esc(d.valor||"")}"
+               placeholder="${ej}" style="font-family:'Geist Mono',monospace;font-size:16px"></div>
+      <div class="leyenda">Se guarda en el monitoreo y pasa al resumen del lote.</div></div>`;}
+
+  case "humedad":{
+    const prof=PROF.map((p,i)=>`<div class="prof" data-p="p${i}">
+        <div class="p">${p}</div>
+        <div class="esc">${ESC_HUM.map(([v,l])=>
+          `<button data-v="${v}" aria-pressed="${d["p"+i]===v}" title="${l}">${v}</button>`).join("")}</div>
+      </div>`).join("");
+    const vals=PROF.map((_,i)=>HUM_VAL[d["p"+i]]).filter(v=>v!=null);
+    const prom=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+    return `<div class="modbox">${hd(m,"una lectura por profundidad")}
+      <div class="hum">${prof}</div>
+      ${prom!=null?`<div class="calc">Promedio del perfil <b>${nf(prom,2)}</b>
+        · ${prom<1.75?"perfil seco":prom<2.5?"medio":prom<3.5?"húmedo":"exceso"}</div>`:""}
+      <div class="leyenda"><b>1</b> seco, punto de marchitez · <b>2</b> medio ·
+        <b>3</b> húmedo, capacidad de campo · <b>4</b> exceso, saturación.
+        El <b>+</b> es el valor intermedio (1+ = 1,5).</div></div>`;}
+
+  case "malezas": case "plagas": case "enfermedades":{
+    const inds=S.inds.filter(i=>i.categoria_id===m.id);
+    const occs=S.occs.filter(o=>o.categoria_id===m.id&&o.activo!==false);
+    const filas=(d.filas=d.filas||[{}]);
+    const rows=filas.map((f,i)=>`<div class="esprow">
+      <div class="fld"><label>${m.id==="malezas"?"Maleza":m.id==="plagas"?"Plaga":"Enfermedad"}</label>
+        <input data-m="${m.id}" data-fila="${i}" data-campo="occ" data-k="${m.id}-occ-${i}"
+               list="dl-${m.id}" value="${esc(f.occ||"")}" placeholder="buscar o escribir"></div>
+      <div class="fld"><label>Indicador</label>
+        <select data-m="${m.id}" data-fila="${i}" data-campo="ind"><option value="">–</option>
+          ${inds.map(x=>`<option value="${x.id}" ${String(f.ind)===String(x.id)?"selected":""}>${esc(x.nombre)}${x.unidad?" ("+esc(x.unidad)+")":""}</option>`).join("")}
+        </select></div>
+      <div class="fld"><label>Valor</label>
+        <input type="number" step="any" inputmode="decimal" data-m="${m.id}" data-fila="${i}"
+               data-campo="val" value="${esc(f.val||"")}"></div>
+      <div class="fld"><label>&nbsp;</label>
+        <button class="btn sm delesp" data-m="${m.id}" data-fila="${i}">✕</button></div>
+    </div>`).join("");
+    return `<div class="modbox">${hd(m,`${occs.length} en el catálogo`)}
+      ${rows}
+      <datalist id="dl-${m.id}">${occs.map(o=>`<option value="${esc(o.nombre)}">`).join("")}</datalist>
+      <button class="btn sm addesp" data-m="${m.id}" style="margin-top:10px">+ Agregar otra</button>
+      <div class="leyenda">Si escribís una que no está en el catálogo, se agrega sola.</div></div>`;}
+
+  case "stand":{
+    const surco=parseFloat(d.surco)||parseFloat(M.ctx?.surco)||null;
+    const plm=parseFloat(d.pl_m)||null;
+    const real=(plm&&surco)?plm/(surco/100)*10000:null;
+    const objRaw=M.ctx?.densidad_obj;
+    const obj=objRaw?(objRaw<5000?objRaw*10000:objRaw):null;
+    return `<div class="modbox">${hd(m,"se calcula solo")}
+      <div class="form" style="margin-bottom:6px">
+        <div class="fld"><label>Plantas por metro lineal</label>
+          <input type="number" step="any" inputmode="decimal" data-m="stand" data-campo="pl_m" value="${esc(d.pl_m||"")}"></div>
+        <div class="fld"><label>Distancia entre surcos (cm)</label>
+          <input type="number" step="any" inputmode="decimal" data-m="stand" data-campo="surco" value="${esc(d.surco||"")}"></div>
+        <div class="fld"><label>Repeticiones</label>
+          <input type="number" step="1" inputmode="numeric" data-m="stand" data-campo="rep" value="${esc(d.rep||"")}"></div>
+      </div>
+      ${real!=null?`<div class="calc">Densidad <b>${nf(real,0)}</b> pl/ha · ${nf(real/10000,0)} pl/m²
+        ${obj?` · objetivo ${nf(obj,0)} · logro <b>${nf(real/obj*100,1)} %</b>`:" · sin objetivo en el maestro"}</div>`
+       :`<div class="leyenda">Cargá plantas por metro y distancia entre surcos y calcula la densidad.</div>`}
+      </div>`;}
+
+  case "cosecha":{
+    const gm2=parseFloat(d.gm2)||null, pmg=parseFloat(d.pmg)||null;
+    const kg=(gm2&&pmg)?gm2*pmg/100:null;
+    const rend=parseFloat(d.rend)||null;
+    const pct=(kg&&rend)?kg/rend*100:null;
+    return `<div class="modbox">${hd(m,"marco de 1 m²")}
+      <div class="form" style="margin-bottom:6px">
+        <div class="fld"><label>Granos caídos por m²</label>
+          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="gm2" value="${esc(d.gm2||"")}"></div>
+        <div class="fld"><label>Peso de mil granos (g)</label>
+          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="pmg" value="${esc(d.pmg||"")}"></div>
+        <div class="fld"><label>Rendimiento del lote (kg/ha)</label>
+          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="rend" value="${esc(d.rend||"")}"></div>
+        <div class="fld"><label>Origen</label>
+          <select data-m="cosecha" data-campo="origen">
+            ${["Cabezal","Cola","Precosecha","Total"].map(o=>
+              `<option ${d.origen===o?"selected":""}>${o}</option>`).join("")}</select></div>
+      </div>
+      ${kg!=null?`<div class="calc">Pérdida <b>${nf(kg,1)}</b> kg/ha
+        ${pct!=null?` · <b>${nf(pct,2)} %</b> del rendimiento`:""}
+        ${pct!=null?(pct>3?" — muy alta":pct>1.5?" — por encima del umbral":" — aceptable"):""}</div>`
+       :`<div class="leyenda">kg/ha = granos por m² × peso de mil granos ÷ 100.</div>`}
+      </div>`;}
+
+  case "general":
+    return `<div class="modbox">${hd(m,"impresión general del lote")}
+      <div class="prof" data-p="g" style="max-width:330px;border:0;padding:0">
+        <div class="esc">${[1,2,3,4].map(v=>
+          `<button data-v="${v}" aria-pressed="${String(d.valor)===String(v)}"
+            onclick="M.mods.general.valor='${v}';pintarBoxes()">${v}</button>`).join("")}</div></div>
+      <div class="leyenda"><b>1</b> malo · <b>2</b> regular · <b>3</b> bueno · <b>4</b> muy bueno.</div></div>`;
+  }
+  return "";
+}
+
+/* ---- fotos ---- */
 function pintarThumbs(){
-  el("thumbs").innerHTML=S.fotosPend.map((f,i)=>
+  el("thumbs").innerHTML=M.fotos.map((f,i)=>
     `<div class="thumb"><img src="${URL.createObjectURL(f)}" alt=""><button data-i="${i}">✕</button></div>`).join("");
-  el("thumbs").querySelectorAll("button").forEach(b=>b.onclick=()=>{
-    S.fotosPend.splice(+b.dataset.i,1);pintarThumbs();});
+  el("thumbs").querySelectorAll("button").forEach(b=>b.onclick=()=>{M.fotos.splice(+b.dataset.i,1);pintarThumbs();});
 }
-navigator.geolocation?.getCurrentPosition(p=>{
-  S.gps={lat:p.coords.latitude,lon:p.coords.longitude};
-  el("gpsTxt").textContent=`GPS ${S.gps.lat.toFixed(5)}, ${S.gps.lon.toFixed(5)}`;
-},()=>{el("gpsTxt").textContent="sin GPS";},{timeout:8000});
-
 function fmsg(t,cl){el("formMsg").innerHTML=t?`<div class="msg ${cl}">${esc(t)}</div>`:"";}
 
+/* ---- armar los valores a guardar ---- */
+function indDe(cat,nombre){
+  const i=S.inds.find(x=>x.categoria_id===cat&&x.nombre===nombre);
+  return i?i.id:null;
+}
+function valoresDe(){
+  const V=[]; const m=M.mods;
+  const push=(cat,nom,val,occ)=>{const id=indDe(cat,nom);
+    if(id&&val!=null&&val!==""&&!isNaN(val)) V.push({ind:id,val:Number(val),occ:occ||null});};
+
+  if(m.humedad){
+    const vals=[];
+    PROF.forEach((p,i)=>{const v=HUM_VAL[m.humedad["p"+i]];
+      if(v!=null){vals.push(v); push("suelo","Humedad "+p,v,"Perfil de suelo");}});
+    if(vals.length) push("suelo","Humedad promedio del perfil",
+      vals.reduce((a,b)=>a+b,0)/vals.length,"Perfil de suelo");
+  }
+  if(m.general&&m.general.valor) push("general","Estado general (1-4)",m.general.valor,"Estado general del lote");
+
+  if(m.stand){
+    const plm=parseFloat(m.stand.pl_m), su=parseFloat(m.stand.surco);
+    push("stand","Plantas por metro lineal",plm,"Stand de plantas");
+    push("stand","Espaciamiento entre surcos",su,"Stand de plantas");
+    if(plm&&su){
+      const real=plm/(su/100)*10000;
+      push("stand","Densidad real",real,"Stand de plantas");
+      push("stand","Plantas por metro cuadrado",real/10000,"Stand de plantas");
+      const o=M.ctx?.densidad_obj, obj=o?(o<5000?o*10000:o):null;
+      if(obj){push("stand","Densidad objetivo",obj,"Stand de plantas");
+              push("stand","Coeficiente de logro",real/obj,"Stand de plantas");}
+    }
+  }
+  if(m.cosecha){
+    const g=parseFloat(m.cosecha.gm2), pmg=parseFloat(m.cosecha.pmg), rend=parseFloat(m.cosecha.rend);
+    const occ="Control de pérdidas";
+    push("cosecha","Granos caídos por m²",g,occ);
+    push("cosecha","Peso de mil granos",pmg,occ);
+    if(g&&pmg){
+      const kg=g*pmg/100;
+      const nom={Cabezal:"Pérdida por cabezal",Cola:"Pérdida por cola",
+                 Precosecha:"Pérdida precosecha",Total:"Pérdida total"}[m.cosecha.origen||"Total"];
+      push("cosecha",nom,kg,occ);
+      if(rend) push("cosecha","Pérdida sobre rendimiento",kg/rend*100,occ);
+    }
+  }
+  ["malezas","plagas","enfermedades"].forEach(c=>{
+    (m[c]?.filas||[]).forEach(f=>{
+      if(f.ind&&f.val!=null&&f.val!=="") V.push({ind:Number(f.ind),val:Number(f.val),occ:(f.occ||"").trim()||null});
+    });
+  });
+  return V;
+}
+
+/* ---- guardar ---- */
 async function guardar(){
-  const lote=el("nLote").value.trim().toUpperCase();
-  const fecha=el("nFecha").value;
-  const nota=el("nNota").value.trim();
-  const meds=[...el("meds").querySelectorAll(".medrow")].map(r=>({
-    ind:r.querySelector(".mInd").value, occ:r.querySelector(".mOcc").value.trim(),
-    val:r.querySelector(".mVal").value})).filter(m=>m.ind&&m.val!=="");
-  if(!lote||!fecha) return fmsg("Falta el lote o la fecha.","err");
-  if(!meds.length&&!nota&&!S.fotosPend.length)
-    return fmsg("Cargá al menos una medición, una nota o una foto.","err");
+  if(!M.lote) return fmsg("Elegí un lote primero.","err");
+  const V=valoresDe(), nota=el("nNota").value.trim();
+  const feno=M.mods.fenologia?.valor?.trim()||null;
+  if(!V.length&&!nota&&!M.fotos.length&&!feno)
+    return fmsg("Cargá al menos una medición, la fenología, una nota o una foto.","err");
 
   el("btnGuardar").disabled=true; fmsg("Guardando…","ok");
   try{
+    const sb=M.ctx||{};
     const mon=(await api("mon_monitoreos",{method:"POST",body:JSON.stringify([{
-      fecha,lote,campania:CAMPANIA,
-      cultivo:el("nCultivo").value.trim()||null, variedad:el("nVariedad").value.trim()||null,
-      fenologia:el("nFeno").value.trim()||null, scouter:el("nScouter").value.trim()||null,
-      nota:nota||null, lat:S.gps?.lat??null, lon:S.gps?.lon??null,
+      fecha:new Date().toISOString().slice(0,10), lote:M.lote, campania:CAMPANIA,
+      cultivo:sb.cultivo||null, variedad:sb.variedad||null, fenologia:feno,
+      superficie_ha:sb.ha!=null?Number(sb.ha):null,
+      scouter:localStorage_get("scouter")||null, nota:nota||null,
+      lat:S.gps?.lat??null, lon:S.gps?.lon??null,
       origen:"app", ext_id:"app-"+crypto.randomUUID()}])}))[0];
 
-    if(meds.length){
-      const occById=Object.fromEntries(S.occs.map(o=>[o.nombre.toLowerCase(),o]));
-      const indById=Object.fromEntries(S.inds.map(i=>[String(i.id),i]));
+    if(V.length){
+      const byName={}; S.occs.forEach(o=>byName[(o.categoria_id+"|"+o.nombre).toLowerCase()]=o);
+      const indCat={}; S.inds.forEach(i=>indCat[i.id]=i.categoria_id);
       const rows=[];
-      for(const m of meds){
+      for(const v of V){
         let oid=null;
-        if(m.occ){
-          const found=occById[m.occ.toLowerCase()];
-          if(found)oid=found.id;
-          else{
-            const cat=indById[m.ind]?.categoria_id;
-            const nueva=(await api("mon_ocurrencias",{method:"POST",body:JSON.stringify(
-              [{categoria_id:cat,nombre:m.occ,activo:true}])}))[0];
-            S.occs.push(nueva); occById[m.occ.toLowerCase()]=nueva; oid=nueva.id;
+        if(v.occ){
+          const cat=indCat[v.ind], k=(cat+"|"+v.occ).toLowerCase();
+          let o=byName[k];
+          if(!o){
+            o=(await api("mon_ocurrencias",{method:"POST",
+              body:JSON.stringify([{categoria_id:cat,nombre:v.occ,activo:true}])}))[0];
+            S.occs.push(o); byName[k]=o;
           }
+          oid=o.id;
         }
-        rows.push({monitoreo_id:mon.id,indicador_id:Number(m.ind),ocurrencia_id:oid,valor:Number(m.val)});
+        rows.push({monitoreo_id:mon.id,indicador_id:v.ind,ocurrencia_id:oid,valor:v.val,
+                   n_muestras:M.mods.stand?.rep?Number(M.mods.stand.rep):null});
       }
       await api("mon_valores",{method:"POST",body:JSON.stringify(rows),prefer:"return=minimal"});
     }
 
-    for(const f of S.fotosPend){
+    for(const f of M.fotos){
       const ext=(f.name.split(".").pop()||"jpg").toLowerCase();
-      const path=`${CAMPANIA.replace("/","-")}/${lote}/${Date.now()}-${Math.random().toString(36).slice(2,7)}.${ext}`;
+      const path=`${CAMPANIA.replace("/","-")}/${M.lote}/${Date.now()}-${Math.random().toString(36).slice(2,7)}.${ext}`;
       const up=await fetch(`${S.url}/storage/v1/object/monitoreo/${path}`,{method:"POST",
         headers:{apikey:S.key,Authorization:`Bearer ${S.key}`,"Content-Type":f.type||"image/jpeg"},body:f});
       if(!up.ok) throw new Error("foto: "+await up.text());
       await api("mon_fotos",{method:"POST",body:JSON.stringify([{monitoreo_id:mon.id,path}]),prefer:"return=minimal"});
     }
 
-    fmsg(`Guardado: ${lote} del ${fd(fecha)} · ${meds.length} mediciones · ${S.fotosPend.length} fotos.`,"ok");
-    limpiar(false); await cargar();
+    const lote=M.lote;
+    await cargar();
+    reiniciarCarga();
+    fmsg(`Guardado ${lote}: ${V.length} mediciones${M.fotos.length?", "+M.fotos.length+" fotos":""}. Elegí el próximo lote.`,"ok");
   }catch(e){ fmsg("No se pudo guardar. "+e.message,"err"); }
   finally{ el("btnGuardar").disabled=false; }
 }
-function limpiar(msg=true){
-  ["nLote","nVariedad","nFeno","nNota"].forEach(i=>el(i).value="");
-  el("meds").innerHTML=""; addMed(); S.fotosPend=[]; pintarThumbs();
-  if(msg)fmsg("","");
+function localStorage_get(){return null;}   // sin almacenamiento local por ahora
+
+function reiniciarCarga(){
+  M.lote=null;M.ctx=null;M.mods={};M.fotos=[];
+  el("nNota").value="";pintarThumbs();
+  el("paso2").style.display="none";el("paso1").style.display="";
+  el("qLote").value="";buscarLote();el("qLote").focus();
 }
 
 /* =========================== eventos =========================== */
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
-  ["resumen","monitoreo","stand","notas","cargar"].forEach(t=>
+  ["resumen","registros","stand","notas","monitoreo"].forEach(t=>
     el("s-"+t).style.display=t===b.dataset.t?"":"none");
-  el("filters").style.display=b.dataset.t==="cargar"?"none":"flex";
+  el("filters").style.display=b.dataset.t==="monitoreo"?"none":"flex";
   requestAnimationFrame(render);});
 ["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"].forEach(i=>el(i).onchange=render);
 el("fReset").onclick=()=>{["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"]
   .forEach(i=>el(i).value="");render();};
 el("btnRefresh").onclick=()=>cargar().catch(e=>alert(e.message));
-el("btnAddMed").onclick=e=>{e.preventDefault();addMed();};
 el("btnGuardar").onclick=e=>{e.preventDefault();guardar();};
-el("btnLimpiar").onclick=e=>{e.preventDefault();limpiar();};
+el("btnOtro").onclick=e=>{e.preventDefault();reiniciarCarga();};
+el("qLote").addEventListener("input",buscarLote);
+el("qLote").addEventListener("keydown",e=>{
+  if(e.key!=="Enter")return;
+  const b=el("qRes").querySelector("button");
+  if(b) b.click();
+  else if(el("qLote").value.trim()) elegirLote(el("qLote").value.trim().toUpperCase());
+});
+el("nFotos").addEventListener("change",e=>{
+  [...e.target.files].forEach(f=>M.fotos.push(f)); e.target.value=""; pintarThumbs();});
+navigator.geolocation?.getCurrentPosition(
+  p=>{S.gps={lat:p.coords.latitude,lon:p.coords.longitude};
+      el("gpsTxt").textContent=`GPS ${S.gps.lat.toFixed(5)}, ${S.gps.lon.toFixed(5)}`;},
+  ()=>{el("gpsTxt").textContent="sin GPS";},{timeout:8000});
 [["tRes","res",tablaRes],["tMon","mon",tablaMon],["tStand","st",stand]].forEach(([t,k,fn])=>
   el(t).querySelectorAll("th[data-k]").forEach(th=>th.onclick=()=>{
     const c=S.sort[k]||{}; S.sort[k]={k:th.dataset.k,dir:c.k===th.dataset.k?-(c.dir||1):1}; fn();}));
@@ -878,7 +1189,7 @@ el("cfgGo").onclick=()=>arrancar(el("cfgUrl").value.trim(),el("cfgKey").value.tr
 el("cfgUrl").value=SUPABASE_URL;
 if(SUPABASE_ANON_KEY) arrancar(SUPABASE_URL,SUPABASE_ANON_KEY);
 else el("cfgScreen").style.display="";
-setInterval(()=>{if(S.key&&el("s-cargar").style.display==="none")cargar().catch(()=>{});},180000);
+setInterval(()=>{if(S.key&&el("s-monitoreo").style.display==="none")cargar().catch(()=>{});},180000);
 </script>
 </body>
 </html>
