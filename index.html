@@ -77,6 +77,22 @@ nav.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--o
 .f label,.fld label{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2)}
 .f select,.f input,.fld input,.fld select,.fld textarea{font:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
 .f select,.f input{min-width:118px}
+.f.combo{position:relative}
+.f.combo input{text-transform:uppercase;font-family:'Geist Mono',monospace;padding-right:26px}
+.f.combo input::placeholder{text-transform:none;font-family:Geist,sans-serif}
+.xclear{position:absolute;right:5px;bottom:6px;border:0;background:none;color:var(--ink3);
+  font-size:13px;cursor:pointer;padding:2px 4px;line-height:1}
+.xclear:hover{color:var(--crit)}
+.cbox{position:absolute;top:100%;left:0;z-index:70;min-width:210px;max-height:290px;overflow-y:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:9px;margin-top:3px;
+  box-shadow:0 6px 22px rgba(38,38,31,.13);display:none}
+.cbox.open{display:block}
+.cbox button{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;background:none;
+  border:0;border-bottom:1px solid var(--sand);padding:9px 12px;font:inherit;font-size:13.5px;cursor:pointer}
+.cbox button:last-child{border-bottom:0}
+.cbox button:hover,.cbox button.sel{background:var(--sand)}
+.cbox b{font-family:'Geist Mono',monospace;min-width:48px}
+.cbox small{color:var(--ink2);font-size:11.5px}
 
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px}
@@ -249,6 +265,17 @@ details[open] summary::before{content:"▾ "}
 .festado span{font-size:11.5px;color:var(--ink2);line-height:1.3}
 .festado[aria-pressed=true]{background:#E3E8D6;border-color:var(--olive)}
 .festado[aria-pressed=true] span{color:var(--olivedk)}
+/* fila de especie con miniatura del atlas */
+.esprow-foto{grid-template-columns:56px 1.4fr 1.2fr .7fr auto}
+@media(max-width:760px){.esprow-foto{grid-template-columns:52px 1fr}}
+.minia{align-self:end;padding-bottom:2px}
+.minifoto{display:block;width:52px;height:52px;border-radius:8px;overflow:hidden;
+  border:1px solid var(--line);background:var(--sand)}
+.minifoto img{width:100%;height:100%;object-fit:cover;display:block}
+.mininada{width:52px;height:52px;border-radius:8px;border:1px dashed var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--ink3);
+  text-align:center;line-height:1.2;padding:3px}
+.fotoesp{margin-right:4px}
 .esprow{display:grid;grid-template-columns:1.5fr 1.3fr .7fr auto;gap:8px;align-items:end;
   padding:9px 0;border-bottom:1px solid var(--sand)}
 @media(max-width:760px){.esprow{grid-template-columns:1fr 1fr}}
@@ -353,7 +380,11 @@ const CAMPANIA = "26/27";
   <div class="f"><label>Cultivo</label><select id="fCultivo"><option value="">Todos</option></select></div>
   <div class="f"><label>Sistema</label><select id="fSistema"><option value="">Todos</option></select></div>
   <div class="f"><label>Sección</label><select id="fSeccion"><option value="">Todas</option></select></div>
-  <div class="f"><label>Lote</label><select id="fLote"><option value="">Todos</option></select></div>
+  <div class="f combo"><label>Lote</label>
+    <input id="fLote" placeholder="Todos" autocapitalize="characters" autocomplete="off" role="combobox">
+    <button class="xclear" id="fLoteX" title="Limpiar" style="display:none">✕</button>
+    <div class="cbox" id="fLoteBox"></div>
+  </div>
   <div class="f"><label>Categoría</label><select id="fCat"><option value="">Todas</option></select></div>
   <div class="f"><label>Estado</label><select id="fSem"><option value="">Todos</option><option value="critico">Crítico</option><option value="atencion">Atención</option><option value="ok">OK</option></select></div>
   <div class="f"><label>Desde</label><input type="date" id="fD1"></div>
@@ -527,6 +558,7 @@ const CAMPANIA = "26/27";
       <div class="thumbs" id="thumbs"></div>
     </div>
 
+    <input type="file" id="fotoEsp" accept="image/*" capture="environment" style="display:none">
     <div class="savebar">
       <button class="btn pri" id="btnGuardar">Guardar monitoreo</button>
       <button class="btn" id="btnOtro">Cambiar de lote</button>
@@ -539,7 +571,7 @@ const CAMPANIA = "26/27";
 <script>
 /* =========================== estado =========================== */
 const S={url:"",key:"",vals:[],mons:[],fotos:[],inds:[],occs:[],cats:[],
-         lotes:[],siembras:[],riegos:[],umbrales:[],ch:{},sort:{},fotosPend:[],gps:null};
+         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],ch:{},sort:{},fotosPend:[],gps:null};
 const el=id=>document.getElementById(id);
 const nf=(v,d=0)=>v==null||v===""||isNaN(v)?"–":Number(v).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fd=s=>{if(!s)return "–";const d=new Date(s+(String(s).length<=10?"T12:00:00":""));return isNaN(d)?String(s).slice(0,10):d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});};
@@ -561,7 +593,7 @@ const soft=async p=>{try{return await api(p)}catch(e){console.warn(e.message);re
 async function cargar(){
   el("liveTxt").textContent="cargando…";
   const camp=encodeURIComponent(CAMPANIA);
-  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos,S.umbrales]=await Promise.all([
+  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos,S.umbrales,S.atlas]=await Promise.all([
     api(`v_mon_valores?select=*&campania=eq.${camp}&order=fecha.desc&limit=30000`),
     api(`mon_monitoreos?select=*&campania=eq.${camp}&order=fecha.desc&limit=5000`),
     api("mon_indicadores?select=*&activo=is.true&order=categoria_id,nombre"),
@@ -571,7 +603,8 @@ async function cargar(){
     soft("lotes?select=*&limit=5000"),
     soft(`mon_siembras?select=*&campania=eq.${camp}&limit=5000`),
     soft("v_mon_riego_lote?select=*&limit=5000"),
-    soft("mon_umbrales?select=*&activo=is.true&order=cultivo,plaga")
+    soft("mon_umbrales?select=*&activo=is.true&order=cultivo,plaga"),
+    soft("v_mon_atlas?select=*&limit=2000")
   ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
@@ -600,22 +633,23 @@ function poblar(){
   set("fCultivo",[...S.siembras.map(s=>s.cultivo),...S.mons.map(m=>m.cultivo)]);
   set("fSistema",S.siembras.map(s=>s.sistema));
   set("fSeccion",[...S.siembras.map(s=>s.seccion),...S.mons.map(m=>seccion(m.lote))],"Todas");
-  set("fLote",[...S.siembras.map(s=>s.lote),...S.mons.map(m=>m.lote)]);
+
   set("fCat",S.cats.map(c=>c.nombre),"Todas");
   el("hdCamp").textContent=CAMPANIA;
   if(el("qRes")&&!el("qRes").children.length) buscarLote();
   if(el("cQRes")&&!el("cQRes").children.length) cBuscar();
 }
-const F=()=>({cul:el("fCultivo").value,sec:el("fSeccion").value,lot:el("fLote").value,sis:el("fSistema").value,
+const F=()=>({cul:el("fCultivo").value,sec:el("fSeccion").value,
+  lot:el("fLote").value.trim().toUpperCase(),sis:el("fSistema").value,
               cat:el("fCat").value,sem:el("fSem").value,d1:el("fD1").value,d2:el("fD2").value});
 function fVals(){const f=F(),sb=idxSiembra();return S.vals.filter(v=>
   (!f.cul||v.cultivo===f.cul)&&(!f.sec||(sb[v.lote]?.seccion||seccion(v.lote))===f.sec)&&
-  (!f.sis||sb[v.lote]?.sistema===f.sis)&&(!f.lot||v.lote===f.lot)&&
+  (!f.sis||sb[v.lote]?.sistema===f.sis)&&(!f.lot||String(v.lote).toUpperCase()===f.lot)&&
   (!f.cat||v.categoria===f.cat)&&(!f.sem||v.semaforo===f.sem)&&
   (!f.d1||(v.fecha||"")>=f.d1)&&(!f.d2||(v.fecha||"")<=f.d2));}
 function fMons(){const f=F(),sb=idxSiembra();return S.mons.filter(m=>
   (!f.cul||m.cultivo===f.cul)&&(!f.sec||(sb[m.lote]?.seccion||seccion(m.lote))===f.sec)&&
-  (!f.sis||sb[m.lote]?.sistema===f.sis)&&(!f.lot||m.lote===f.lot)&&
+  (!f.sis||sb[m.lote]?.sistema===f.sis)&&(!f.lot||String(m.lote).toUpperCase()===f.lot)&&
   (!f.d1||(m.fecha||"")>=f.d1)&&(!f.d2||(m.fecha||"")<=f.d2));}
 
 /* =========================== resumen =========================== */
@@ -677,7 +711,7 @@ function resumenLotes(){
 
   return Object.values(out).filter(o=>
     (!f.cul||o.cultivo===f.cul)&&(!f.sec||o.seccion===f.sec)&&
-    (!f.lot||o.lote===f.lot)&&(!f.sis||o.sistema===f.sis));
+    (!f.lot||String(o.lote).toUpperCase()===f.lot)&&(!f.sis||o.sistema===f.sis));
 }
 
 function render(){
@@ -777,7 +811,7 @@ function mapa(){
     return `<div class="grp"><div class="gl">${esc(s)} · ${g[s].length} lotes</div><div class="chips">${ch}</div></div>`;
   }).join("")||'<div class="empty"><b>Sin lotes</b>No hay recorridas cargadas todavía.</div>';
   el("mapaLotes").querySelectorAll(".chip").forEach(c=>c.onclick=()=>{
-    el("fLote").value=c.dataset.lote; render();});
+    el("fLote").value=c.dataset.lote; el("fLoteX").style.display="block"; render();});
 }
 
 function chart(id,cfg){
@@ -1154,6 +1188,22 @@ function semUmbral(v,u){
   if(v>=u.umbral_inf) return "atencion";
   return "ok";
 }
+/* miniatura de referencia de una especie, del atlas propio */
+function atlasDe(cat,occ){
+  if(!occ) return null;
+  const n=String(occ).trim().toLowerCase();
+  return S.atlas.find(a=>a.categoria_id===cat&&String(a.especie).toLowerCase()===n)||null;
+}
+function miniAtlas(cat,occ){
+  const a=atlasDe(cat,occ);
+  if(!a) return `<div class="mininada" title="${occ?"Todavía no hay foto de esta especie":"Elegí una especie"}">
+    ${occ?"sin foto":""}</div>`;
+  const u=`${S.url}/storage/v1/object/public/monitoreo/${a.path}`;
+  return `<a class="minifoto" href="${u}" target="_blank" rel="noopener"
+     title="${esc(a.especie)} · ${esc(a.lote||"")} ${fd(a.fecha)}${a.total_fotos>1?` · ${a.total_fotos} fotos`:""}">
+    <img src="${u}" alt="${esc(a.especie)}" loading="lazy"></a>`;
+}
+
 function filasLibres(cat,d){
   const inds=S.inds.filter(i=>i.categoria_id===cat);
   const occs=S.occs.filter(o=>o.categoria_id===cat&&o.activo!==false);
@@ -1238,6 +1288,12 @@ function pintarBoxes(){
   });
   box.querySelectorAll(".delesp").forEach(b=>b.onclick=()=>{
     M.mods[b.dataset.m].filas.splice(+b.dataset.fila,1); pintarBoxes();});
+  box.querySelectorAll(".fotoesp").forEach(b=>b.onclick=e=>{
+    e.preventDefault();
+    const f=M.mods[b.dataset.m].filas[+b.dataset.fila];
+    if(!f.occ) return fmsg("Escribí primero qué especie es, así la foto queda etiquetada.","err");
+    fotoDestino={mod:b.dataset.m,fila:+b.dataset.fila};
+    el("fotoEsp").click();});
   box.querySelectorAll(".fgrupo.marco").forEach(b=>b.onclick=()=>{
     M.mods.cosecha.marco=b.dataset.marco; pintarBoxes();});
   const cm=box.querySelector("#cambiarMarco");
@@ -1359,7 +1415,8 @@ function cajaDe(m){
           <option value="2" ${d.enm==="2"?"selected":""}>Partes para carpir</option>
           <option value="3" ${d.enm==="3"?"selected":""}>Sucio, aplicar</option>
         </select></div></div>`:"";
-    const rows=enm+filas.map((f,i)=>`<div class="esprow">
+    const rows=enm+filas.map((f,i)=>`<div class="esprow esprow-foto">
+      <div class="minia">${miniAtlas(m.id,f.occ)}</div>
       <div class="fld"><label>${m.id==="malezas"?"Maleza":"Enfermedad"}</label>
         <input data-m="${m.id}" data-fila="${i}" data-campo="occ" data-k="${m.id}-occ-${i}"
                list="dl-${m.id}" value="${esc(f.occ||"")}" placeholder="buscar o escribir"></div>
@@ -1455,6 +1512,7 @@ function cajaDe(m){
 }
 
 /* ---- fotos ---- */
+let fotoDestino=null;
 // El iPhone saca en HEIC, que Chrome no muestra, y las fotos pesan 3-5 MB.
 // Se reescalan y convierten a JPEG antes de subirlas.
 async function aJpeg(file,max=1600,q=0.82){
@@ -1607,9 +1665,16 @@ async function guardar(){
       await api("mon_valores",{method:"POST",body:JSON.stringify(rows),prefer:"return=minimal"});
     }
 
+    const slug=x=>String(x).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9_-]/g,"_");
+
+    // Fotos etiquetadas por especie: alimentan el atlas propio.
+    const espFotos=[];
+    ["malezas","plagas","enfermedades"].forEach(c=>
+      (M.mods[c]?.filas||[]).forEach(f=>
+        (f.fotos||[]).forEach(file=>espFotos.push({file,cat:c,occ:f.occ}))));
+
     // Las fotos van aparte: si alguna falla, el monitoreo ya está guardado igual.
     let okFotos=0, errFoto=null;
-    const slug=x=>String(x).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9_-]/g,"_");
     for(let i=0;i<M.fotos.length;i++){
       try{
         fmsg(`Guardado. Subiendo foto ${i+1} de ${M.fotos.length}…`,"ok");
@@ -1624,7 +1689,23 @@ async function guardar(){
       }catch(e){ errFoto=e.message; console.error("foto",i,e); }
     }
 
-    const lote=M.lote, nV=V.length, nF=M.fotos.length;
+    // fotos de especie
+    const occId={}; S.occs.forEach(o=>occId[(o.categoria_id+"|"+o.nombre).toLowerCase()]=o.id);
+    for(const ef of espFotos){
+      try{
+        const blob=await aJpeg(ef.file);
+        const path=`${slug(CAMPANIA)}/atlas/${slug(ef.occ)}/${Date.now()}-${Math.random().toString(36).slice(2,7)}.jpg`;
+        const up=await fetch(`${S.url}/storage/v1/object/monitoreo/${path}`,{method:"POST",
+          headers:{apikey:S.key,Authorization:`Bearer ${S.key}`,"Content-Type":"image/jpeg","x-upsert":"true"},body:blob});
+        if(!up.ok) throw new Error(await up.text());
+        await api("mon_fotos",{method:"POST",body:JSON.stringify([{
+          monitoreo_id:mon.id, path, epigrafe:ef.occ,
+          ocurrencia_id:occId[(ef.cat+"|"+ef.occ).toLowerCase()]??null}]),prefer:"return=minimal"});
+        okFotos++;
+      }catch(e){ errFoto=e.message; console.error("foto especie",e); }
+    }
+
+    const lote=M.lote, nV=V.length, nF=M.fotos.length+espFotos.length;
     await cargar();
     reiniciarCarga();
     const det=[nV?`${nV} mediciones`:null, okFotos?`${okFotos} de ${nF} fotos`:null]
@@ -1861,9 +1942,55 @@ document.querySelectorAll(".hcard").forEach(b=>b.onclick=()=>ir(b.dataset.go));
 el("btnHome").onclick=()=>ir("home");
 document.querySelectorAll("#subtabs button").forEach(b=>b.onclick=()=>ir("resumen",b.dataset.t));
 
-["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"].forEach(i=>el(i).onchange=render);
+["fCultivo","fSistema","fSeccion","fCat","fSem","fD1","fD2"].forEach(i=>el(i).onchange=render);
 el("fReset").onclick=()=>{["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"]
-  .forEach(i=>el(i).value="");render();};
+  .forEach(i=>el(i).value="");el("fLoteX").style.display="none";cerrarCombo();render();};
+
+/* ---- combo de lote: buscar en vez de desplegar 204 opciones ---- */
+let cboxIx=-1;
+function lotesDisponibles(){
+  const sb=idxSiembra();
+  const set=new Set([...S.siembras.map(x=>x.lote),...S.mons.map(m=>m.lote)].filter(Boolean));
+  return [...set].sort((a,b)=>String(a).localeCompare(String(b),"es"))
+    .map(l=>({lote:l,cultivo:sb[l]?.cultivo,ha:sb[l]?.ha}));
+}
+function abrirCombo(){
+  const q=el("fLote").value.trim().toUpperCase(), box=el("fLoteBox");
+  let L=lotesDisponibles();
+  if(q) L=L.filter(x=>String(x.lote).toUpperCase().includes(q));
+  L.sort((a,b)=>{const A=String(a.lote).toUpperCase(),B=String(b.lote).toUpperCase();
+    return (A.startsWith(q)?0:1)-(B.startsWith(q)?0:1)||A.localeCompare(B,"es");});
+  cboxIx=-1;
+  box.innerHTML=`<button data-l=""><b>Todos</b><small>${L.length} lotes</small></button>`+
+    L.slice(0,40).map(x=>`<button data-l="${esc(x.lote)}"><b>${esc(x.lote)}</b>
+      <small>${esc(x.cultivo||"sin cultivo")}${x.ha?" · "+nf(x.ha,0)+" ha":""}</small></button>`).join("");
+  box.classList.add("open");
+  box.querySelectorAll("button").forEach(b=>b.onclick=()=>elegirComboLote(b.dataset.l));
+}
+function cerrarCombo(){ el("fLoteBox").classList.remove("open"); cboxIx=-1; }
+function elegirComboLote(l){
+  el("fLote").value=l||"";
+  el("fLoteX").style.display=l?"block":"none";
+  cerrarCombo(); render();
+}
+el("fLote").addEventListener("focus",abrirCombo);
+el("fLote").addEventListener("input",()=>{el("fLoteX").style.display=el("fLote").value?"block":"none";abrirCombo();});
+el("fLote").addEventListener("keydown",e=>{
+  const bs=[...el("fLoteBox").querySelectorAll("button")];
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+    e.preventDefault(); if(!bs.length) return;
+    cboxIx=Math.max(0,Math.min(bs.length-1,cboxIx+(e.key==="ArrowDown"?1:-1)));
+    bs.forEach((b,i)=>b.classList.toggle("sel",i===cboxIx));
+    bs[cboxIx].scrollIntoView({block:"nearest"});
+  } else if(e.key==="Enter"){
+    e.preventDefault();
+    if(cboxIx>=0&&bs[cboxIx]) bs[cboxIx].click();
+    else if(bs[1]) bs[1].click();
+  } else if(e.key==="Escape"){ cerrarCombo(); el("fLote").blur(); }
+});
+el("fLoteX").onclick=()=>elegirComboLote("");
+document.addEventListener("click",e=>{
+  if(!e.target.closest(".f.combo")) cerrarCombo();});
 el("btnRefresh").onclick=()=>cargar().catch(e=>alert(e.message));
 
 /* monitoreo */
@@ -1875,6 +2002,15 @@ el("qLote").addEventListener("keydown",e=>{
   const b=el("qRes").querySelector("button");
   if(b) b.click(); else if(el("qLote").value.trim()) elegirLote(el("qLote").value.trim().toUpperCase());
 });
+el("fotoEsp").addEventListener("change",e=>{
+  const f=e.target.files[0]; e.target.value="";
+  if(!f||!fotoDestino) return;
+  const fila=M.mods[fotoDestino.mod]?.filas?.[fotoDestino.fila];
+  if(!fila) return;
+  (fila.fotos=fila.fotos||[]).push(f);
+  fmsg(`Foto agregada a ${fila.occ}. Se sube al guardar.`,"ok");
+  fotoDestino=null; pintarBoxes();});
+
 el("nFotos").addEventListener("change",e=>{
   const n=e.target.files.length;
   [...e.target.files].forEach(f=>M.fotos.push(f)); e.target.value=""; pintarThumbs();
