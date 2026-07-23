@@ -405,6 +405,11 @@ details[open] summary::before{content:"▾ "}
 .calileg i{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:3px}
 
 /* arco de logro de stand */
+.bhsvg{width:100%;height:auto;display:block;border-radius:8px;overflow:hidden}
+.bhleg{display:flex;flex-wrap:wrap;gap:12px;font-size:10.5px;color:var(--ink2);margin-top:9px}
+.bhleg i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
+.bhleg i.ln{height:2px;background:var(--ink);border-radius:0;vertical-align:3px}
+.bhleg i.cir{border:2px solid #6B7A4F;border-radius:50%;background:none}
 .arco{display:flex;align-items:center;gap:14px;min-width:0}
 .arco svg{flex-shrink:0}
 .arcod{font-family:'Geist Mono',monospace;min-width:0}
@@ -475,7 +480,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = "";   // <-- pegá acá la anon key
 const CAMPANIA = "26/27";
-const BUILD = "v16 · 23-07 19:15";   // subí este número en cada cambio
+const BUILD = "v17 · 23-07 19:40";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -731,7 +736,7 @@ const BUILD = "v16 · 23-07 19:15";   // subí este número en cada cambio
 <script>
 /* =========================== estado =========================== */
 const S={url:"",key:"",vals:[],mons:[],fotos:[],inds:[],occs:[],cats:[],
-         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],ch:{},sort:{},fotosPend:[],gps:null};
+         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],riegoSem:[],ch:{},sort:{},fotosPend:[],gps:null};
 const el=id=>document.getElementById(id);
 const hoyISO=()=>{const d=new Date();
   return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);};
@@ -763,7 +768,7 @@ const soft=async p=>{try{return await api(p)}catch(e){console.warn(e.message);re
 async function cargar(){
   el("liveTxt").textContent="cargando…";
   const camp=encodeURIComponent(CAMPANIA);
-  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos,S.umbrales,S.atlas,S.sdet]=await Promise.all([
+  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos,S.umbrales,S.atlas,S.sdet,S.riegoSem]=await Promise.all([
     api(`v_mon_valores?select=*&campania=eq.${camp}&order=fecha.desc&limit=30000`),
     api(`mon_monitoreos?select=*&campania=eq.${camp}&order=fecha.desc&limit=5000`),
     api("mon_indicadores?select=*&activo=is.true&order=categoria_id,nombre"),
@@ -775,7 +780,8 @@ async function cargar(){
     soft("v_mon_riego_lote?select=*&limit=5000"),
     soft("mon_umbrales?select=*&activo=is.true&order=cultivo,plaga"),
     soft("v_mon_atlas?select=*&limit=2000"),
-    soft(`v_mon_siembra_detalle?select=*&campania=eq.${camp}&limit=5000`)
+    soft(`v_mon_siembra_detalle?select=*&campania=eq.${camp}&limit=5000`),
+    soft("riegos?select=lote,wk,mm,cumpl&limit=20000")
   ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
@@ -824,6 +830,49 @@ function fMons(){const f=F(),sb=idxSiembra();return S.mons.filter(m=>
   (!f.sis||sb[m.lote]?.sistema===f.sis)&&(!f.lot||String(m.lote).toUpperCase()===f.lot)&&
   (!f.d1||(m.fecha||"")>=f.d1)&&(!f.d2||(m.fecha||"")<=f.d2));}
 
+
+/* Constantes del Balance Hídrico FT (mismas que el tablero v47) */
+const BH={
+  cc:200, pmp:40, ini:150,
+  eto:{"1":[38.1,48.4],"2":[35.7,42.4],"3":[34.4,36.3],"4":[35.0,39.5],"5":[35.0,38.9],"6":[32.2,36.3],"7":[31.8,33.6],"8":[30.1,31.5],"9":[27.8,29.7],"10":[26.8,28.1],"11":[24.1,24.0],"12":[23.9,24.9],"13":[20.2,20.8],"14":[19.0,22.3],"15":[18.7,20.0],"16":[19.3,21.2],"17":[16.0,16.9],"18":[15.1,16.1],"19":[16.2,15.9],"20":[14.5,16.7],"21":[12.2,13.3],"22":[12.7,14.0],"23":[12.9,14.6],"24":[11.4,13.0],"25":[11.6,13.1],"26":[11.4,12.7],"27":[13.1,14.4],"28":[13.5,16.4],"29":[17.2,18.1],"30":[16.6,19.2],"31":[18.6,19.5],"32":[20.5,22.0],"33":[22.5,24.1],"34":[24.5,27.4],"35":[26.5,28.7],"36":[26.7,30.8],"37":[28.4,30.7],"38":[30.1,33.0],"39":[29.8,34.1],"40":[32.5,35.4],"41":[31.9,36.3],"42":[31.3,34.8],"43":[31.1,34.0],"44":[36.2,40.7],"45":[36.6,41.4],"46":[38.3,42.3],"47":[35.7,39.6],"48":[36.1,40.3],"49":[33.8,35.2],"50":[35.8,43.0],"51":[36.4,42.2],"52":[37.7,42.5]},
+  kc:{"Trigo largo ACA 315":[0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3],"Trigo Intermedio- largo":[0.3,0.3,0.3,0.3,0.3,0.3,0.39,0.47,0.55,0.64,0.72,0.81,0.89,0.98,1.06,1.15,1.15,1.15,1.15,0.89,0.62,0.36,0.1],"Trigo Corto":[0.3,0.3,0.3,0.3,0.3,0.41,0.51,0.62,0.72,0.83,0.94,1.04,1.15,1.15,1.15,0.89,0.62,0.36,0.1],"Garbanzo":[0.4,0.4,0.4,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.85,0.7,0.55,0.4,0.25,0.1],"Lenteja":[0.4,0.4,0.4,0.4,0.52,0.63,0.75,0.87,0.98,1.1,1.1,1.1,1.1,1.1,1.1,1.1,0.85,0.7,0.55,0.4,0.25,0.1],"Soja":[0.5,0.5,0.5,0.63,0.76,0.89,1.02,1.15,1.15,1.15,1.15,1.15,1.15,1.15,0.89,0.62,0.36,0.1],"Maiz":[0.5,0.5,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.2,1.2,1.2,1.2,0.98,0.76,0.54,0.32,0.1],"Algodón":[0.35,0.35,0.35,0.35,0.35,0.46,0.56,0.67,0.78,0.89,0.99,1.1,1.1,1.1,1.1,1.1,1.1,1.1,0.88,0.65,0.42,0.2],"Vicia":[0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95,1.0,0.85,0.7,0.55,0.4,0.25,0.1,0.05],"Colza":[0.35,0.35,0.35,0.35,0.49,0.63,0.77,0.91,1.05,1.15,1.15,1.15,1.15,1.15,1.15,1.15,0.99,0.8,0.62,0.43,0.35],"Cartamo":[0.35,0.35,0.35,0.46,0.62,0.78,0.94,1.1,1.15,1.15,1.15,1.15,1.15,1.15,1.15,1.03,0.82,0.61,0.4,0.25],"Camelina":[0.35,0.35,0.44,0.65,0.86,1.07,1.1,1.1,1.1,1.1,0.9,0.55,0.35]},
+  lot:{"J01c":{"kc":"Trigo Intermedio- largo","f":"2026-05-27","cult":"Trigo candeal","semb":true},"J01d":{"kc":"Trigo Intermedio- largo","f":"2026-05-27","cult":"Trigo candeal","semb":true},"J02c":{"kc":"Trigo Intermedio- largo","f":"2026-06-17","cult":"Trigo candeal","semb":true},"J02d":{"kc":"Trigo Intermedio- largo","f":"2026-05-29","cult":"Trigo candeal","semb":true},"L01c":{"kc":"Trigo Intermedio- largo","f":"2026-06-18","cult":"Trigo candeal","semb":true},"L01d":{"kc":"Trigo Intermedio- largo","f":"2026-06-30","cult":"Trigo","semb":true},"L01e":{"kc":"Trigo Intermedio- largo","f":"2026-06-30","cult":"Trigo","semb":true},"L02c":{"kc":"Trigo Intermedio- largo","f":"2026-05-24","cult":"Trigo","semb":true},"L02d":{"kc":"Trigo Corto","f":"2026-06-20","cult":"Trigo candeal","semb":true},"L02e":{"kc":"Trigo Corto","f":"2026-06-21","cult":"Trigo candeal","semb":true},"L03c":{"kc":"Trigo Intermedio- largo","f":"2026-05-25","cult":"Trigo","semb":true},"L03d":{"kc":"Trigo Intermedio- largo","f":"2026-05-26","cult":"Trigo","semb":true},"L03e":{"kc":"Trigo Intermedio- largo","f":"2026-07-02","cult":"Trigo","semb":true},"Nc":{"kc":"Trigo Corto","f":"2026-05-20","cult":"Trigo candeal","semb":false},"Nd":{"kc":"Trigo Corto","f":"2026-05-20","cult":"Trigo candeal","semb":false},"Nnc":{"kc":"Trigo Corto","f":"2026-07-12","cult":"Trigo candeal","semb":true},"Nnd":{"kc":"Trigo Corto","f":"2026-05-20","cult":"Trigo candeal","semb":false},"Nne":{"kc":"Trigo Corto","f":"2026-05-20","cult":"Trigo candeal","semb":false},"O13":{"kc":"Trigo Intermedio- largo","f":"2026-05-30","cult":"Trigo candeal","semb":true},"O14":{"kc":"Trigo Corto","f":"2026-06-26","cult":"Trigo candeal","semb":true},"O23":{"kc":"Trigo Intermedio- largo","f":"2026-05-28","cult":"Trigo candeal","semb":true},"O24":{"kc":"Trigo Corto","f":"2026-07-06","cult":"Trigo candeal","semb":true},"P13":{"kc":"Trigo Corto","f":"2026-06-27","cult":"Trigo candeal","semb":true},"P15":{"kc":"Trigo Corto","f":"2026-06-23","cult":"Trigo candeal","semb":true},"P23":{"kc":"Trigo Corto","f":"2026-06-28","cult":"Trigo","semb":true},"P25":{"kc":"Trigo Intermedio- largo","f":"2026-06-20","cult":"Trigo candeal","semb":true},"P26":{"kc":"Trigo Corto","f":"2026-07-05","cult":"Trigo candeal","semb":true},"P33":{"kc":"Trigo Corto","f":"2026-06-27","cult":"Trigo","semb":true},"P35":{"kc":"Trigo Corto","f":"2026-06-24","cult":"Trigo candeal","semb":true},"P36":{"kc":"Trigo Intermedio- largo","f":"2026-07-06","cult":"Trigo","semb":true},"P44":{"kc":"Trigo Corto","f":"2026-06-25","cult":"Trigo candeal","semb":true},"P45":{"kc":"Trigo Corto","f":"2026-07-01","cult":"Trigo","semb":true},"P46":{"kc":"Trigo Corto","f":"2026-07-04","cult":"Trigo","semb":true},"P54":{"kc":"Trigo Corto","f":"2026-06-24","cult":"Trigo candeal","semb":true},"P55":{"kc":"Trigo Intermedio- largo","f":"2026-06-23","cult":"Trigo candeal","semb":true},"Q13":{"kc":"Trigo Corto","f":"2026-06-26","cult":"Trigo","semb":true},"Q14":{"kc":"Trigo Corto","f":"2026-07-04","cult":"Trigo","semb":true},"Q15":{"kc":"Trigo Intermedio- largo","f":"2026-06-20","cult":"Trigo candeal","semb":true},"Q16":{"kc":"Trigo Corto","f":"2026-06-23","cult":"Trigo candeal","semb":true},"Q24":{"kc":"Trigo Corto","f":"2026-06-23","cult":"Trigo candeal","semb":true},"Q25":{"kc":"Trigo Corto","f":"2026-06-18","cult":"Trigo candeal","semb":true},"Q26":{"kc":"Trigo Corto","f":"2026-07-03","cult":"Trigo","semb":true},"Q34":{"kc":"Trigo Corto","f":"2026-06-23","cult":"Trigo candeal","semb":true},"Q35":{"kc":"Trigo Intermedio- largo","f":"2026-06-13","cult":"Trigo candeal","semb":true},"Q36":{"kc":"Trigo Corto","f":"2026-07-02","cult":"Trigo","semb":true},"Q44":{"kc":"Trigo Corto","f":"2026-06-21","cult":"Trigo candeal","semb":true},"Q45":{"kc":"Trigo Corto","f":"2026-06-18","cult":"Trigo candeal","semb":true},"Q46":{"kc":"Trigo Corto","f":"2026-07-02","cult":"Trigo","semb":true},"Q54":{"kc":"Trigo Corto","f":"2026-06-21","cult":"Trigo candeal","semb":true},"Q55":{"kc":"Trigo Corto","f":"2026-06-20","cult":"Trigo candeal","semb":true},"Q56":{"kc":"Trigo Corto","f":"2026-07-01","cult":"Trigo","semb":true},"R14":{"kc":"Trigo Corto","f":"2026-06-27","cult":"Trigo candeal","semb":true},"R22":{"kc":"Trigo Corto","f":"2026-06-29","cult":"Trigo candeal","semb":true},"R23":{"kc":"Trigo Corto","f":"2026-06-28","cult":"Trigo candeal","semb":true},"R17":{"kc":"Trigo Corto","f":"2026-07-08","cult":"Trigo candeal","semb":true},"Ka":{"kc":"Colza","f":"2026-05-06","cult":"Colza","semb":true},"Kb":{"kc":"Colza","f":"2026-05-03","cult":"Colza","semb":true},"Kc":{"kc":"Colza","f":"2026-05-05","cult":"Colza","semb":true},"P56":{"kc":"Colza","f":"2026-05-02","cult":"Colza","semb":true},"R13":{"kc":"Colza","f":"2026-05-11","cult":"Colza","semb":true},"R24":{"kc":"Cartamo","f":"2026-05-11","cult":"Cartamo","semb":true},"M01a":{"kc":"Camelina","f":"2026-05-18","cult":"Camelina","semb":true},"M01b":{"kc":"Camelina","f":"2026-05-18","cult":"Camelina","semb":true},"M01c":{"kc":"Camelina","f":"2026-05-20","cult":"Camelina","semb":true},"M01d":{"kc":"Camelina","f":"2026-05-20","cult":"Camelina","semb":true},"M02a":{"kc":"Camelina","f":"2026-07-09","cult":"Camelina","semb":true},"M02b":{"kc":"Camelina","f":"2026-07-09","cult":"Camelina","semb":true},"M02c":{"kc":"Camelina","f":"2026-07-08","cult":"Camelina","semb":true},"M02d":{"kc":"Camelina","f":"2026-05-23","cult":"Camelina","semb":true},"M02e":{"kc":"Camelina","f":"2026-05-23","cult":"Camelina","semb":true},"R25":{"kc":"Camelina","f":"2026-07-01","cult":"Camelina","semb":true},"R35":{"kc":"Camelina","f":"2026-07-02","cult":"Camelina","semb":true},"R36":{"kc":"Camelina","f":"2026-07-12","cult":"Camelina","semb":true},"J01a":{"kc":"Garbanzo","f":"2026-06-12","cult":"Garbanzo","semb":true},"J01b":{"kc":"Garbanzo","f":"2026-06-17","cult":"Garbanzo","semb":true},"J02a":{"kc":"Garbanzo","f":"2026-05-21","cult":"Garbanzo","semb":true},"J02b":{"kc":"Garbanzo","f":"2026-05-22","cult":"Garbanzo","semb":true},"L01a":{"kc":"Garbanzo","f":"2026-05-21","cult":"Garbanzo","semb":true},"L01b":{"kc":"Garbanzo","f":"2026-06-20","cult":"Garbanzo","semb":true},"L02a":{"kc":"Garbanzo","f":"2026-05-18","cult":"Garbanzo","semb":true},"L02b":{"kc":"Garbanzo","f":"2026-05-19","cult":"Garbanzo","semb":true},"L03a":{"kc":"Garbanzo","f":"2026-06-18","cult":"Garbanzo","semb":true},"L03b":{"kc":"Garbanzo","f":"2026-06-18","cult":"Garbanzo","semb":true},"Na":{"kc":"Garbanzo","f":"2026-05-18","cult":"Garbanzo","semb":true},"Nb":{"kc":"Garbanzo","f":"2026-05-20","cult":"Garbanzo","semb":true},"NNa":{"kc":"Garbanzo","f":"2026-05-26","cult":"Garbanzo","semb":true},"NNb":{"kc":"Garbanzo","f":"2026-06-07","cult":"Garbanzo","semb":true},"O11":{"kc":"Garbanzo","f":"2026-06-05","cult":"Garbanzo","semb":true},"O12":{"kc":"Garbanzo","f":"2026-06-07","cult":"Garbanzo","semb":true},"O21":{"kc":"Garbanzo","f":"2026-05-23","cult":"Garbanzo","semb":true},"O22":{"kc":"Garbanzo","f":"2026-06-05","cult":"Garbanzo","semb":true},"P11":{"kc":"Garbanzo","f":"2026-05-23","cult":"Garbanzo","semb":true},"P12":{"kc":"Garbanzo","f":"2026-05-24","cult":"Garbanzo","semb":true},"P21":{"kc":"Garbanzo","f":"2026-05-20","cult":"Garbanzo","semb":true},"P22":{"kc":"Garbanzo","f":"2026-05-22","cult":"Garbanzo","semb":true},"P31":{"kc":"Garbanzo","f":"2026-05-23","cult":"Garbanzo","semb":true},"P32":{"kc":"Garbanzo","f":"2026-06-06","cult":"Garbanzo","semb":true},"P41":{"kc":"Garbanzo","f":"2026-05-24","cult":"Garbanzo","semb":true},"P42":{"kc":"Garbanzo","f":"2026-06-05","cult":"Garbanzo","semb":true},"P51":{"kc":"Garbanzo","f":"2026-05-25","cult":"Garbanzo","semb":true},"P52":{"kc":"Garbanzo","f":"2026-06-21","cult":"Garbanzo","semb":true},"Q11":{"kc":"Garbanzo","f":"2026-05-24","cult":"Garbanzo","semb":true},"Q12":{"kc":"Garbanzo","f":"2026-05-21","cult":"Garbanzo","semb":true},"Q21":{"kc":"Garbanzo","f":"2026-05-23","cult":"Garbanzo","semb":true},"Q22":{"kc":"Garbanzo","f":"2026-05-20","cult":"Garbanzo","semb":true},"Q31":{"kc":"Garbanzo","f":"2026-05-22","cult":"Garbanzo","semb":true},"Q32":{"kc":"Garbanzo","f":"2026-05-19","cult":"Garbanzo","semb":true},"Q41":{"kc":"Garbanzo","f":"2026-05-21","cult":"Garbanzo","semb":true},"Q42":{"kc":"Garbanzo","f":"2026-05-18","cult":"Garbanzo","semb":true},"Q51":{"kc":"Garbanzo","f":"2026-05-16","cult":"Garbanzo","semb":true},"Q52":{"kc":"Garbanzo","f":"2026-05-18","cult":"Garbanzo","semb":true}}
+};
+
+// Modelo del tablero de riego: suelo(t) = min(cc, max(0, suelo(t-1) + riego + lluvia - ETo*Kc))
+const isoWeek=d=>{const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const day=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day);
+  const ys=new Date(Date.UTC(t.getUTCFullYear(),0,1));
+  return Math.ceil((((t-ys)/864e5)+1)/7);};
+const etoSem=(w,p65)=>{const e=BH.eto[String(w)]; return e?(p65?e[1]:e[0]):4;};
+const umbralBH=c=>["Garbanzo","Colza","Cartamo","Cártamo","Camelina"].includes(c)?{v:90,a:40}:{v:120,a:90};
+// escala LIAG de humedad -> mm de agua útil, sobre la capacidad de campo del modelo
+const humMm=v=>v==null?null:Math.round(({1:0.25,1.5:0.5,2:0.75,2.5:1,3:1.15}[
+  [1,1.5,2,2.5,3].reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a)])*BH.cc);
+
+function serieBalance(lote,riegosSem,lluviaSem=0,p65=false){
+  const L=BH.lot[lote]; if(!L||!L.semb) return null;
+  const kc=BH.kc[L.kc]||BH.kc["Garbanzo"];
+  const fs=new Date(L.f+"T00:00:00");
+  const out=[]; let suelo=null;
+  let d=new Date(2026,4,11);
+  for(let i=0;i<33;i++){
+    const sem=isoWeek(d);
+    if(d>=new Date(fs.getTime()-6*864e5)){
+      const semCult=Math.max(1,Math.floor((d-fs)/(7*864e5))+1);
+      if(semCult<=kc.length){
+        const k=kc[Math.max(0,Math.min(kc.length-1,semCult-1))];
+        const eto=etoSem(sem,p65), evap=eto*k;
+        const rg=riegosSem[sem]||0;
+        suelo = suelo===null ? BH.ini
+              : Math.max(0, Math.min(BH.cc, suelo + rg + lluviaSem - evap));
+        out.push({f:new Date(d), sem, mm:suelo, kc:k, evap, rg, lluvia:lluviaSem, semCult});
+      }
+    }
+    d=new Date(d.getTime()+7*864e5);
+  }
+  return out.length?out:null;
+}
 
 /* =========================== ficha de lote =========================== */
 // Rampa de suelo: del ocre seco al azul de saturación.
@@ -899,6 +948,7 @@ function fichaLote(lote){
       ${bxFenologia(D)}
       ${bxHumedad(D)}
       ${bxRiego(D)}
+      ${bxBalance(D)}
       ${bxStand(D)}
       ${bxSanidad(D)}
       ${bxCrono(D)}
@@ -974,6 +1024,79 @@ function bxHumedad(D){
     <div class="pie">${hay
       ? `Medido el ${fd(D.humFecha)}. Promedio del perfil ${nf(prom,2)}, cerca del <b>${cc} % de capacidad de campo</b>.`
       : `Sin lecturas de humedad. Se cargan desde Monitoreo.`}</div></div>`;
+}
+
+function bxBalance(D){
+  const L=BH.lot[D.lote];
+  if(!L) return `<div class="bx b6"><h3>Balance hídrico</h3>
+    <div class="vacio">Este lote no está en el modelo de riego. Se agrega desde el tablero de Balance Hídrico.</div></div>`;
+
+  // mm efectivamente aplicados por semana: mm del programa × cumplimiento
+  const rs={};
+  S.riegoSem.filter(r=>String(r.lote).toUpperCase()===D.lote).forEach(r=>{
+    const c=r.cumpl==null?0:(Number(r.cumpl)>1.5?Number(r.cumpl)/100:Number(r.cumpl));
+    rs[r.wk]=(rs[r.wk]||0)+(Number(r.mm)||0)*c;
+  });
+  const S1=serieBalance(D.lote,rs,0,false);
+  if(!S1) return "";
+  const u=umbralBH(L.cult);
+  const hoySem=isoWeek(new Date());
+
+  // lecturas de humedad medidas a campo, llevadas a mm para contrastar el modelo
+  const med=[];
+  S.vals.filter(v=>String(v.lote).toUpperCase()===D.lote
+      &&v.indicador==="Humedad promedio del perfil"&&v.valor!=null)
+    .forEach(v=>{const d=new Date(v.fecha+"T12:00:00");
+      if(!isNaN(d)) med.push({sem:isoWeek(d),mm:humMm(Number(v.valor)),fecha:v.fecha});});
+
+  const W=560,H=190,PL=34,PR=8,PT=10,PB=22;
+  const x=i=>PL+i*(W-PL-PR)/Math.max(1,S1.length-1);
+  const y=mm=>PT+(1-mm/BH.cc)*(H-PT-PB);
+  const linea=S1.map((p,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(p.mm).toFixed(1)}`).join("");
+  const idxHoy=S1.findIndex(p=>p.sem>=hoySem);
+  const act=idxHoy>=0?S1[idxHoy]:S1[S1.length-1];
+  const bw=Math.max(2,(W-PL-PR)/S1.length*0.45);
+
+  return `<div class="bx b6"><h3>Balance hídrico · agua útil modelada</h3>
+    <svg viewBox="0 0 ${W} ${H}" class="bhsvg" role="img"
+         aria-label="Evolución del agua útil del suelo en milímetros">
+      <rect x="${PL}" y="${y(BH.cc)}" width="${W-PL-PR}" height="${y(u.v)-y(BH.cc)}" fill="#EEF4E7"/>
+      <rect x="${PL}" y="${y(u.v)}" width="${W-PL-PR}" height="${y(u.a)-y(u.v)}" fill="#FBF3E2"/>
+      <rect x="${PL}" y="${y(u.a)}" width="${W-PL-PR}" height="${y(0)-y(u.a)}" fill="#FAEBE7"/>
+      ${[0,u.a,u.v,BH.cc].map(v=>`<g>
+        <line x1="${PL}" x2="${W-PR}" y1="${y(v)}" y2="${y(v)}" stroke="#D8D2C0" stroke-width=".7"/>
+        <text x="${PL-5}" y="${y(v)+3.5}" text-anchor="end" font-size="9"
+          font-family="Geist Mono,monospace" fill="#8E8974">${v}</text></g>`).join("")}
+      ${S1.map((p,i)=>{const h=Math.min(58,p.evap*1.5);
+        return `<rect x="${(x(i)-bw/2).toFixed(1)}" y="${PT}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"
+          fill="#B0402B" opacity=".22"><title>Semana ${p.sem}: consumo ${nf(p.evap,1)} mm (Kc ${nf(p.kc,2)})</title></rect>`;}).join("")}
+      ${S1.map((p,i)=>p.rg>0?`<rect x="${(x(i)-bw/2).toFixed(1)}" y="${(H-PB-Math.min(58,p.rg*1.5)).toFixed(1)}"
+          width="${bw.toFixed(1)}" height="${Math.min(58,p.rg*1.5).toFixed(1)}" fill="#3D6B7D" opacity=".55"
+        ><title>Semana ${p.sem}: riego ${nf(p.rg,1)} mm</title></rect>`:"").join("")}
+      <path d="${linea}" fill="none" stroke="var(--ink)" stroke-width="1.9" stroke-linejoin="round"/>
+      ${idxHoy>=0?`<line x1="${x(idxHoy)}" x2="${x(idxHoy)}" y1="${PT}" y2="${H-PB}"
+        stroke="#B0402B" stroke-width="1.2" stroke-dasharray="3 3"/>
+        <circle cx="${x(idxHoy)}" cy="${y(act.mm)}" r="4" fill="var(--ink)"/>`:""}
+      ${med.map(m=>{const i=S1.findIndex(p=>p.sem===m.sem);
+        return i<0?"":`<g><circle cx="${x(i)}" cy="${y(m.mm)}" r="5" fill="none" stroke="#6B7A4F" stroke-width="2"/>
+          <title>Medido ${fd(m.fecha)}: ${m.mm} mm</title></g>`;}).join("")}
+      ${[0,Math.floor(S1.length/2),S1.length-1].map(i=>`<text x="${x(i)}" y="${H-6}"
+        text-anchor="${i===0?"start":i===S1.length-1?"end":"middle"}" font-size="9"
+        font-family="Geist Mono,monospace" fill="#8E8974">sem ${S1[i].sem}</text>`).join("")}
+    </svg>
+    <div class="bhleg">
+      <span><i style="background:#3D6B7D;opacity:.55"></i>riego</span>
+      <span><i style="background:#B0402B;opacity:.22"></i>consumo del cultivo</span>
+      <span><i class="ln"></i>agua útil</span>
+      ${med.length?`<span><i class="cir"></i>humedad medida</span>`:""}
+    </div>
+    <div class="pie">Hoy <b>${nf(act.mm,0)} mm</b> de agua útil
+      · ${act.mm>=u.v?"confort":act.mm>=u.a?"atención":"déficit, regar"}
+      · Kc ${nf(act.kc,2)}${act.kc>=1?" <b>(período crítico)</b>":""}
+      · consumo semanal ${nf(act.evap,1)} mm.
+      ${med.length?`El círculo verde es la humedad medida a campo: sirve para ver si el modelo está calibrado.`
+        :`Cargá una humedad de suelo para contrastar el modelo con lo que se ve en el lote.`}</div>
+    </div>`;
 }
 
 function bxRiego(D){
