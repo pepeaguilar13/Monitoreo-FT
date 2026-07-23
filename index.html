@@ -480,7 +480,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = "";   // <-- pegá acá la anon key
 const CAMPANIA = "26/27";
-const BUILD = "v17 · 23-07 19:40";   // subí este número en cada cambio
+const BUILD = "v18 · 23-07 19:55";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -850,8 +850,41 @@ const umbralBH=c=>["Garbanzo","Colza","Cartamo","Cártamo","Camelina"].includes(
 const humMm=v=>v==null?null:Math.round(({1:0.25,1.5:0.5,2:0.75,2.5:1,3:1.15}[
   [1,1.5,2,2.5,3].reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a)])*BH.cc);
 
+// El modelo Kc se deduce del cultivo y la variedad, con la misma regla del
+// tablero de riego: Perla y Tipa son ciclo corto; Rubi, Catalpa y Mignon,
+// intermedio-largo. Así un lote nuevo entra solo, sin tocar constantes.
+function kcModelo(cultivo,variedad){
+  const c=(cultivo||"").toLowerCase(), v=(variedad||"").toLowerCase();
+  if(c.includes("trigo")||c.includes("candeal"))
+    return /perla|tipa/.test(v) ? "Trigo Corto" : "Trigo Intermedio- largo";
+  if(c.includes("cebada"))   return "Trigo Corto";
+  if(c.includes("garbanzo")) return "Garbanzo";
+  if(c.includes("lenteja"))  return "Lenteja";
+  if(c.includes("arveja"))   return "Lenteja";
+  if(c.includes("soja"))     return "Soja";
+  if(c.includes("maíz")||c.includes("maiz")) return "Maiz";
+  if(c.includes("algod"))    return "Algodón";
+  if(c.includes("vicia")||c.includes("cobertura")) return "Vicia";
+  if(c.includes("colza"))    return "Colza";
+  if(c.includes("cártamo")||c.includes("cartamo")) return "Cartamo";
+  if(c.includes("camelina")) return "Camelina";
+  return null;
+}
+
+// Prioriza el maestro de siembras, que está en vivo. Las constantes del
+// tablero de riego quedan solo de respaldo para lotes que no estén ahí.
+function ctxBalance(lote){
+  const sb=idxSiembra()[lote];
+  if(sb&&sb.fecha_siembra&&sb.cultivo){
+    const m=kcModelo(sb.cultivo,sb.variedad);
+    if(m&&BH.kc[m]) return {kc:m,f:sb.fecha_siembra,cult:sb.cultivo,semb:true,src:"siembras"};
+  }
+  const L=BH.lot[lote];
+  return L?{...L,src:"tablero"}:null;
+}
+
 function serieBalance(lote,riegosSem,lluviaSem=0,p65=false){
-  const L=BH.lot[lote]; if(!L||!L.semb) return null;
+  const L=ctxBalance(lote); if(!L||!L.semb) return null;
   const kc=BH.kc[L.kc]||BH.kc["Garbanzo"];
   const fs=new Date(L.f+"T00:00:00");
   const out=[]; let suelo=null;
@@ -1027,9 +1060,9 @@ function bxHumedad(D){
 }
 
 function bxBalance(D){
-  const L=BH.lot[D.lote];
+  const L=ctxBalance(D.lote);
   if(!L) return `<div class="bx b6"><h3>Balance hídrico</h3>
-    <div class="vacio">Este lote no está en el modelo de riego. Se agrega desde el tablero de Balance Hídrico.</div></div>`;
+    <div class="vacio">Falta la fecha de siembra o el cultivo del lote para poder modelar el balance.</div></div>`;
 
   // mm efectivamente aplicados por semana: mm del programa × cumplimiento
   const rs={};
@@ -1095,7 +1128,10 @@ function bxBalance(D){
       · Kc ${nf(act.kc,2)}${act.kc>=1?" <b>(período crítico)</b>":""}
       · consumo semanal ${nf(act.evap,1)} mm.
       ${med.length?`El círculo verde es la humedad medida a campo: sirve para ver si el modelo está calibrado.`
-        :`Cargá una humedad de suelo para contrastar el modelo con lo que se ve en el lote.`}</div>
+        :`Cargá una humedad de suelo para contrastar el modelo con lo que se ve en el lote.`}
+      <br><span style="color:var(--ink3)">Curva ${esc(L.kc)}, sembrado el ${fd(L.f)}
+      ${L.src==="siembras"?"según el maestro de siembras":"según el tablero de riego"}.
+      Sin lluvia asumida.</span></div>
     </div>`;
 }
 
