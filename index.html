@@ -71,6 +71,26 @@ tbody tr:hover{background:var(--sand)}
 td.num{font-family:'Geist Mono',monospace;text-align:right;font-variant-numeric:tabular-nums}
 td.wrap-td{white-space:normal;min-width:200px;max-width:400px}
 
+/* tabla resumen: primera columna fija y grupos visuales */
+#tRes th:first-child,#tRes td:first-child{position:sticky;left:0;background:var(--panel);z-index:2;
+  box-shadow:1px 0 0 var(--line)}
+#tRes tbody tr:hover td:first-child{background:var(--sand)}
+#tRes th{background:var(--panel);z-index:3}
+#tRes th:first-child{z-index:4}
+#tRes .gsep{border-left:1px solid var(--line)}
+.grouphd{display:flex;gap:0;font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink3);padding:0 0 6px}
+.mini{display:inline-block;width:52px;height:6px;background:var(--sand);border-radius:3px;
+  overflow:hidden;vertical-align:1px;margin-right:5px}
+.mini i{display:block;height:100%;border-radius:3px;background:var(--olive)}
+.mini i.w{background:var(--warn)} .mini i.c{background:var(--crit)}
+.dias{font-size:10px;color:var(--ink3);margin-left:3px}
+.dias.old{color:var(--warn);font-weight:500}
+.dias.vold{color:var(--crit);font-weight:600}
+.sq{width:15px;height:15px;cursor:help}
+td .lotecel{display:flex;flex-direction:column;line-height:1.25}
+td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacing:.03em}
+
 .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap}
 .pill.ok{background:#E4EEDC;color:#3E6B28}
 .pill.atencion{background:#F7EBCF;color:#8A6110}
@@ -177,12 +197,13 @@ const CAMPANIA = "26/27";
     <h2>Estado por lote</h2>
     <p class="cap" id="capRes"></p>
     <div class="tw" style="max-height:640px;overflow-y:auto"><table id="tRes"><thead><tr>
-      <th data-k="lote">Lote</th><th data-k="sistema">Sistema</th><th data-k="seccion">Secc.</th><th data-k="superficie_ha">ha</th>
+      <th data-k="lote">Lote</th><th data-k="superficie_ha">ha</th>
       <th data-k="cultivo">Cultivo</th><th data-k="variedad">Variedad</th>
       <th data-k="f_siembra">Siembra</th><th data-k="fenologia">Fenología</th>
-      <th data-k="equipo">Equipo</th><th data-k="riego_mm">Riego mm</th>
-      <th data-k="riego_pend">Pend. mm</th><th data-k="cumpl">Cumpl.</th>
-      <th data-k="_dias">Últ. monitoreo</th><th>Malezas</th><th>Plagas</th><th>Enferm.</th><th>Stand</th>
+      <th data-k="cumpl" class="gsep">Riego</th><th data-k="riego_pend">Pend.</th>
+      <th data-k="_dias">Últ. visita</th>
+      <th>Mal.</th><th>Plag.</th><th>Enf.</th>
+      <th data-k="pl_coef">Stand</th>
       <th data-k="_peor">Alerta</th>
     </tr></thead><tbody></tbody></table></div>
   </div>
@@ -374,8 +395,9 @@ function resumenLotes(){
       cultivo:null,variedad:null,f_siembra:null,superficie_ha:null,
       fecha:null,fenologia:null,scouter:null,cats:{},sinMonitoreo:true};
     o.sinMonitoreo=false;
-    if(!o.fecha||m.fecha>o.fecha){o.fecha=m.fecha;o.scouter=m.scouter;
-      if(m.fenologia)o.fenologia=m.fenologia;}
+    if(!o.fecha||m.fecha>o.fecha){o.fecha=m.fecha;o.scouter=m.scouter;}
+    // la fenología se anota salteado: vale la última registrada, no la del último recorrido
+    if(m.fenologia&&(!o.fenoFecha||m.fecha>o.fenoFecha)){o.fenologia=m.fenologia;o.fenoFecha=m.fecha;}
     o.cultivo=o.cultivo||m.cultivo; o.variedad=o.variedad||m.variedad;
     o.superficie_ha=o.superficie_ha||m.superficie_ha;
   });
@@ -388,13 +410,19 @@ function resumenLotes(){
     const o=out[v.lote]; if(!o)return;
     if(v.fecha!==ult[v.lote+"|"+v.categoria_id])return;
     if(!v.semaforo)return;
-    const c=o.cats[v.categoria_id]=o.cats[v.categoria_id]||{sem:null,top:[]};
+    const c=o.cats[v.categoria_id]=o.cats[v.categoria_id]||{sem:null,top:[],det:[],fecha:v.fecha};
     c.sem=peor(c.sem,v.semaforo);
     if(v.semaforo!=="ok"&&v.ocurrencia)c.top.push(v.ocurrencia);
+    c.det.push({occ:v.ocurrencia,ind:v.indicador,val:v.valor,uni:v.unidad,
+                dec:v.decimales,sem:v.semaforo,uc:v.umbral_control});
   });
 
+  const std={}; standData().forEach(d=>std[d.lote]=d);
   Object.values(out).forEach(o=>{
-    const r=rg[o.lote]||{};
+    const r=rg[o.lote]||{}, d=std[o.lote];
+    if(d){o.pl_ha=d.real; o.pl_obj=d.obj; o.pl_coef=d.coef; o.pl_m2=d.pl_m2;
+          o.pl_fecha=d.fecha; o.pl_sem=d.sem;
+          if(d.sem) o.cats.stand={sem:d.sem,top:[],det:[],fecha:d.fecha,_std:true};}
     o.riego_mm=r.mm_aplicado!=null?Number(r.mm_aplicado):null;
     o.riego_plan=r.mm_planificado!=null?Number(r.mm_planificado):null;
     o.riego_pend=r.mm_pendiente!=null?Number(r.mm_pendiente):null;
@@ -443,8 +471,24 @@ function sortBy(key,arr,tbl){
     if(s.k==="_peor")return ((ORD[vb]||0)-(ORD[va]||0))*s.dir;
     return (typeof va==="number"&&typeof vb==="number"?va-vb:String(va).localeCompare(String(vb),"es"))*s.dir;});
 }
-const sqOf=(c,o)=>{const s=o.cats[c]?.sem;
-  return `<span class="sq ${s||''}" title="${s?c+': '+s:'sin dato'}"></span>`;};
+function sqOf(cid,o){
+  const c=o.cats[cid];
+  if(!c) return `<span class="sq" title="sin medición"></span>`;
+  let t;
+  if(cid==="stand"){
+    t=`Stand · ${fd(o.pl_fecha)}\n`+
+      `${nf(o.pl_ha,0)} pl/ha  (${nf(o.pl_m2,0)} pl/m²)\n`+
+      `objetivo ${nf(o.pl_obj,0)}\n`+
+      `logro ${o.pl_coef==null?"–":nf(o.pl_coef*100,1)+" %"}`;
+  }else{
+    const d=[...c.det].filter(x=>x.val!=null)
+      .sort((a,b)=>(ORD[b.sem]||0)-(ORD[a.sem]||0)||b.val-a.val).slice(0,5);
+    t=`${c.det[0]?.ind?cid:""}${cid} · ${fd(c.fecha)}\n`+
+      d.map(x=>`${x.occ?x.occ+" — ":""}${x.ind}: ${nf(x.val,x.dec??1)} ${x.uni||""}`+
+              `${x.uc!=null?"  (umbral "+nf(x.uc,x.dec??1)+")":""}`).join("\n");
+  }
+  return `<span class="sq ${c.sem||''}" title="${esc(t)}"></span>`;
+}
 
 function tablaRes(){
   let R=resumenLotes(); const f=F();
@@ -454,22 +498,25 @@ function tablaRes(){
   const sinN=R.filter(r=>r.sinMonitoreo).length;
   el("capRes").textContent=`${R.length} lotes sembrados · ${R.length-sinN} con recorrida · ${sinN} sin recorrer. Tocá el encabezado para ordenar.`;
   el("tRes").querySelector("tbody").innerHTML=R.length?R.map(r=>`<tr>
-    <td class="mono"><b>${esc(r.lote)}</b></td><td>${esc(r.sistema||"–")}</td><td class="mono">${esc(r.seccion)}</td>
+    <td><div class="lotecel"><b class="mono">${esc(r.lote)}</b>
+        <small>${esc(r.sistema||"–")}${r.equipo?" · "+esc(r.equipo):""}</small></div></td>
     <td class="num">${nf(r.superficie_ha,0)}</td><td>${esc(r.cultivo||"–")}</td>
     <td>${esc(r.variedad||"–")}</td><td class="mono">${fd(r.f_siembra)}</td>
-    <td class="mono">${esc(r.fenologia||"–")}</td>
-    <td class="mono">${esc(r.equipo||"–")}</td>
-    <td class="num">${r.riego_mm==null?"–":nf(r.riego_mm,0)+' <span style="color:var(--ink3);font-size:11px">/'+nf(r.riego_plan,0)+'</span>'}</td>
-    <td class="num">${r.riego_pend==null?"–":nf(r.riego_pend,0)}</td>
-    <td class="num">${r.cumpl==null?"–":`<span class="pill ${r.cumpl>=90?'ok':r.cumpl>=70?'atencion':'critico'}">${nf(r.cumpl,0)} %</span>`}</td>
-    <td class="mono">${r.fecha?fd(r.fecha)+' <span style="color:var(--ink3)">'+r._dias+'d</span>':'–'}</td>
-    <td><span class="sqs">${sqOf("malezas",r)}</span></td>
-    <td><span class="sqs">${sqOf("plagas",r)}</span></td>
-    <td><span class="sqs">${sqOf("enfermedades",r)}</span></td>
-    <td><span class="sqs">${sqOf("stand",r)}</span></td>
+    <td class="mono">${r.fenologia?`<span title="registrada el ${fd(r.fenoFecha)}">${esc(r.fenologia)}</span>`:'<span style="color:var(--ink3)">–</span>'}</td>
+    <td class="gsep" title="${r.cumpl==null?'sin plan de riego':`${nf(r.riego_mm,0)} de ${nf(r.riego_plan,0)} mm aplicados`}">
+      ${r.cumpl==null?'<span style="color:var(--ink3)">–</span>'
+        :`<span class="mini"><i class="${r.cumpl>=90?'':r.cumpl>=70?'w':'c'}" style="width:${Math.min(100,r.cumpl)}%"></i></span><span class="mono" style="font-size:12px">${nf(r.cumpl,0)}%</span>`}</td>
+    <td class="num">${r.riego_pend?nf(r.riego_pend,0)+' <span style="color:var(--ink3);font-size:10px">mm</span>':'–'}</td>
+    <td class="mono">${r.fecha?fd(r.fecha)+`<span class="dias ${r._dias>21?'vold':r._dias>14?'old':''}">${r._dias}d</span>`:'<span style="color:var(--ink3)">–</span>'}</td>
+    <td>${sqOf("malezas",r)}</td>
+    <td>${sqOf("plagas",r)}</td>
+    <td>${sqOf("enfermedades",r)}</td>
+    <td class="num">${r.pl_coef==null
+        ? (r.pl_ha!=null?`<span class="mono" style="font-size:12px" title="sin objetivo cargado">${nf(r.pl_ha/1e3,0)}k</span>`:'<span style="color:var(--ink3)">–</span>')
+        : `${sqOf("stand",r)} <span class="mono" style="font-size:12px">${nf(r.pl_coef*100,0)}%</span>`}</td>
     <td>${r._peor?`<span class="pill ${r._peor}">${r._peor}</span> <span style="font-size:11px;color:var(--ink2)">${esc(r._alertas.join(", "))}</span>`
         :r.sinMonitoreo?'<span class="pill na">sin recorrer</span>':'<span class="pill na">sin umbral</span>'}</td>
-  </tr>`).join(""):`<tr><td colspan="18"><div class="empty"><b>Sin datos con estos filtros</b>Probá limpiarlos.</div></td></tr>`;
+  </tr>`).join(""):`<tr><td colspan="14"><div class="empty"><b>Sin datos con estos filtros</b>Probá limpiarlos.</div></td></tr>`;
 }
 
 function mapa(){
