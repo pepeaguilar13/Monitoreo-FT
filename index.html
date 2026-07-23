@@ -317,7 +317,9 @@ details[open] summary::before{content:"▾ "}
 .fhero .fnom{font-family:'Instrument Serif',serif;font-size:58px;line-height:.92;letter-spacing:-.025em}
 .fhero .fsub{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);margin-top:8px}
 .fhero .fcul{font-family:'Instrument Serif',serif;font-size:26px;line-height:1.15;margin-bottom:2px}
-.fhero .fvar{font-size:13px;color:var(--ink2)}
+.fhero .fvar{font-size:13px;color:var(--ink2);line-height:1.55}
+.fhero .fvar b{font-weight:600;color:var(--ink)}
+.fhero .fvar span{font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--ink3)}
 .fhero dl{display:flex;flex-wrap:wrap;gap:20px 26px;margin:12px 0 0}
 .fhero dt{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
 .fhero dd{margin:3px 0 0;font-family:'Geist Mono',monospace;font-size:15px}
@@ -442,6 +444,16 @@ details[open] summary::before{content:"▾ "}
 .tlitxt span{display:block;font-size:11.5px;color:var(--ink2);margin-top:1px}
 .tlitxt em{display:block;font-size:11.5px;color:var(--ink3);font-style:normal;margin-top:2px}
 .tli.siembra .tlitxt b{color:var(--olivedk)}
+.tsiem{width:100%;border-collapse:collapse;font-size:12.5px}
+.tsiem td{padding:6px 0;border-bottom:1px solid var(--sand);vertical-align:middle}
+.tsiem tr:last-child td{border-bottom:0}
+.tsiem .v{font-weight:600}
+.tsiem .c,.tsiem .f{color:var(--ink2);font-size:11.5px;padding-left:10px;white-space:nowrap}
+.tsiem .f{font-family:'Geist Mono',monospace}
+.tsiem .b{width:38%;padding:0 10px}
+.tsiem .b .bar{display:block;height:6px}
+.tsiem .h{font-family:'Geist Mono',monospace;text-align:right;white-space:nowrap}
+@media(max-width:620px){.tsiem .c{display:none}.tsiem .b{width:26%}}
 .fgal{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px}
 .fgal a{display:block;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
 .fgal img{width:100%;height:100%;object-fit:cover;display:block}
@@ -463,7 +475,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = "";   // <-- pegá acá la anon key
 const CAMPANIA = "26/27";
-const BUILD = "v14 · 23-07 18:45";   // subí este número en cada cambio
+const BUILD = "v16 · 23-07 19:15";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -719,7 +731,7 @@ const BUILD = "v14 · 23-07 18:45";   // subí este número en cada cambio
 <script>
 /* =========================== estado =========================== */
 const S={url:"",key:"",vals:[],mons:[],fotos:[],inds:[],occs:[],cats:[],
-         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],ch:{},sort:{},fotosPend:[],gps:null};
+         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],ch:{},sort:{},fotosPend:[],gps:null};
 const el=id=>document.getElementById(id);
 const hoyISO=()=>{const d=new Date();
   return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);};
@@ -751,7 +763,7 @@ const soft=async p=>{try{return await api(p)}catch(e){console.warn(e.message);re
 async function cargar(){
   el("liveTxt").textContent="cargando…";
   const camp=encodeURIComponent(CAMPANIA);
-  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos,S.umbrales,S.atlas]=await Promise.all([
+  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos,S.umbrales,S.atlas,S.sdet]=await Promise.all([
     api(`v_mon_valores?select=*&campania=eq.${camp}&order=fecha.desc&limit=30000`),
     api(`mon_monitoreos?select=*&campania=eq.${camp}&order=fecha.desc&limit=5000`),
     api("mon_indicadores?select=*&activo=is.true&order=categoria_id,nombre"),
@@ -759,10 +771,11 @@ async function cargar(){
     api("mon_categorias?select=*&order=orden"),
     soft("mon_fotos?select=*&order=creado_en.desc&limit=400"),
     soft("lotes?select=*&limit=5000"),
-    soft(`mon_siembras?select=*&campania=eq.${camp}&limit=5000`),
+    soft(`v_mon_siembra_lote?select=*&campania=eq.${camp}&limit=5000`),
     soft("v_mon_riego_lote?select=*&limit=5000"),
     soft("mon_umbrales?select=*&activo=is.true&order=cultivo,plaga"),
-    soft("v_mon_atlas?select=*&limit=2000")
+    soft("v_mon_atlas?select=*&limit=2000"),
+    soft(`v_mon_siembra_detalle?select=*&campania=eq.${camp}&limit=5000`)
   ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
@@ -866,11 +879,12 @@ function fichaLote(lote){
       </div>
       <div>
         <div class="fcul">${esc(sb.cultivo||ultima?.cultivo||"Sin cultivo")}</div>
-        <div class="fvar">${esc(sb.variedad||"variedad sin cargar")}</div>
+        <div class="fvar">${varLinea(D)}</div>
         <dl>
           <div><dt>Superficie</dt><dd>${nf(sb.ha,0)} <span>ha</span></dd></div>
           <div><dt>Siembra</dt><dd>${fd(sb.fecha_siembra)} ${ddSiembra?`<span>${ddSiembra} d</span>`:""}</dd></div>
           <div><dt>Antecesor</dt><dd style="font-family:Geist,sans-serif;font-size:13px">${esc(sb.antecesor||"–")}</dd></div>
+          ${sb.siembras>1?`<div><dt>Siembras</dt><dd>${sb.siembras} <span>variedades</span></dd></div>`:""}
           <div><dt>Última visita</dt><dd>${ultima?fd(ultima.fecha):"–"} ${ultima?`<span>${D.dias(ultima.fecha)} d</span>`:""}</dd></div>
         </dl>
       </div>
@@ -881,6 +895,7 @@ function fichaLote(lote){
     </div>
 
     <div class="bento">
+      ${bxSiembras(D)}
       ${bxFenologia(D)}
       ${bxHumedad(D)}
       ${bxRiego(D)}
@@ -891,6 +906,34 @@ function fichaLote(lote){
       ${bxNotas(D)}
     </div>
   </div>`;
+}
+
+// Una variedad se muestra sola; varias, cada una con su superficie.
+function varLinea(D){
+  const det=S.sdet.filter(x=>String(x.lote).toUpperCase()===D.lote)
+    .sort((a,b)=>(Number(b.ha)||0)-(Number(a.ha)||0));
+  if(det.length>1) return det.map(x=>
+    `<b>${esc(x.variedad||"sin variedad")}</b> <span>${nf(x.ha,0)} ha</span>`).join(" · ");
+  return esc(D.sb.variedad||"variedad sin cargar");
+}
+
+function bxSiembras(D){
+  const det=S.sdet.filter(x=>String(x.lote).toUpperCase()===D.lote);
+  if(det.length<2) return "";
+  const tot=det.reduce((a,x)=>a+(Number(x.ha)||0),0);
+  return `<div class="bx b6"><h3>El lote se sembró en ${det.length} partes</h3>
+    <table class="tsiem"><tbody>
+      ${det.map(x=>{
+        const p=tot?(Number(x.ha)||0)/tot*100:0;
+        return `<tr>
+          <td class="v">${esc(x.variedad||"sin variedad")}</td>
+          <td class="c">${esc(x.cultivo||"")}</td>
+          <td class="f">${fd(x.fecha_siembra)}</td>
+          <td class="b"><span class="bar" style="width:100%"><i style="width:${p.toFixed(1)}%"></i></span></td>
+          <td class="h">${nf(x.ha,0)} ha</td></tr>`;}).join("")}
+    </tbody></table>
+    <div class="pie">Suman ${nf(tot,0)} ha. El objetivo de densidad del resumen está ponderado por superficie.</div>
+    </div>`;
 }
 
 function bxFenologia(D){
@@ -1089,6 +1132,7 @@ function resumenLotes(){
     out[s.lote]={lote:s.lote,sistema:s.sistema||null,seccion:s.seccion||seccion(s.lote),
       cultivo:s.cultivo||null,variedad:s.variedad||null,f_siembra:s.fecha_siembra||null,
       superficie_ha:s.ha!=null?Number(s.ha):null,densidad_obj:s.densidad_obj,antecesor:s.antecesor,
+      siembras:s.siembras||1,
       fecha:null,fenologia:null,scouter:null,cats:{},sinMonitoreo:true};
   });
 
@@ -1103,6 +1147,7 @@ function resumenLotes(){
     if(m.fenologia&&(!o.fenoFecha||m.fecha>o.fenoFecha)){o.fenologia=m.fenologia;o.fenoFecha=m.fecha;}
     o.cultivo=o.cultivo||m.cultivo; o.variedad=o.variedad||m.variedad;
     o.superficie_ha=o.superficie_ha||m.superficie_ha;
+    o.siembras=o.siembras||1;
   });
 
   // último semáforo por lote y categoría
@@ -1215,7 +1260,10 @@ function tablaRes(){
     <td><div class="lotecel"><b class="mono">${esc(r.lote)}</b>
         <small>${esc(r.sistema||"–")}${r.equipo?" · "+esc(r.equipo):""}</small></div></td>
     <td class="num">${nf(r.superficie_ha,0)}</td><td>${esc(r.cultivo||"–")}</td>
-    <td>${esc(r.variedad||"–")}</td><td class="mono">${fd(r.f_siembra)}</td>
+    <td>${r.siembras>1
+        ? `<span title="${esc(r.variedad||"")}">${esc(String(r.variedad||"").split(" + ")[0])}
+           <span style="color:var(--ink3);font-size:11px">+${r.siembras-1}</span></span>`
+        : esc(r.variedad||"–")}</td><td class="mono">${fd(r.f_siembra)}</td>
     <td class="mono">${r.fenologia?`<span title="registrada el ${fd(r.fenoFecha)}">${esc(r.fenologia)}</span>`:'<span style="color:var(--ink3)">–</span>'}</td>
     <td class="gsep num" title="${r.riego_mm==null?'sin plan de riego'
         :`${nf(r.riego_mm,0)} de ${nf(r.riego_plan,0)} mm · ${nf(r.cumpl,0)} % de cumplimiento`+
@@ -1719,7 +1767,9 @@ function pintarBoxes(){
       const {m,campo,fila}=i.dataset;
       if(fila!=null){ M.mods[m].filas[+fila][campo]=i.value; }
       else { M.mods[m][campo]=i.value; }
-      if(m==="cosecha"||m==="stand") pintarBoxes();
+      // Se actualiza solo el recuadro del cálculo. Redibujar la caja entera
+      // destruye el input y el teclado del celular se cierra en cada tecla.
+      if(m==="cosecha"||m==="stand") actualizarCalc(m);
     };
   });
   box.querySelectorAll(".delesp").forEach(b=>b.onclick=()=>{
@@ -1744,6 +1794,46 @@ function pintarBoxes(){
     if(m==="cosecha") pintarBoxes();});
 }
 
+function actualizarCalc(mod){
+  const caja=el("modBoxes").querySelector(`[data-mod="${mod}"]`)
+          || el("cBox")?.querySelector(`[data-mod="${mod}"]`);
+  if(!caja) return;
+  const d=(mod==="cosecha"&&C.lote)?C.d:M.mods[mod];
+  if(!d) return;
+  const html=calcDe(mod,d);
+  let n=caja.querySelector(".calc, .leyenda.calcsust");
+  if(!n){ n=document.createElement("div"); caja.appendChild(n); }
+  n.outerHTML=html;
+}
+
+function calcDe(mod,d){
+  if(mod==="stand"){
+    const plm=parseFloat(d.pl_m)||null, surco=parseFloat(d.surco)||null;
+    const real=(plm&&surco)?plm/(surco/100)*10000:null;
+    const o=M.ctx?.densidad_obj, obj=o?(o<5000?o*10000:o):null;
+    return real!=null
+      ? `<div class="calc">Densidad <b>${nf(real,0)}</b> pl/ha · ${nf(real/10000,0)} pl/m²
+         ${obj?` · objetivo ${nf(obj,0)} · logro <b>${nf(real/obj*100,1)} %</b>`:" · sin objetivo en el maestro"}</div>`
+      : `<div class="leyenda calcsust">Cargá plantas por metro y distancia entre surcos y calcula la densidad.</div>`;
+  }
+  if(mod==="cosecha"){
+    const mc=MARCOS.find(x=>x.id===d.marco)||MARCOS[0];
+    const ctx=(C.lote?C.ctx:M.ctx)||{};
+    const sug=p1000De(ctx.cultivo);
+    const g=parseFloat(d.gm2)||null;
+    const pmg=(d.pmg!==""&&d.pmg!=null)?parseFloat(d.pmg):sug;
+    const rend=parseFloat(d.rend)||null;
+    const kg=(g&&pmg)?(g*pmg/1000)/mc.a*10:null;
+    const pct=(kg&&rend)?kg/rend*100:null;
+    return kg!=null
+      ? `<div class="calc">Pérdida <b>${nf(kg,1)}</b> kg/ha
+         ${pct!=null?` · <b>${nf(pct,2)} %</b> del rinde`:` · cargá el rinde para saber el porcentaje`}
+         ${pct!=null?(pct>3?" — muy alta, parar y regular":pct>1.5?" — por encima del umbral":" — aceptable"):""}</div>`
+      : `<div class="leyenda calcsust">kg/ha = granos × peso de mil granos ÷ 1000 ÷ ${mc.d.replace(",",".")} × 10.</div>`;
+  }
+  return "";
+}
+
 function hd(m,extra=""){return `<header><h3>${m.t}</h3><span class="cap" style="margin:0">${extra}</span>
   <button class="quitar" data-m="${m.id}">quitar</button></header>`;}
 
@@ -1753,7 +1843,7 @@ function cajaDe(m){
 
   case "fenologia":{
     const e=escalaDe(M.ctx?.cultivo);
-    if(!e) return `<div class="modbox">${hd(m,"escribí el estadio")}
+    if(!e) return `<div class="modbox" data-mod="${m.id}">${hd(m,"escribí el estadio")}
       <div class="fld" style="max-width:280px"><label>Estadio</label>
         <input data-m="fenologia" data-campo="valor" value="${esc(d.valor||"")}"
                style="font-family:'Geist Mono',monospace;font-size:16px"></div></div>`;
@@ -1767,7 +1857,7 @@ function cajaDe(m){
       const cod=i.split(" ")[0], resto=i.slice(cod.length).trim();
       return `<button class="festado" data-v="${esc(cod)}" aria-pressed="${d.valor===cod}">
         <b>${esc(cod)}</b>${resto?`<span>${esc(resto)}</span>`:""}</button>`;}).join("")}</div>`:"";
-    return `<div class="modbox">${hd(m,"escala "+e.n)}
+    return `<div class="modbox" data-mod="${m.id}">${hd(m,"escala "+e.n)}
       <div class="fgrupos">${grupos}</div>
       ${items}
       ${d.valor?`<div class="calc">Estadio seleccionado <b>${esc(d.valor)}</b></div>`:""}
@@ -1783,7 +1873,7 @@ function cajaDe(m){
     const ccs =PROF.map((_,i)=>HUM_CC [d["p"+i]]).filter(v=>v!=null);
     const prom=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
     const cc  =ccs.length ?ccs.reduce((a,b)=>a+b,0)/ccs.length  :null;
-    return `<div class="modbox">${hd(m,"una lectura por profundidad")}
+    return `<div class="modbox" data-mod="${m.id}">${hd(m,"una lectura por profundidad")}
       <div class="hum">${prof}</div>
       ${prom!=null?`<div class="calc">Perfil <b>${nf(prom,2)}</b> · agua útil estimada
         <b>${nf(cc,0)} %</b> de capacidad de campo
@@ -1823,11 +1913,11 @@ function cajaDe(m){
       </div>`;
     };
 
-    if(!M.ctx?.cultivo) return `<div class="modbox">${hd(m,"")}
+    if(!M.ctx?.cultivo) return `<div class="modbox" data-mod="${m.id}">${hd(m,"")}
       <div class="leyenda">El lote no tiene cultivo cargado, así que no puedo traer los umbrales.
       Usá el catálogo general de abajo.</div>${filasLibres("plagas",d)}</div>`;
 
-    return `<div class="modbox">${hd(m,`${esc(M.ctx.cultivo)}${fen?" · "+esc(fen):""}`)}
+    return `<div class="modbox" data-mod="${m.id}">${hd(m,`${esc(M.ctx.cultivo)}${fen?" · "+esc(fen):""}`)}
       ${U.length?`<div class="ulista">${U.map(fila).join("")}</div>`
         :`<div class="leyenda">No hay umbrales cargados para ${esc(M.ctx.cultivo)} en este estadio.</div>`}
       ${otros.length?`<details style="margin-top:12px"><summary>Otras plagas de ${esc(M.ctx.cultivo)} (${otros.length})</summary>
@@ -1866,7 +1956,7 @@ function cajaDe(m){
       <div class="fld"><label>&nbsp;</label>
         <button class="btn sm delesp" data-m="${m.id}" data-fila="${i}">✕</button></div>
     </div>`).join("");
-    return `<div class="modbox">${hd(m,`${occs.length} en el catálogo`)}
+    return `<div class="modbox" data-mod="${m.id}">${hd(m,`${occs.length} en el catálogo`)}
       ${rows}
       <datalist id="dl-${m.id}">${occs.map(o=>`<option value="${esc(o.nombre)}">`).join("")}</datalist>
       <button class="btn sm addesp" data-m="${m.id}" style="margin-top:10px">+ Agregar otra</button>
@@ -1878,7 +1968,7 @@ function cajaDe(m){
     const real=(plm&&surco)?plm/(surco/100)*10000:null;
     const objRaw=M.ctx?.densidad_obj;
     const obj=objRaw?(objRaw<5000?objRaw*10000:objRaw):null;
-    return `<div class="modbox">${hd(m,"se calcula solo")}
+    return `<div class="modbox" data-mod="${m.id}">${hd(m,"se calcula solo")}
       <div class="form" style="margin-bottom:6px">
         <div class="fld"><label>Plantas por metro lineal</label>
           <input type="number" step="any" inputmode="decimal" data-m="stand" data-campo="pl_m" value="${esc(d.pl_m||"")}"></div>
@@ -1894,7 +1984,7 @@ function cajaDe(m){
 
   case "cosecha":{
     // paso 1: con qué mide
-    if(!d.marco) return `<div class="modbox">${hd(m,"¿con qué medís?")}
+    if(!d.marco) return `<div class="modbox" data-mod="${m.id}">${hd(m,"¿con qué medís?")}
       <div class="fgrupos" style="margin:0">${MARCOS.map(x=>
         `<button class="fgrupo marco" data-marco="${x.id}">${x.t} · ${x.d}</button>`).join("")}</div>
       <div class="leyenda">El aro cubre 1/4 de metro cuadrado; la bandeja, 0,1.</div></div>`;
@@ -1906,7 +1996,7 @@ function cajaDe(m){
     const rend=parseFloat(d.rend)||null;
     const kg=(g&&pmg)?(g*pmg/1000)/mc.a*10:null;     // g por marco -> g/m² -> kg/ha
     const pct=(kg&&rend)?kg/rend*100:null;
-    return `<div class="modbox">${hd(m,`${mc.t} · ${mc.d}`)}
+    return `<div class="modbox" data-mod="${m.id}">${hd(m,`${mc.t} · ${mc.d}`)}
       <div class="form" style="margin-bottom:6px">
         <div class="fld"><label>Granos en la ${mc.t.toLowerCase()}</label>
           <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="gm2"
@@ -1938,7 +2028,7 @@ function cajaDe(m){
       </div>`;}
 
   case "general":
-    return `<div class="modbox">${hd(m,"impresión general del lote")}
+    return `<div class="modbox" data-mod="${m.id}">${hd(m,"impresión general del lote")}
       <div class="prof" data-p="g" style="max-width:330px;border:0;padding:0">
         <div class="esc gen">${[1,2,3,4].map(v=>
           `<button data-v="${v}" aria-pressed="${String(d.valor)===String(v)}">${v}</button>`).join("")}</div></div>
@@ -2227,7 +2317,7 @@ function tablaSiembra(){
     <td>${esc(r.cultivo||"–")}</td><td>${esc(r.variedad||"–")}</td>
     <td class="mono">${fd(r.fecha_siembra)}</td>
     <td class="num">${r.densidad_obj?nf(r.densidad_obj,0):"–"}</td>
-    <td>${esc(r.antecesor||"–")}</td></tr>`).join("")
+    <td>${esc(r.antecesor||"–")}${r.siembras>1?` <span style="color:var(--ink3);font-size:11px">${r.siembras} siembras</span>`:""}</td></tr>`).join("")
     :`<tr><td colspan="9"><div class="empty"><b>Sin maestro de siembras</b>Se carga con el script 05.</div></td></tr>`;
 }
 
