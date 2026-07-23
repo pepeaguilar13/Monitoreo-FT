@@ -3,453 +3,758 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Stand de plantas · FT 26/27</title>
+<title>Monitoreo FT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
-  --bg:#F6F4ED; --panel:#FFFFFF; --ink:#26261F; --ink-2:#5C5B4E;
+  --bg:#F6F4ED; --panel:#FFF; --ink:#26261F; --ink2:#5C5B4E; --ink3:#8E8974;
   --line:#DED8C6; --sand:#EDE8DA;
-  --olive:#6B7A4F; --olive-dk:#48542F; --olive-lt:#E3E8D6;
+  --olive:#6B7A4F; --olivedk:#48542F;
   --ok:#5F8B45; --warn:#C08A1E; --crit:#B0402B;
   --r:10px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font-family:'Geist',system-ui,sans-serif;font-size:14px;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:Geist,system-ui,sans-serif;font-size:14px;-webkit-text-size-adjust:100%}
 .mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
-.wrap{max-width:1400px;margin:0 auto;padding:0 18px 60px}
+.wrap{max-width:1500px;margin:0 auto;padding:0 16px 70px}
+h2{font-family:'Instrument Serif',serif;font-weight:400;font-size:21px;margin:0 0 2px;letter-spacing:-.01em}
+.cap{font-size:12px;color:var(--ink2);margin:0 0 14px}
 
-/* header */
-header{border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:50}
-.hd{max-width:1400px;margin:0 auto;padding:14px 18px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-.hd h1{font-family:'Instrument Serif',serif;font-weight:400;font-size:30px;margin:0;letter-spacing:-.01em}
-.hd .sub{color:var(--ink-2);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
-.hd .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+header{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:60}
+.hd{max-width:1500px;margin:0 auto;padding:13px 16px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.hd h1{font-family:'Instrument Serif',serif;font-weight:400;font-size:28px;margin:0;letter-spacing:-.01em}
+.hd .sub{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2)}
+.hd .right{margin-left:auto;display:flex;gap:8px;align-items:center}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--crit);display:inline-block}
 .dot.live{background:var(--ok)}
-.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 12px;border-radius:var(--r);font:inherit;font-size:13px;cursor:pointer}
+
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 13px;border-radius:var(--r);font:inherit;font-size:13px;cursor:pointer}
 .btn:hover{background:var(--sand)}
-.btn.pri{background:var(--olive-dk);border-color:var(--olive-dk);color:#fff}
+.btn.pri{background:var(--olivedk);border-color:var(--olivedk);color:#fff}
+.btn.pri:hover{background:var(--olive)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 .btn:focus-visible{outline:2px solid var(--olive);outline-offset:2px}
+.btn.sm{padding:4px 9px;font-size:12px}
 
-/* tabs */
-nav.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:0 0 18px;overflow-x:auto}
-nav.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:12px 14px;font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer;white-space:nowrap}
-nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--olive-dk);font-weight:600}
+nav.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;margin-bottom:16px}
+nav.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:12px 14px;font:inherit;font-size:13px;color:var(--ink2);cursor:pointer;white-space:nowrap}
+nav.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--olivedk);font-weight:600}
 
-/* filtros */
 .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
 .f{display:flex;flex-direction:column;gap:4px}
-.f label{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
-.f select,.f input{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);min-width:120px}
+.f label,.fld label{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2)}
+.f select,.f input,.fld input,.fld select,.fld textarea{font:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+.f select,.f input{min-width:118px}
 
-/* kpis */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:20px}
-.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px}
-.kpi .lab{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
-.kpi .val{font-family:'Geist Mono',monospace;font-size:26px;font-weight:500;margin-top:6px;letter-spacing:-.02em}
-.kpi .val small{font-size:13px;color:var(--ink-2);font-weight:400}
-.kpi .hint{font-size:11px;color:var(--ink-2);margin-top:3px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px}
+.kpi .lab{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2)}
+.kpi .val{font-family:'Geist Mono',monospace;font-size:25px;font-weight:500;margin-top:5px;letter-spacing:-.02em}
+.kpi .val small{font-size:12px;color:var(--ink2)}
+.kpi .hint{font-size:11px;color:var(--ink2);margin-top:3px}
+.kpi.crit .val{color:var(--crit)} .kpi.warn .val{color:var(--warn)}
 
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:16px}
-.card h2{font-family:'Instrument Serif',serif;font-weight:400;font-size:20px;margin:0 0 2px}
-.card .cap{font-size:12px;color:var(--ink-2);margin:0 0 14px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:900px){.grid2{grid-template-columns:1fr}}
 
-/* tabla */
-.tbl-wrap{overflow-x:auto}
+.tw{overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:13px}
-th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);font-weight:500;padding:8px 9px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;position:sticky;top:0;background:var(--panel)}
 th:hover{color:var(--ink)}
-td{padding:8px 10px;border-bottom:1px solid var(--sand);white-space:nowrap}
+td{padding:7px 9px;border-bottom:1px solid var(--sand);white-space:nowrap}
 tbody tr:hover{background:var(--sand)}
 td.num{font-family:'Geist Mono',monospace;text-align:right;font-variant-numeric:tabular-nums}
-.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:500}
-.pill.ok{background:#E4EEDC;color:var(--ok)}
+td.wrap-td{white-space:normal;min-width:200px;max-width:400px}
+
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap}
+.pill.ok{background:#E4EEDC;color:#3E6B28}
 .pill.atencion{background:#F7EBCF;color:#8A6110}
 .pill.critico{background:#F5DED8;color:var(--crit)}
+.pill.na{background:var(--sand);color:var(--ink3)}
+.sq{display:inline-block;width:13px;height:13px;border-radius:3px;background:var(--sand);vertical-align:-2px}
+.sq.ok{background:#7FA860} .sq.atencion{background:#E0A62B} .sq.critico{background:var(--crit)}
+.sqs{display:flex;gap:3px}
 
-/* cobertura */
-.cov-row{display:grid;grid-template-columns:110px 1fr 150px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--sand)}
-.cov-row:last-child{border-bottom:0}
-.bar{height:9px;background:var(--sand);border-radius:5px;overflow:hidden}
-.bar i{display:block;height:100%;background:var(--olive);border-radius:5px}
-.cov-row .n{font-family:'Geist Mono',monospace;font-size:12px;color:var(--ink-2);text-align:right}
-
-/* grilla de lotes */
 .chips{display:flex;flex-wrap:wrap;gap:4px}
-.chip{font-family:'Geist Mono',monospace;font-size:11px;padding:3px 6px;border-radius:5px;border:1px solid transparent;cursor:pointer}
-.chip.ok{background:#E4EEDC;color:#3E6B28}
-.chip.atencion{background:#F7EBCF;color:#8A6110}
-.chip.critico{background:#F5DED8;color:var(--crit)}
-.chip.sin{background:#fff;border-color:var(--line);color:#A9A493}
-.eq-group{margin-bottom:12px}
-.eq-group .eq-lab{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin-bottom:5px}
+.chip{font-family:'Geist Mono',monospace;font-size:11px;padding:3px 6px;border-radius:5px;border:1px solid transparent;cursor:pointer;background:#fff;border-color:var(--line);color:var(--ink3)}
+.chip.ok{background:#E4EEDC;color:#3E6B28;border-color:transparent}
+.chip.atencion{background:#F7EBCF;color:#8A6110;border-color:transparent}
+.chip.critico{background:#F5DED8;color:var(--crit);border-color:transparent}
+.grp{margin-bottom:12px}
+.grp .gl{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);margin-bottom:5px}
 
-.empty{padding:28px 14px;text-align:center;color:var(--ink-2);font-size:13px}
-.empty b{display:block;font-family:'Instrument Serif',serif;font-size:19px;color:var(--ink);font-weight:400;margin-bottom:4px}
+.empty{padding:26px 14px;text-align:center;color:var(--ink2);font-size:13px}
+.empty b{display:block;font-family:'Instrument Serif',serif;font-size:18px;color:var(--ink);font-weight:400;margin-bottom:4px}
 
-/* config */
+/* formulario */
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld.full{grid-column:1/-1}
+.fld textarea{min-height:70px;resize:vertical;font-family:inherit}
+.medrow{display:grid;grid-template-columns:1.2fr 1.6fr .7fr .5fr auto;gap:8px;align-items:end;padding:9px 0;border-bottom:1px solid var(--sand)}
+@media(max-width:800px){.medrow{grid-template-columns:1fr 1fr;}}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.thumb{position:relative;width:74px;height:74px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb button{position:absolute;top:2px;right:2px;width:19px;height:19px;border:0;border-radius:50%;background:rgba(0,0,0,.62);color:#fff;font-size:12px;line-height:19px;cursor:pointer;padding:0}
+.msg{padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px}
+.msg.ok{background:#E4EEDC;color:#3E6B28}
+.msg.err{background:#F5DED8;color:var(--crit)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px}
+.gal a{display:block;border-radius:8px;overflow:hidden;border:1px solid var(--line);aspect-ratio:4/3}
+.gal img{width:100%;height:100%;object-fit:cover;display:block}
+.nota{border-bottom:1px solid var(--sand);padding:11px 0}
+.nota .meta{font-size:11px;color:var(--ink2);margin-bottom:3px}
+.nota .txt{font-size:13.5px;line-height:1.45}
+
 .cfg{max-width:520px;margin:60px auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px}
-.cfg h2{font-family:'Instrument Serif',serif;font-weight:400;font-size:24px;margin:0 0 6px}
-.cfg p{font-size:13px;color:var(--ink-2);margin:0 0 18px;line-height:1.5}
-.cfg label{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:12px 0 4px}
+.cfg h2{font-size:24px}
+.cfg p{font-size:13px;color:var(--ink2);margin:0 0 16px;line-height:1.5}
 .cfg input{width:100%;font:inherit;font-size:13px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-family:'Geist Mono',monospace}
-.err{background:#F5DED8;color:var(--crit);border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:14px}
+.cfg label{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);margin:12px 0 4px}
 canvas{max-width:100%}
+details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 </style>
 </head>
 <body>
 
-<!-- ================== CONFIG ==================
-  Completá estas dos constantes y subilo a GitHub Pages.
-  La anon key es pública por diseño: la protección real es RLS.
-============================================== -->
+<!-- ============ CONFIGURACIÓN ============ -->
 <script>
 const SUPABASE_URL = "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuYXVya292amRuY2x4dHp2ZHNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NTc3NTksImV4cCI6MjA5OTUzMzc1OX0.BWug5kNc4T3HkKd31_NA9DVyRGkn5sRGbECyCJNrOrk";   // <-- pegá acá la anon key
+const CAMPANIA = "26/27";
 </script>
 
-<header>
-  <div class="hd">
-    <h1>Stand de plantas</h1>
-    <span class="sub">Finca Tolloche · 26/27</span>
-    <div class="right">
-      <span id="live"><span class="dot"></span> <span id="liveTxt" class="mono" style="font-size:12px;color:var(--ink-2)">sin conectar</span></span>
-      <button class="btn" id="btnRefresh">Actualizar</button>
-    </div>
+<header><div class="hd">
+  <h1>Monitoreo</h1><span class="sub">Finca Tolloche · <span id="hdCamp"></span></span>
+  <div class="right">
+    <span class="mono" style="font-size:12px;color:var(--ink2)"><span class="dot" id="dot"></span> <span id="liveTxt">sin conectar</span></span>
+    <button class="btn sm" id="btnRefresh">Actualizar</button>
   </div>
-</header>
+</div></header>
 
-<div id="cfgScreen" style="display:none">
-  <div class="cfg">
-    <h2>Conectar con Supabase</h2>
-    <p>La app lee en vivo el proyecto <span class="mono">liag-balance-hidrico</span>. Pegá la anon key para esta sesión, o cargala en la constante <span class="mono">SUPABASE_ANON_KEY</span> del archivo antes de publicarlo.</p>
-    <div id="cfgErr"></div>
-    <label>URL del proyecto</label>
-    <input id="cfgUrl" value="https://bnaurkovjdnclxtzvdsf.supabase.co">
-    <label>Anon key</label>
-    <input id="cfgKey" placeholder="eyJhbGciOi...">
-    <div style="margin-top:18px"><button class="btn pri" id="cfgGo">Conectar</button></div>
-  </div>
-</div>
+<div id="cfgScreen" style="display:none"><div class="cfg">
+  <h2>Conectar con Supabase</h2>
+  <p>La app lee y escribe en el proyecto <span class="mono">liag-balance-hidrico</span>. Pegá la anon key para esta sesión, o cargala en la constante <span class="mono">SUPABASE_ANON_KEY</span> antes de publicar.</p>
+  <div id="cfgErr"></div>
+  <label>URL del proyecto</label><input id="cfgUrl">
+  <label>Anon key</label><input id="cfgKey" placeholder="eyJhbGciOi...">
+  <div style="margin-top:18px"><button class="btn pri" id="cfgGo">Conectar</button></div>
+</div></div>
 
 <div class="wrap" id="app" style="display:none">
-  <nav class="tabs" role="tablist">
-    <button role="tab" aria-selected="true" data-tab="panel">Panel</button>
-    <button role="tab" aria-selected="false" data-tab="lotes">Lotes</button>
-    <button role="tab" aria-selected="false" data-tab="analisis">Análisis</button>
-    <button role="tab" aria-selected="false" data-tab="bandeja">Bandeja</button>
-  </nav>
+<nav class="tabs" role="tablist">
+  <button role="tab" aria-selected="true"  data-t="resumen">Resumen</button>
+  <button role="tab" aria-selected="false" data-t="monitoreo">Monitoreo</button>
+  <button role="tab" aria-selected="false" data-t="stand">Stand</button>
+  <button role="tab" aria-selected="false" data-t="notas">Notas y fotos</button>
+  <button role="tab" aria-selected="false" data-t="cargar">Cargar</button>
+</nav>
 
-  <div class="filters" id="filters">
-    <div class="f"><label>Cultivo</label><select id="fCultivo"><option value="">Todos</option></select></div>
-    <div class="f"><label>Sistema</label><select id="fSistema"><option value="">Todos</option></select></div>
-    <div class="f"><label>Equipo</label><select id="fEquipo"><option value="">Todos</option></select></div>
-    <div class="f"><label>Semáforo</label><select id="fSem"><option value="">Todos</option><option value="ok">OK</option><option value="atencion">Atención</option><option value="critico">Crítico</option></select></div>
-    <div class="f"><label>Desde</label><input type="date" id="fDesde"></div>
-    <div class="f"><label>Hasta</label><input type="date" id="fHasta"></div>
-    <div class="f"><label>&nbsp;</label><button class="btn" id="fReset">Limpiar</button></div>
+<div class="filters" id="filters">
+  <div class="f"><label>Cultivo</label><select id="fCultivo"><option value="">Todos</option></select></div>
+  <div class="f"><label>Sistema</label><select id="fSistema"><option value="">Todos</option></select></div>
+  <div class="f"><label>Sección</label><select id="fSeccion"><option value="">Todas</option></select></div>
+  <div class="f"><label>Lote</label><select id="fLote"><option value="">Todos</option></select></div>
+  <div class="f"><label>Categoría</label><select id="fCat"><option value="">Todas</option></select></div>
+  <div class="f"><label>Estado</label><select id="fSem"><option value="">Todos</option><option value="critico">Crítico</option><option value="atencion">Atención</option><option value="ok">OK</option></select></div>
+  <div class="f"><label>Desde</label><input type="date" id="fD1"></div>
+  <div class="f"><label>Hasta</label><input type="date" id="fD2"></div>
+  <div class="f"><label>&nbsp;</label><button class="btn" id="fReset">Limpiar</button></div>
+</div>
+
+<!-- ===== RESUMEN ===== -->
+<section id="s-resumen">
+  <div class="kpis" id="kpis"></div>
+  <div class="card">
+    <h2>Estado por lote</h2>
+    <p class="cap" id="capRes"></p>
+    <div class="tw" style="max-height:640px;overflow-y:auto"><table id="tRes"><thead><tr>
+      <th data-k="lote">Lote</th><th data-k="sistema">Sistema</th><th data-k="seccion">Secc.</th><th data-k="superficie_ha">ha</th>
+      <th data-k="cultivo">Cultivo</th><th data-k="variedad">Variedad</th>
+      <th data-k="f_siembra">Siembra</th><th data-k="fenologia">Fenología</th>
+      <th data-k="riego_mm">Riego mm</th><th data-k="balance">Balance</th>
+      <th data-k="_dias">Últ. monitoreo</th><th>Malezas</th><th>Plagas</th><th>Enferm.</th><th>Stand</th>
+      <th data-k="_peor">Alerta</th>
+    </tr></thead><tbody></tbody></table></div>
   </div>
+  <div class="grid2">
+    <div class="card"><h2>Mapa de estado</h2><p class="cap">Cada lote por sección, con el peor semáforo vigente.</p><div id="mapaLotes"></div></div>
+    <div class="card"><h2>Presión por categoría</h2><p class="cap">Lotes en cada estado, según la última medición.</p><canvas id="chCat" height="230"></canvas></div>
+  </div>
+</section>
 
-  <!-- PANEL -->
-  <section id="tab-panel">
-    <div class="kpis" id="kpis"></div>
-    <div class="grid2">
-      <div class="card">
-        <h2>Cobertura de monitoreo</h2>
-        <p class="cap">Lotes con al menos un conteo sobre el total sembrado de la campaña.</p>
-        <div id="cobertura"></div>
-      </div>
-      <div class="card">
-        <h2>Últimos conteos</h2>
-        <p class="cap">Los diez registros más recientes que entraron por el agente.</p>
-        <div class="tbl-wrap"><table id="tblUlt"><thead><tr><th>Fecha</th><th>Lote</th><th>Cultivo</th><th>pl/ha</th><th>Logro</th><th>Operador</th></tr></thead><tbody></tbody></table></div>
-      </div>
-    </div>
-    <div class="card">
-      <h2>Mapa de logro por equipo</h2>
-      <p class="cap">Cada lote sembrado, en su orden de equipo. Blanco = sin conteo todavía.</p>
-      <div id="grillaLotes"></div>
-    </div>
-  </section>
+<!-- ===== MONITOREO ===== -->
+<section id="s-monitoreo" style="display:none">
+  <div class="grid2">
+    <div class="card"><h2>Ranking de presión</h2><p class="cap">Ocurrencias más frecuentes por encima del umbral de control.</p><div class="tw" style="max-height:330px;overflow-y:auto"><table id="tRank"><thead><tr><th>Ocurrencia</th><th>Categoría</th><th>Lotes</th><th>Máx.</th><th>Estado</th></tr></thead><tbody></tbody></table></div></div>
+    <div class="card"><h2>Evolución</h2><p class="cap">Registros por semana, por categoría.</p><canvas id="chEvo" height="230"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Registros</h2><p class="cap" id="capMon"></p>
+    <div class="tw" style="max-height:560px;overflow-y:auto"><table id="tMon"><thead><tr>
+      <th data-k="fecha">Fecha</th><th data-k="lote">Lote</th><th data-k="cultivo">Cultivo</th>
+      <th data-k="categoria">Categoría</th><th data-k="ocurrencia">Ocurrencia</th><th data-k="indicador">Indicador</th>
+      <th data-k="valor">Valor</th><th data-k="umbral_control">U. control</th><th data-k="umbral_dano">U. daño</th>
+      <th data-k="semaforo">Estado</th><th data-k="scouter">Monitoreador</th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
 
-  <!-- LOTES -->
-  <section id="tab-lotes" style="display:none">
-    <div class="card">
-      <h2>Detalle por conteo</h2>
-      <p class="cap" id="capLotes"></p>
-      <div class="tbl-wrap"><table id="tblLotes">
-        <thead><tr>
-          <th data-k="fecha">Fecha</th><th data-k="lote">Lote</th><th data-k="sistema">Sistema</th>
-          <th data-k="equipo">Equipo</th><th data-k="superficie_ha">ha</th><th data-k="cultivo_nombre">Cultivo</th>
-          <th data-k="n_rep">Rep</th><th data-k="dist_surco_cm">Surco cm</th>
-          <th data-k="plantas_ha">pl/ha</th><th data-k="objetivo_pl_ha">Objetivo</th>
-          <th data-k="logro_pct">Logro %</th><th data-k="cv_pct">CV %</th>
-          <th data-k="semaforo">Estado</th><th data-k="operador_nombre">Operador</th>
-        </tr></thead><tbody></tbody>
-      </table></div>
-    </div>
-  </section>
+<!-- ===== STAND ===== -->
+<section id="s-stand" style="display:none">
+  <div class="kpis" id="kpisStand"></div>
+  <div class="grid2">
+    <div class="card"><h2>Objetivo vs. logrado</h2><p class="cap">Cada punto es un lote. La diagonal marca el 100 %.</p><canvas id="chStand" height="230"></canvas></div>
+    <div class="card"><h2>Coeficiente de logro por cultivo</h2><p class="cap">Promedio ponderado por superficie.</p><canvas id="chLogro" height="230"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Stand por lote</h2><p class="cap" id="capStand"></p>
+    <div class="tw"><table id="tStand"><thead><tr>
+      <th data-k="fecha">Fecha</th><th data-k="lote">Lote</th><th data-k="seccion">Secc.</th>
+      <th data-k="superficie_ha">ha</th><th data-k="cultivo">Cultivo</th>
+      <th data-k="pl_m">pl/m lin</th><th data-k="surco">Surco cm</th>
+      <th data-k="real">Densidad real</th><th data-k="obj">Objetivo</th>
+      <th data-k="coef">Logro</th><th data-k="sem">Estado</th><th data-k="scouter">Monitoreador</th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
 
-  <!-- ANALISIS -->
-  <section id="tab-analisis" style="display:none">
-    <div class="grid2">
-      <div class="card"><h2>Logro por cultivo</h2><p class="cap">Promedio ponderado por superficie del lote.</p><canvas id="chLogro" height="220"></canvas></div>
-      <div class="card"><h2>Objetivo vs. logrado</h2><p class="cap">Cada punto es un conteo. La diagonal es el 100 %.</p><canvas id="chDisp" height="220"></canvas></div>
-      <div class="card"><h2>Uniformidad</h2><p class="cap">Distribución del coeficiente de variación entre repeticiones.</p><canvas id="chCv" height="220"></canvas></div>
-      <div class="card"><h2>Conteos por semana</h2><p class="cap">Ritmo de carga del agente de WhatsApp.</p><canvas id="chTiempo" height="220"></canvas></div>
-    </div>
-    <div class="card">
-      <h2>Lotes a revisar</h2>
-      <p class="cap">Logro por debajo del 85 % o uniformidad muy irregular. Ordenados por hectáreas comprometidas.</p>
-      <div class="tbl-wrap"><table id="tblAlerta"><thead><tr><th>Lote</th><th>Cultivo</th><th>ha</th><th>pl/ha</th><th>Objetivo</th><th>Logro %</th><th>CV %</th><th>Motivo</th></tr></thead><tbody></tbody></table></div>
-    </div>
-  </section>
+<!-- ===== NOTAS ===== -->
+<section id="s-notas" style="display:none">
+  <div class="card"><h2>Fotos recientes</h2><p class="cap" id="capFotos"></p><div class="gal" id="gal"></div></div>
+  <div class="card"><h2>Notas de campo</h2><p class="cap" id="capNotas"></p><div id="notas"></div></div>
+</section>
 
-  <!-- BANDEJA -->
-  <section id="tab-bandeja" style="display:none">
-    <div class="card">
-      <h2>Bandeja de eventos</h2>
-      <p class="cap">Mensajes crudos que llegaron al webhook y no terminaron en un conteo confirmado.</p>
-      <div class="tbl-wrap"><table id="tblRaw"><thead></thead><tbody></tbody></table></div>
+<!-- ===== CARGAR ===== -->
+<section id="s-cargar" style="display:none">
+  <div class="card">
+    <h2>Nuevo monitoreo</h2>
+    <p class="cap">Se guarda en Supabase al instante. Los campos de abajo son opcionales: podés cargar solo una nota con fotos.</p>
+    <div id="formMsg"></div>
+    <div class="form">
+      <div class="fld"><label>Fecha</label><input type="date" id="nFecha"></div>
+      <div class="fld"><label>Lote</label><input id="nLote" list="dlLotes" placeholder="P54" autocapitalize="characters"><datalist id="dlLotes"></datalist></div>
+      <div class="fld"><label>Cultivo</label><input id="nCultivo" list="dlCultivos"><datalist id="dlCultivos"></datalist></div>
+      <div class="fld"><label>Variedad</label><input id="nVariedad"></div>
+      <div class="fld"><label>Fenología</label><input id="nFeno" placeholder="Z2.1 / R3"></div>
+      <div class="fld"><label>Monitoreador</label><input id="nScouter" list="dlScouters"><datalist id="dlScouters"></datalist></div>
+      <div class="fld full"><label>Nota / observación</label><textarea id="nNota" placeholder="Lo que verías escrito en el cuaderno de campo."></textarea></div>
     </div>
-  </section>
+
+    <h2 style="font-size:17px;margin-top:6px">Mediciones</h2>
+    <p class="cap">Agregá una fila por cada cosa que midas. La ocurrencia solo hace falta en malezas, plagas y enfermedades.</p>
+    <div id="meds"></div>
+    <button class="btn sm" id="btnAddMed" style="margin-top:9px">+ Agregar medición</button>
+
+    <h2 style="font-size:17px;margin-top:20px">Fotos</h2>
+    <p class="cap">Desde el celular se abre la cámara directamente.</p>
+    <input type="file" id="nFotos" accept="image/*" multiple capture="environment" style="font-size:13px">
+    <div class="thumbs" id="thumbs"></div>
+
+    <div style="margin-top:22px;display:flex;gap:9px;align-items:center">
+      <button class="btn pri" id="btnGuardar">Guardar monitoreo</button>
+      <button class="btn" id="btnLimpiar">Limpiar</button>
+      <span id="gpsTxt" class="mono" style="font-size:11px;color:var(--ink2)"></span>
+    </div>
+  </div>
+</section>
 </div>
 
 <script>
-/* ============ estado ============ */
-const S = { url:"", key:"", stand:[], siembras:[], lotes:[], raw:[], sort:{k:"fecha",dir:-1}, charts:{} };
+/* =========================== estado =========================== */
+const S={url:"",key:"",vals:[],mons:[],fotos:[],inds:[],occs:[],cats:[],
+         lotes:[],siembras:[],riegos:[],ch:{},sort:{},fotosPend:[],gps:null};
+const el=id=>document.getElementById(id);
+const nf=(v,d=0)=>v==null||v===""||isNaN(v)?"–":Number(v).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fd=s=>{if(!s)return "–";const d=new Date(s+(String(s).length<=10?"T12:00:00":""));return isNaN(d)?String(s).slice(0,10):d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const seccion=l=>{const m=String(l||"").match(/^([A-Za-z]+)/);return m?m[1].toUpperCase():"–";};
+const ORD={critico:3,atencion:2,ok:1};
+const peor=(a,b)=>(ORD[a]||0)>=(ORD[b]||0)?a:b;
 
-const nf = (v,d=0)=> v==null||isNaN(v) ? "–" : Number(v).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d});
-const nfM = v => v==null||isNaN(v) ? "–" : (v/1e6).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2});
-const fdate = s => { if(!s) return "–"; const d=new Date(s); return isNaN(d)?String(s).slice(0,10):d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"}); };
-const el = id => document.getElementById(id);
-
-/* ============ acceso a datos ============ */
-async function q(path){
-  const r = await fetch(`${S.url}/rest/v1/${path}`,{
-    headers:{ apikey:S.key, Authorization:`Bearer ${S.key}`, Accept:"application/json" }
-  });
-  if(!r.ok) throw new Error(`${path.split("?")[0]}: ${r.status} ${await r.text()}`);
-  return r.json();
+/* =========================== datos =========================== */
+async function api(path,opt={}){
+  const r=await fetch(`${S.url}/rest/v1/${path}`,{...opt,headers:{
+    apikey:S.key,Authorization:`Bearer ${S.key}`,"Content-Type":"application/json",
+    Accept:"application/json",Prefer:opt.prefer||"return=representation",...(opt.headers||{})}});
+  if(!r.ok) throw new Error(`${path.split("?")[0]} → ${r.status} ${await r.text()}`);
+  return r.status===204?null:r.json();
 }
-async function qSoft(path){ try{ return await q(path); }catch(e){ console.warn(e.message); return []; } }
+const soft=async p=>{try{return await api(p)}catch(e){console.warn(e.message);return[]}};
 
 async function cargar(){
-  el("liveTxt").textContent = "cargando…";
-  S.stand   = await q("v_stand_lote?select=*&order=fecha.desc&limit=5000");
-  S.lotes   = await qSoft("lotes?select=*&limit=5000");
-  S.siembras= await qSoft("siembras?select=*&limit=5000");
-  S.raw     = await qSoft("eventos_raw?select=*&order=created_at.desc&limit=300");
-  el("live").querySelector(".dot").classList.add("live");
-  el("liveTxt").textContent = new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
-  poblarFiltros(); render();
+  el("liveTxt").textContent="cargando…";
+  const camp=encodeURIComponent(CAMPANIA);
+  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos]=await Promise.all([
+    api(`v_mon_valores?select=*&campania=eq.${camp}&order=fecha.desc&limit=30000`),
+    api(`mon_monitoreos?select=*&campania=eq.${camp}&order=fecha.desc&limit=5000`),
+    api("mon_indicadores?select=*&activo=is.true&order=categoria_id,nombre"),
+    api("mon_ocurrencias?select=*&order=nombre"),
+    api("mon_categorias?select=*&order=orden"),
+    soft("mon_fotos?select=*&order=creado_en.desc&limit=400"),
+    soft("lotes?select=*&limit=5000"),
+    soft(`mon_siembras?select=*&campania=eq.${camp}&limit=5000`),
+    soft("riegos?select=*&limit=20000")
+  ]);
+  el("dot").classList.add("live");
+  el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+  poblar(); render();
 }
 
-/* siembras: los nombres de columna pueden variar, los detectamos */
-function colDe(obj, cands){ if(!obj) return null; const ks=Object.keys(obj); for(const c of cands){ const k=ks.find(x=>x.toLowerCase()===c); if(k) return k; } return ks.find(x=>cands.some(c=>x.toLowerCase().includes(c)))||null; }
-function mapSiembras(){
-  if(!S.siembras.length) return [];
-  const s0=S.siembras[0];
-  const kL=colDe(s0,["lote"]), kC=colDe(s0,["cultivo"]), kH=colDe(s0,["ha_sembradas","ha","superficie"]);
-  return S.siembras.map(r=>({ lote:r[kL], cultivo:r[kC], ha:Number(r[kH])||0 })).filter(r=>r.lote);
+/* detección tolerante de columnas en tablas que no controlamos */
+function pick(obj,cands){ if(!obj)return null; const ks=Object.keys(obj);
+  for(const c of cands){const k=ks.find(x=>x.toLowerCase()===c);if(k)return k;}
+  return ks.find(x=>cands.some(c=>x.toLowerCase().includes(c)))||null; }
+
+let _sbCache=null,_sbLen=-1;
+function idxSiembra(){
+  if(_sbCache&&_sbLen===S.siembras.length)return _sbCache;
+  const o={}; S.siembras.forEach(r=>{const l=String(r.lote||"").trim(); if(l) o[l]=r;});
+  _sbLen=S.siembras.length; return (_sbCache=o);
+}
+const secDe=l=>{const s=idxSiembra()[l]; return s?.seccion||seccion(l);};
+function idxRiego(){
+  const o={}; if(!S.riegos.length)return o;
+  const s=S.riegos[0],kL=pick(s,["lote"]),
+        kMM=pick(s,["mm","lamina","milimetros"]),kH=pick(s,["horas","hs"]),
+        kB=pick(s,["balance","bh","agua_util","reserva"]);
+  S.riegos.forEach(r=>{const l=String(r[kL]||"").trim(); if(!l)return;
+    o[l]=o[l]||{mm:0,horas:0,balance:null};
+    if(kMM&&!isNaN(Number(r[kMM])))o[l].mm+=Number(r[kMM])||0;
+    if(kH &&!isNaN(Number(r[kH]))) o[l].horas+=Number(r[kH])||0;
+    if(kB &&r[kB]!=null&&!isNaN(Number(r[kB])))o[l].balance=Number(r[kB]);});
+  return o;
 }
 
-/* ============ filtros ============ */
-function poblarFiltros(){
-  const set=(id,vals)=>{ const s=el(id), cur=s.value; s.innerHTML='<option value="">Todos</option>'+[...new Set(vals.filter(Boolean))].sort().map(v=>`<option>${v}</option>`).join(""); s.value=cur; };
-  set("fCultivo",S.stand.map(r=>r.cultivo_nombre||r.cultivo));
-  set("fSistema",S.stand.map(r=>r.sistema));
-  set("fEquipo", S.stand.map(r=>r.equipo));
+/* =========================== filtros =========================== */
+function poblar(){
+  const set=(id,vals,lab="Todos")=>{const s=el(id),c=s.value;
+    s.innerHTML=`<option value="">${lab}</option>`+[...new Set(vals.filter(Boolean))].sort()
+      .map(v=>`<option>${esc(v)}</option>`).join("");s.value=c;};
+  set("fCultivo",[...S.siembras.map(s=>s.cultivo),...S.mons.map(m=>m.cultivo)]);
+  set("fSistema",S.siembras.map(s=>s.sistema));
+  set("fSeccion",[...S.siembras.map(s=>s.seccion),...S.mons.map(m=>seccion(m.lote))],"Todas");
+  set("fLote",[...S.siembras.map(s=>s.lote),...S.mons.map(m=>m.lote)]);
+  set("fCat",S.cats.map(c=>c.nombre),"Todas");
+  el("hdCamp").textContent=CAMPANIA;
+  el("dlLotes").innerHTML=[...new Set([...S.mons.map(m=>m.lote),...S.lotes.map(l=>l.lote)])]
+    .filter(Boolean).sort().map(l=>`<option value="${esc(l)}">`).join("");
+  el("dlCultivos").innerHTML=[...new Set(S.mons.map(m=>m.cultivo))].filter(Boolean).sort()
+    .map(c=>`<option value="${esc(c)}">`).join("");
+  el("dlScouters").innerHTML=[...new Set(S.mons.map(m=>m.scouter))].filter(Boolean).sort()
+    .map(c=>`<option value="${esc(c)}">`).join("");
+  if(!el("nFecha").value) el("nFecha").value=new Date().toISOString().slice(0,10);
+  if(!el("meds").children.length) addMed();
 }
-function filtrados(){
-  const c=el("fCultivo").value, si=el("fSistema").value, eq=el("fEquipo").value,
-        sm=el("fSem").value, d1=el("fDesde").value, d2=el("fHasta").value;
-  return S.stand.filter(r=>{
-    if(c && (r.cultivo_nombre||r.cultivo)!==c) return false;
-    if(si && r.sistema!==si) return false;
-    if(eq && r.equipo!==eq) return false;
-    if(sm && r.semaforo!==sm) return false;
-    const f=(r.fecha||"").slice(0,10);
-    if(d1 && f<d1) return false;
-    if(d2 && f>d2) return false;
-    return true;
+const F=()=>({cul:el("fCultivo").value,sec:el("fSeccion").value,lot:el("fLote").value,sis:el("fSistema").value,
+              cat:el("fCat").value,sem:el("fSem").value,d1:el("fD1").value,d2:el("fD2").value});
+function fVals(){const f=F(),sb=idxSiembra();return S.vals.filter(v=>
+  (!f.cul||v.cultivo===f.cul)&&(!f.sec||(sb[v.lote]?.seccion||seccion(v.lote))===f.sec)&&
+  (!f.sis||sb[v.lote]?.sistema===f.sis)&&(!f.lot||v.lote===f.lot)&&
+  (!f.cat||v.categoria===f.cat)&&(!f.sem||v.semaforo===f.sem)&&
+  (!f.d1||(v.fecha||"")>=f.d1)&&(!f.d2||(v.fecha||"")<=f.d2));}
+function fMons(){const f=F(),sb=idxSiembra();return S.mons.filter(m=>
+  (!f.cul||m.cultivo===f.cul)&&(!f.sec||(sb[m.lote]?.seccion||seccion(m.lote))===f.sec)&&
+  (!f.sis||sb[m.lote]?.sistema===f.sis)&&(!f.lot||m.lote===f.lot)&&
+  (!f.d1||(m.fecha||"")>=f.d1)&&(!f.d2||(m.fecha||"")<=f.d2));}
+
+/* =========================== resumen =========================== */
+function resumenLotes(){
+  const sb=idxSiembra(),rg=idxRiego(),f=F(),out={};
+
+  // base: todos los lotes sembrados de la campaña
+  Object.values(sb).forEach(s=>{
+    out[s.lote]={lote:s.lote,sistema:s.sistema||null,seccion:s.seccion||seccion(s.lote),
+      cultivo:s.cultivo||null,variedad:s.variedad||null,f_siembra:s.fecha_siembra||null,
+      superficie_ha:s.ha!=null?Number(s.ha):null,densidad_obj:s.densidad_obj,antecesor:s.antecesor,
+      fecha:null,fenologia:null,scouter:null,cats:{},sinMonitoreo:true};
   });
+
+  // los monitoreos suman lo que sepan, y crean el lote si no estaba sembrado en el maestro
+  fMons().forEach(m=>{
+    const o=out[m.lote]=out[m.lote]||{lote:m.lote,sistema:null,seccion:seccion(m.lote),
+      cultivo:null,variedad:null,f_siembra:null,superficie_ha:null,
+      fecha:null,fenologia:null,scouter:null,cats:{},sinMonitoreo:true};
+    o.sinMonitoreo=false;
+    if(!o.fecha||m.fecha>o.fecha){o.fecha=m.fecha;o.scouter=m.scouter;
+      if(m.fenologia)o.fenologia=m.fenologia;}
+    o.cultivo=o.cultivo||m.cultivo; o.variedad=o.variedad||m.variedad;
+    o.superficie_ha=o.superficie_ha||m.superficie_ha;
+  });
+
+  // último semáforo por lote y categoría
+  const ult={};
+  fVals().forEach(v=>{const k=v.lote+"|"+v.categoria_id;
+    if(!ult[k]||v.fecha>ult[k])ult[k]=v.fecha;});
+  fVals().forEach(v=>{
+    const o=out[v.lote]; if(!o)return;
+    if(v.fecha!==ult[v.lote+"|"+v.categoria_id])return;
+    if(!v.semaforo)return;
+    const c=o.cats[v.categoria_id]=o.cats[v.categoria_id]||{sem:null,top:[]};
+    c.sem=peor(c.sem,v.semaforo);
+    if(v.semaforo!=="ok"&&v.ocurrencia)c.top.push(v.ocurrencia);
+  });
+
+  Object.values(out).forEach(o=>{
+    const r=rg[o.lote]||{};
+    o.riego_mm=r.mm||null; o.riego_hs=r.horas||null; o.balance=r.balance;
+    o._peor=Object.values(o.cats).reduce((a,c)=>peor(a,c.sem),null);
+    o._alertas=[...new Set(Object.values(o.cats).flatMap(c=>c.top))].slice(0,3);
+    o._dias=o.fecha?Math.round((Date.now()-new Date(o.fecha+"T12:00:00"))/864e5):null;
+  });
+
+  return Object.values(out).filter(o=>
+    (!f.cul||o.cultivo===f.cul)&&(!f.sec||o.seccion===f.sec)&&
+    (!f.lot||o.lote===f.lot)&&(!f.sis||o.sistema===f.sis));
 }
 
-/* ============ render ============ */
-function render(){ kpis(); cobertura(); ultimos(); grilla(); tablaLotes(); analisis(); bandeja(); }
+function render(){kpis();tablaRes();mapa();chartCat();rank();chartEvo();tablaMon();stand();notas();}
 
 function kpis(){
-  const d=filtrados();
-  const lotesMon=new Set(d.map(r=>r.lote));
-  const sm=mapSiembras();
-  const totalSemb = sm.length || new Set(S.lotes.map(l=>l.lote)).size;
-  const haMon=[...lotesMon].reduce((a,l)=>{ const r=d.find(x=>x.lote===l); return a+(Number(r?.superficie_ha)||0); },0);
-  const conObj=d.filter(r=>r.logro_pct!=null);
-  const wSum=conObj.reduce((a,r)=>a+(Number(r.superficie_ha)||1),0);
-  const logro=wSum? conObj.reduce((a,r)=>a+r.logro_pct*(Number(r.superficie_ha)||1),0)/wSum : null;
-  const crit=d.filter(r=>r.semaforo==="critico").length;
-  const pend=S.raw.filter(r=>["pendiente","incompleto","error","esperando_surco"].includes(r.estado)).length;
-
+  const R=resumenLotes(),v=fVals();
+  const crit=R.filter(r=>r._peor==="critico"),aten=R.filter(r=>r._peor==="atencion");
+  const sin=R.filter(r=>r.sinMonitoreo);
+  const ha=R.reduce((a,r)=>a+(Number(r.superficie_ha)||0),0);
+  const haCrit=crit.reduce((a,r)=>a+(Number(r.superficie_ha)||0),0);
+  const d7=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
+  const rec=R.filter(r=>r.fecha&&r.fecha>=d7).length;
+  const cob=R.length?(R.length-sin.length)/R.length*100:0;
+  const viejo=R.filter(r=>r._dias!=null&&r._dias>14).length;
   el("kpis").innerHTML=[
-    ["Conteos",nf(d.length),`${lotesMon.size} lotes distintos`],
-    ["Cobertura", totalSemb? nf(lotesMon.size/totalSemb*100,0)+"%" : "–", `${lotesMon.size} de ${nf(totalSemb)} sembrados`],
-    ["Superficie monitoreada",nf(haMon,0)+" <small>ha</small>",""],
-    ["Logro promedio", logro==null?"–":nf(logro,1)+"<small>%</small>","ponderado por hectárea"],
-    ["Lotes críticos",nf(crit),"logro < 85 %"],
-    ["En bandeja",nf(pend),"eventos sin confirmar"]
-  ].map(([l,v,h])=>`<div class="kpi"><div class="lab">${l}</div><div class="val">${v}</div><div class="hint">${h}</div></div>`).join("");
+    ["Lotes",nf(R.length),`${nf(ha,0)} ha sembradas`,""],
+    ["Cobertura",nf(cob,0)+"<small>%</small>",`${sin.length} sin recorrer`,sin.length?"warn":""],
+    ["En crítico",nf(crit.length),`${nf(haCrit,0)} ha comprometidas`,crit.length?"crit":""],
+    ["En atención",nf(aten.length),"sobre umbral de control",aten.length?"warn":""],
+    ["Últimos 7 días",nf(rec),"lotes recorridos",""],
+    ["Sin visita +14 d",nf(viejo),"recorrida atrasada",viejo?"warn":""]
+  ].map(([l,val,h,cl])=>`<div class="kpi ${cl}"><div class="lab">${l}</div><div class="val">${val}</div><div class="hint">${h}</div></div>`).join("");
 }
 
-function cobertura(){
-  const sm=mapSiembras();
-  const box=el("cobertura");
-  if(!sm.length){ box.innerHTML='<div class="empty"><b>Falta el maestro de siembras</b>No pude leer la tabla <span class="mono">siembras</span>; la cobertura se calcula cuando esté disponible.</div>'; return; }
-  const mon=new Set(S.stand.map(r=>r.lote));
-  const agg={};
-  sm.forEach(r=>{ const c=r.cultivo||"sin cultivo"; (agg[c]=agg[c]||{t:0,m:0,ha:0,haM:0}); agg[c].t++; agg[c].ha+=r.ha; if(mon.has(r.lote)){agg[c].m++; agg[c].haM+=r.ha;} });
-  box.innerHTML=Object.entries(agg).sort((a,b)=>b[1].ha-a[1].ha).map(([c,v])=>{
-    const p=v.t? v.m/v.t*100:0;
-    return `<div class="cov-row"><div style="font-size:13px">${c}</div>
-      <div class="bar"><i style="width:${p.toFixed(1)}%"></i></div>
-      <div class="n">${v.m}/${v.t} · ${nf(p,0)}% · ${nf(v.haM,0)} ha</div></div>`;
-  }).join("");
+function sortBy(key,arr,tbl){
+  const s=S.sort[tbl]||{k:key,dir:1};
+  return [...arr].sort((a,b)=>{const va=a[s.k],vb=b[s.k];
+    if(va==null)return 1; if(vb==null)return -1;
+    if(s.k==="_peor")return ((ORD[vb]||0)-(ORD[va]||0))*s.dir;
+    return (typeof va==="number"&&typeof vb==="number"?va-vb:String(va).localeCompare(String(vb),"es"))*s.dir;});
+}
+const sqOf=(c,o)=>{const s=o.cats[c]?.sem;
+  return `<span class="sq ${s||''}" title="${s?c+': '+s:'sin dato'}"></span>`;};
+
+function tablaRes(){
+  let R=resumenLotes(); const f=F();
+  if(f.sem)R=R.filter(r=>r._peor===f.sem);
+  S.sort.res=S.sort.res||{k:"_peor",dir:1};
+  R=sortBy("_peor",R,"res");
+  const sinN=R.filter(r=>r.sinMonitoreo).length;
+  el("capRes").textContent=`${R.length} lotes sembrados · ${R.length-sinN} con recorrida · ${sinN} sin recorrer. Tocá el encabezado para ordenar.`;
+  el("tRes").querySelector("tbody").innerHTML=R.length?R.map(r=>`<tr>
+    <td class="mono"><b>${esc(r.lote)}</b></td><td>${esc(r.sistema||"–")}</td><td class="mono">${esc(r.seccion)}</td>
+    <td class="num">${nf(r.superficie_ha,0)}</td><td>${esc(r.cultivo||"–")}</td>
+    <td>${esc(r.variedad||"–")}</td><td class="mono">${fd(r.f_siembra)}</td>
+    <td class="mono">${esc(r.fenologia||"–")}</td>
+    <td class="num">${nf(r.riego_mm,0)}</td><td class="num">${r.balance==null?"–":nf(r.balance,0)}</td>
+    <td class="mono">${r.fecha?fd(r.fecha)+' <span style="color:var(--ink3)">'+r._dias+'d</span>':'–'}</td>
+    <td><span class="sqs">${sqOf("malezas",r)}</span></td>
+    <td><span class="sqs">${sqOf("plagas",r)}</span></td>
+    <td><span class="sqs">${sqOf("enfermedades",r)}</span></td>
+    <td><span class="sqs">${sqOf("stand",r)}</span></td>
+    <td>${r._peor?`<span class="pill ${r._peor}">${r._peor}</span> <span style="font-size:11px;color:var(--ink2)">${esc(r._alertas.join(", "))}</span>`
+        :r.sinMonitoreo?'<span class="pill na">sin recorrer</span>':'<span class="pill na">sin umbral</span>'}</td>
+  </tr>`).join(""):`<tr><td colspan="16"><div class="empty"><b>Sin datos con estos filtros</b>Probá limpiarlos.</div></td></tr>`;
 }
 
-function ultimos(){
-  const d=filtrados().slice(0,10);
-  const tb=el("tblUlt").querySelector("tbody");
-  tb.innerHTML = d.length? d.map(r=>`<tr>
-      <td class="mono">${fdate(r.fecha)}</td><td class="mono">${r.lote}</td>
-      <td>${r.cultivo_nombre||r.cultivo||"–"}</td>
-      <td class="num">${nfM(r.plantas_ha)} M</td>
-      <td class="num">${r.logro_pct==null?"–":nf(r.logro_pct,0)+"%"}</td>
-      <td>${r.operador_nombre||"–"}</td></tr>`).join("")
-    : `<tr><td colspan="6"><div class="empty"><b>Todavía no entró ningún conteo</b>Apenas el agente reciba el primer mensaje de WhatsApp, aparece acá.</div></td></tr>`;
-}
-
-function grilla(){
-  const sm=mapSiembras();
-  const mapStand={}; S.stand.forEach(r=>{ if(!mapStand[r.lote] || r.fecha>mapStand[r.lote].fecha) mapStand[r.lote]=r; });
-  const infoLote={}; S.lotes.forEach(l=>infoLote[l.lote]=l);
-  const base = sm.length? sm.map(r=>r.lote) : Object.keys(mapStand);
-  const grupos={};
-  base.forEach(lo=>{ const g=(infoLote[lo]?.equipo)||(mapStand[lo]?.equipo)||(infoLote[lo]?.sistema)||"Sin equipo"; (grupos[g]=grupos[g]||[]).push(lo); });
-  const box=el("grillaLotes");
-  if(!base.length){ box.innerHTML='<div class="empty"><b>Sin lotes para dibujar</b>Se arma con el maestro de siembras de la campaña.</div>'; return; }
-  box.innerHTML=Object.keys(grupos).sort().map(g=>{
-    const chips=grupos[g].map(lo=>{
-      const r=mapStand[lo];
-      const cl=r? (r.semaforo||"sin") : "sin";
-      const t=r? `${lo} · ${nfM(r.plantas_ha)}M pl/ha · logro ${nf(r.logro_pct,0)}%` : `${lo} · sin conteo`;
-      return `<span class="chip ${cl}" title="${t}">${lo}</span>`;
+function mapa(){
+  const R=resumenLotes(),g={};
+  R.forEach(r=>{(g[r.seccion]=g[r.seccion]||[]).push(r);});
+  el("mapaLotes").innerHTML=Object.keys(g).sort().map(s=>{
+    const ch=g[s].sort((a,b)=>a.lote.localeCompare(b.lote,"es")).map(r=>{
+      const t=`${r.lote} · ${r.cultivo||"sin cultivo"} · ${r._peor||"sin umbral"}${r._alertas.length?" · "+r._alertas.join(", "):""}`;
+      return `<span class="chip ${r._peor||''}" title="${esc(t)}" data-lote="${esc(r.lote)}">${esc(r.lote)}</span>`;
     }).join("");
-    return `<div class="eq-group"><div class="eq-lab">${g} · ${grupos[g].length} lotes</div><div class="chips">${chips}</div></div>`;
-  }).join("");
+    return `<div class="grp"><div class="gl">${esc(s)} · ${g[s].length} lotes</div><div class="chips">${ch}</div></div>`;
+  }).join("")||'<div class="empty"><b>Sin lotes</b>No hay recorridas cargadas todavía.</div>';
+  el("mapaLotes").querySelectorAll(".chip").forEach(c=>c.onclick=()=>{
+    el("fLote").value=c.dataset.lote; render();});
 }
 
-function tablaLotes(){
-  const d=[...filtrados()].sort((a,b)=>{
-    const k=S.sort.k, va=a[k], vb=b[k];
-    if(va==null) return 1; if(vb==null) return -1;
-    return (typeof va==="number"? va-vb : String(va).localeCompare(String(vb)))*S.sort.dir;
-  });
-  el("capLotes").textContent=`${d.length} conteos. Tocá el encabezado para ordenar.`;
-  el("tblLotes").querySelector("tbody").innerHTML = d.length? d.map(r=>`<tr>
-    <td class="mono">${fdate(r.fecha)}</td><td class="mono">${r.lote}</td><td>${r.sistema||"–"}</td>
-    <td class="mono">${r.equipo||"–"}</td><td class="num">${nf(r.superficie_ha,0)}</td>
-    <td>${r.cultivo_nombre||r.cultivo||"–"}</td><td class="num">${r.n_rep??"–"}</td>
-    <td class="num">${nf(r.dist_surco_cm,0)}</td><td class="num">${nf(r.plantas_ha,0)}</td>
-    <td class="num">${nf(r.objetivo_pl_ha,0)}</td><td class="num">${r.logro_pct==null?"–":nf(r.logro_pct,1)}</td>
-    <td class="num">${r.cv_pct==null?"–":nf(r.cv_pct,1)}</td>
-    <td><span class="pill ${r.semaforo||''}">${r.semaforo||"–"}</span></td>
-    <td>${r.operador_nombre||"–"}</td></tr>`).join("")
-    : `<tr><td colspan="14"><div class="empty"><b>Sin conteos con estos filtros</b>Probá limpiar los filtros.</div></td></tr>`;
+function chart(id,cfg){if(S.ch[id])S.ch[id].destroy();const c=el(id);if(c)S.ch[id]=new Chart(c,cfg);}
+const COL={ok:"#7FA860",atencion:"#E0A62B",critico:"#B0402B"};
+
+function chartCat(){
+  const R=resumenLotes(),cats=S.cats.filter(c=>R.some(r=>r.cats[c.id]));
+  chart("chCat",{type:"bar",data:{labels:cats.map(c=>c.nombre),datasets:
+    ["ok","atencion","critico"].map(s=>({label:s,backgroundColor:COL[s],borderRadius:3,
+      data:cats.map(c=>R.filter(r=>r.cats[c.id]?.sem===s).length)}))},
+    options:{plugins:{legend:{position:"bottom",labels:{boxWidth:11,font:{size:11}}}},
+      scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:"lotes"}}},
+      maintainAspectRatio:false}});
 }
 
-function chart(id,cfg){ if(S.charts[id]) S.charts[id].destroy(); const c=el(id); if(!c) return; S.charts[id]=new Chart(c,cfg); }
-const CO="#6B7A4F", CC="#B0402B", CW="#C08A1E";
-
-function analisis(){
-  const d=filtrados().filter(r=>r.logro_pct!=null);
-  const gr={}; d.forEach(r=>{ const c=r.cultivo_nombre||r.cultivo||"–"; const w=Number(r.superficie_ha)||1; (gr[c]=gr[c]||{s:0,w:0}); gr[c].s+=r.logro_pct*w; gr[c].w+=w; });
-  const labs=Object.keys(gr);
-  chart("chLogro",{type:"bar",data:{labels:labs,datasets:[{data:labs.map(c=>gr[c].s/gr[c].w),backgroundColor:labs.map(c=>{const v=gr[c].s/gr[c].w;return v>=95?CO:v>=85?CW:CC;}),borderRadius:4}]},
-    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,suggestedMin:60,suggestedMax:110,title:{display:true,text:"logro %"}}},maintainAspectRatio:false}});
-
-  chart("chDisp",{type:"scatter",data:{datasets:[
-      {label:"conteos",data:d.map(r=>({x:r.objetivo_pl_ha/1e6,y:r.plantas_ha/1e6,lote:r.lote})),backgroundColor:"rgba(107,122,79,.65)",pointRadius:4},
-      {label:"100 %",type:"line",data:(()=>{const m=Math.max(1,...d.map(r=>Math.max(r.objetivo_pl_ha,r.plantas_ha)/1e6));return [{x:0,y:0},{x:m,y:m}];})(),borderColor:"#C9C3B0",borderDash:[5,4],pointRadius:0,fill:false}
-    ]},
-    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.lote?`${c.raw.lote}: ${c.raw.y.toFixed(2)}M vs ${c.raw.x.toFixed(2)}M`:""}}},
-      scales:{x:{title:{display:true,text:"objetivo M pl/ha"}},y:{title:{display:true,text:"logrado M pl/ha"}}},maintainAspectRatio:false}});
-
-  const bins=[0,5,10,15,20,30,100], lb=["0-5","5-10","10-15","15-20","20-30","+30"];
-  const cnt=lb.map((_,i)=>filtrados().filter(r=>r.cv_pct!=null&&r.cv_pct>=bins[i]&&r.cv_pct<bins[i+1]).length);
-  chart("chCv",{type:"bar",data:{labels:lb,datasets:[{data:cnt,backgroundColor:lb.map((_,i)=>i<2?CO:i<4?CW:CC),borderRadius:4}]},
-    options:{plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:"CV %"}},y:{beginAtZero:true,title:{display:true,text:"conteos"}}},maintainAspectRatio:false}});
-
-  const sem={}; filtrados().forEach(r=>{ const dt=new Date(r.fecha); if(isNaN(dt))return; const on=new Date(dt); on.setDate(dt.getDate()-((dt.getDay()+6)%7)); const k=on.toISOString().slice(0,10); sem[k]=(sem[k]||0)+1; });
-  const ks=Object.keys(sem).sort();
-  chart("chTiempo",{type:"bar",data:{labels:ks.map(k=>fdate(k)),datasets:[{data:ks.map(k=>sem[k]),backgroundColor:CO,borderRadius:4}]},
-    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:"conteos"}}},maintainAspectRatio:false}});
-
-  const al=filtrados().filter(r=>(r.logro_pct!=null&&r.logro_pct<85)||(r.cv_pct!=null&&r.cv_pct>20))
-    .sort((a,b)=>(Number(b.superficie_ha)||0)-(Number(a.superficie_ha)||0));
-  el("tblAlerta").querySelector("tbody").innerHTML= al.length? al.map(r=>{
-    const m=[]; if(r.logro_pct!=null&&r.logro_pct<85)m.push("stand bajo"); if(r.cv_pct!=null&&r.cv_pct>20)m.push("muy irregular");
-    return `<tr><td class="mono">${r.lote}</td><td>${r.cultivo_nombre||r.cultivo||"–"}</td>
-      <td class="num">${nf(r.superficie_ha,0)}</td><td class="num">${nf(r.plantas_ha,0)}</td>
-      <td class="num">${nf(r.objetivo_pl_ha,0)}</td><td class="num">${nf(r.logro_pct,1)}</td>
-      <td class="num">${r.cv_pct==null?"–":nf(r.cv_pct,1)}</td><td>${m.join(" · ")}</td></tr>`;
-  }).join("") : `<tr><td colspan="8"><div class="empty"><b>Nada para revisar</b>Ningún conteo cayó por debajo del umbral.</div></td></tr>`;
+function rank(){
+  const a={};
+  fVals().filter(v=>v.semaforo&&v.semaforo!=="ok"&&v.ocurrencia).forEach(v=>{
+    const k=v.categoria+"|"+v.ocurrencia;
+    a[k]=a[k]||{occ:v.ocurrencia,cat:v.categoria,lotes:new Set(),max:0,sem:null};
+    a[k].lotes.add(v.lote); a[k].max=Math.max(a[k].max,Number(v.valor)||0);
+    a[k].sem=peor(a[k].sem,v.semaforo);});
+  const L=Object.values(a).sort((x,y)=>y.lotes.size-x.lotes.size||y.max-x.max).slice(0,40);
+  el("tRank").querySelector("tbody").innerHTML=L.length?L.map(r=>`<tr>
+    <td>${esc(r.occ)}</td><td>${esc(r.cat)}</td><td class="num">${r.lotes.size}</td>
+    <td class="num">${nf(r.max,1)}</td><td><span class="pill ${r.sem}">${r.sem}</span></td></tr>`).join("")
+    :`<tr><td colspan="5"><div class="empty"><b>Nada por encima del umbral</b>Ninguna ocurrencia superó el umbral de control.</div></td></tr>`;
 }
 
-function bandeja(){
-  const t=el("tblRaw");
-  const d=S.raw.filter(r=>r.estado!=="confirmado");
-  if(!d.length){ t.querySelector("thead").innerHTML=""; t.querySelector("tbody").innerHTML=`<tr><td><div class="empty"><b>Bandeja limpia</b>No hay eventos crudos sin resolver.</div></td></tr>`; return; }
-  const cols=Object.keys(d[0]).filter(k=>!["id"].includes(k)).slice(0,9);
-  t.querySelector("thead").innerHTML=`<tr>${cols.map(c=>`<th>${c.replace(/_/g," ")}</th>`).join("")}</tr>`;
-  t.querySelector("tbody").innerHTML=d.map(r=>`<tr>${cols.map(c=>{
-    let v=r[c]; if(v&&typeof v==="object") v=JSON.stringify(v);
-    v=v==null?"–":String(v); if(v.length>90) v=v.slice(0,90)+"…";
-    return `<td${c.includes("fecha")||c.includes("created")?' class="mono"':''}>${v}</td>`;
-  }).join("")}</tr>`).join("");
+function chartEvo(){
+  const w={},cats=[...new Set(fVals().map(v=>v.categoria))];
+  fVals().forEach(v=>{const d=new Date(v.fecha);if(isNaN(d))return;
+    const o=new Date(d);o.setDate(d.getDate()-((d.getDay()+6)%7));
+    const k=o.toISOString().slice(0,10);(w[k]=w[k]||{})[v.categoria]=((w[k]||{})[v.categoria]||0)+1;});
+  const ks=Object.keys(w).sort();
+  const pal=Object.fromEntries(S.cats.map(c=>[c.nombre,c.color||"#6B7A4F"]));
+  chart("chEvo",{type:"bar",data:{labels:ks.map(fd),datasets:cats.map(c=>({label:c,
+    backgroundColor:pal[c]||"#6B7A4F",borderRadius:3,data:ks.map(k=>w[k][c]||0)}))},
+    options:{plugins:{legend:{position:"bottom",labels:{boxWidth:11,font:{size:10}}}},
+      scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:"registros"}}},
+      maintainAspectRatio:false}});
 }
 
-/* ============ eventos ============ */
-document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>{
+function tablaMon(){
+  S.sort.mon=S.sort.mon||{k:"fecha",dir:-1};
+  const d=sortBy("fecha",fVals(),"mon").slice(0,1200);
+  el("capMon").textContent=`${fVals().length} registros${fVals().length>1200?" (se muestran los 1.200 primeros)":""}.`;
+  el("tMon").querySelector("tbody").innerHTML=d.length?d.map(v=>`<tr>
+    <td class="mono">${fd(v.fecha)}</td><td class="mono">${esc(v.lote)}</td><td>${esc(v.cultivo||"–")}</td>
+    <td>${esc(v.categoria)}</td><td>${esc(v.ocurrencia||"–")}</td><td>${esc(v.indicador)}</td>
+    <td class="num">${nf(v.valor,v.decimales??2)} <span style="color:var(--ink3);font-size:11px">${esc(v.unidad||"")}</span></td>
+    <td class="num">${nf(v.umbral_control,2)}</td><td class="num">${nf(v.umbral_dano,2)}</td>
+    <td>${v.semaforo?`<span class="pill ${v.semaforo}">${v.semaforo}</span>`:'<span class="pill na">–</span>'}</td>
+    <td>${esc(v.scouter||"–")}</td></tr>`).join("")
+    :`<tr><td colspan="11"><div class="empty"><b>Sin registros</b>Probá limpiar los filtros.</div></td></tr>`;
+}
+
+/* =========================== stand =========================== */
+function standData(){
+  const b={};
+  fVals().filter(v=>v.categoria_id==="stand").forEach(v=>{
+    const k=v.lote+"|"+v.fecha;
+    const o=b[k]=b[k]||{lote:v.lote,seccion:seccion(v.lote),fecha:v.fecha,cultivo:v.cultivo,
+      superficie_ha:v.superficie_ha,scouter:v.scouter,n:v.n_muestras};
+    const n=v.indicador;
+    if(n==="Densidad real")o.real=v.valor;
+    else if(n==="Densidad objetivo")o.obj=v.valor;
+    else if(n==="Coeficiente de logro")o.coef=v.valor;
+    else if(n==="Espaciamiento entre surcos")o.surco=v.valor;
+    else if(n==="Plantas por metro lineal")o.pl_m=v.valor;});
+  const L=Object.values(b);
+  L.forEach(o=>{
+    if(o.coef==null&&o.real&&o.obj)o.coef=o.real/o.obj;
+    o.sem=o.coef==null?null:o.coef<=0.80?"critico":o.coef<=0.90?"atencion":"ok";});
+  const u={};
+  L.sort((a,b2)=>b2.fecha.localeCompare(a.fecha)).forEach(o=>{if(!u[o.lote])u[o.lote]=o;});
+  return Object.values(u);
+}
+function stand(){
+  const D=standData().filter(o=>o.real!=null||o.coef!=null);
+  const con=D.filter(o=>o.coef!=null),w=con.reduce((a,o)=>a+(Number(o.superficie_ha)||1),0);
+  const prom=w?con.reduce((a,o)=>a+o.coef*(Number(o.superficie_ha)||1),0)/w:null;
+  el("kpisStand").innerHTML=[
+    ["Lotes con stand",nf(D.length),"última medición por lote",""],
+    ["Logro promedio",prom==null?"–":nf(prom*100,1)+"<small>%</small>","ponderado por hectárea",""],
+    ["Bajo 90 %",nf(con.filter(o=>o.coef<=0.90).length),"por debajo del umbral",con.filter(o=>o.coef<=0.90).length?"warn":""],
+    ["Bajo 80 %",nf(con.filter(o=>o.coef<=0.80).length),"resiembra a evaluar",con.filter(o=>o.coef<=0.80).length?"crit":""]
+  ].map(([l,v,h,c])=>`<div class="kpi ${c}"><div class="lab">${l}</div><div class="val">${v}</div><div class="hint">${h}</div></div>`).join("");
+
+  const pts=D.filter(o=>o.real&&o.obj);
+  const mx=Math.max(1,...pts.flatMap(o=>[o.real,o.obj]))/1e6;
+  chart("chStand",{type:"scatter",data:{datasets:[
+    {data:pts.map(o=>({x:o.obj/1e6,y:o.real/1e6,l:o.lote})),pointRadius:4,
+     backgroundColor:pts.map(o=>COL[o.sem]||"#8E8974")},
+    {type:"line",data:[{x:0,y:0},{x:mx,y:mx}],borderColor:"#C9C3B0",borderDash:[5,4],pointRadius:0,fill:false}]},
+    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.l?
+      `${c.raw.l}: ${c.raw.y.toFixed(2)}M real vs ${c.raw.x.toFixed(2)}M obj`:""}}},
+      scales:{x:{title:{display:true,text:"objetivo M pl/ha"}},y:{title:{display:true,text:"real M pl/ha"}}},
+      maintainAspectRatio:false}});
+
+  const g={};
+  con.forEach(o=>{const c=o.cultivo||"–";const wt=Number(o.superficie_ha)||1;
+    g[c]=g[c]||{s:0,w:0};g[c].s+=o.coef*wt;g[c].w+=wt;});
+  const ls=Object.keys(g);
+  chart("chLogro",{type:"bar",data:{labels:ls,datasets:[{borderRadius:4,
+    data:ls.map(c=>g[c].s/g[c].w*100),
+    backgroundColor:ls.map(c=>{const v=g[c].s/g[c].w;return v>0.9?COL.ok:v>0.8?COL.atencion:COL.critico;})}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{suggestedMin:50,suggestedMax:120,
+      title:{display:true,text:"logro %"}}},maintainAspectRatio:false}});
+
+  S.sort.st=S.sort.st||{k:"coef",dir:1};
+  const L=sortBy("coef",D,"st");
+  el("capStand").textContent=`${D.length} lotes. Se muestra la última medición de cada uno.`;
+  el("tStand").querySelector("tbody").innerHTML=L.length?L.map(o=>`<tr>
+    <td class="mono">${fd(o.fecha)}</td><td class="mono"><b>${esc(o.lote)}</b></td><td class="mono">${esc(o.seccion)}</td>
+    <td class="num">${nf(o.superficie_ha,0)}</td><td>${esc(o.cultivo||"–")}</td>
+    <td class="num">${nf(o.pl_m,1)}</td><td class="num">${nf(o.surco,1)}</td>
+    <td class="num">${nf(o.real,0)}</td><td class="num">${nf(o.obj,0)}</td>
+    <td class="num">${o.coef==null?"–":nf(o.coef*100,1)+" %"}</td>
+    <td>${o.sem?`<span class="pill ${o.sem}">${o.sem}</span>`:'<span class="pill na">–</span>'}</td>
+    <td>${esc(o.scouter||"–")}</td></tr>`).join("")
+    :`<tr><td colspan="12"><div class="empty"><b>Sin mediciones de stand</b>Cargá una desde la pestaña Cargar.</div></td></tr>`;
+}
+
+/* =========================== notas y fotos =========================== */
+function notas(){
+  const ms=fMons(),ids=new Set(ms.map(m=>m.id));
+  const F=S.fotos.filter(f=>ids.has(f.monitoreo_id));
+  el("capFotos").textContent=`${F.length} fotos.`;
+  el("gal").innerHTML=F.length?F.slice(0,60).map(f=>{
+    const m=ms.find(x=>x.id===f.monitoreo_id)||{};
+    const u=`${S.url}/storage/v1/object/public/monitoreo/${f.path}`;
+    return `<a href="${u}" target="_blank" rel="noopener" title="${esc(m.lote||"")} · ${fd(m.fecha)}">
+      <img src="${u}" alt="${esc(f.epigrafe||m.lote||"foto")}" loading="lazy"></a>`;}).join("")
+    :'<div class="empty"><b>Sin fotos</b>Se cargan desde la pestaña Cargar.</div>';
+
+  const N=ms.filter(m=>m.nota&&m.nota.trim());
+  el("capNotas").textContent=`${N.length} notas.`;
+  el("notas").innerHTML=N.length?N.slice(0,150).map(m=>`<div class="nota">
+    <div class="meta"><span class="mono">${fd(m.fecha)}</span> · <b class="mono">${esc(m.lote)}</b>
+      ${m.cultivo?" · "+esc(m.cultivo):""}${m.fenologia?" · "+esc(m.fenologia):""}
+      ${m.scouter?" · "+esc(m.scouter):""}${m.origen!=="app"?` · <span style="color:var(--ink3)">${esc(m.origen)}</span>`:""}</div>
+    <div class="txt">${esc(m.nota)}</div></div>`).join("")
+    :'<div class="empty"><b>Sin notas</b>Todavía no se cargó ninguna observación.</div>';
+}
+
+/* =========================== formulario =========================== */
+function addMed(){
+  const i=document.createElement("div");i.className="medrow";
+  const cats=S.cats.map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join("");
+  i.innerHTML=`
+    <div class="fld"><label>Categoría</label><select class="mCat"><option value="">–</option>${cats}</select></div>
+    <div class="fld"><label>Indicador</label><select class="mInd"><option value="">–</option></select></div>
+    <div class="fld"><label>Ocurrencia</label><input class="mOcc" list="dlOcc" placeholder="opcional"></div>
+    <div class="fld"><label>Valor</label><input class="mVal" type="number" step="any" inputmode="decimal"></div>
+    <div class="fld"><label>&nbsp;</label><button class="btn sm mDel" title="Quitar">✕</button></div>`;
+  el("meds").appendChild(i);
+  const cs=i.querySelector(".mCat"),is=i.querySelector(".mInd");
+  cs.onchange=()=>{is.innerHTML='<option value="">–</option>'+S.inds.filter(x=>x.categoria_id===cs.value)
+    .map(x=>`<option value="${x.id}">${esc(x.nombre)}${x.unidad?" ("+esc(x.unidad)+")":""}</option>`).join("");};
+  i.querySelector(".mDel").onclick=e=>{e.preventDefault();i.remove();};
+  if(!el("dlOcc")){const dl=document.createElement("datalist");dl.id="dlOcc";document.body.appendChild(dl);}
+  el("dlOcc").innerHTML=S.occs.filter(o=>o.activo!==false)
+    .map(o=>`<option value="${esc(o.nombre)}">`).join("");
+}
+
+el("nFotos").addEventListener("change",e=>{
+  [...e.target.files].forEach(f=>S.fotosPend.push(f));
+  e.target.value="";pintarThumbs();});
+function pintarThumbs(){
+  el("thumbs").innerHTML=S.fotosPend.map((f,i)=>
+    `<div class="thumb"><img src="${URL.createObjectURL(f)}" alt=""><button data-i="${i}">✕</button></div>`).join("");
+  el("thumbs").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    S.fotosPend.splice(+b.dataset.i,1);pintarThumbs();});
+}
+navigator.geolocation?.getCurrentPosition(p=>{
+  S.gps={lat:p.coords.latitude,lon:p.coords.longitude};
+  el("gpsTxt").textContent=`GPS ${S.gps.lat.toFixed(5)}, ${S.gps.lon.toFixed(5)}`;
+},()=>{el("gpsTxt").textContent="sin GPS";},{timeout:8000});
+
+function fmsg(t,cl){el("formMsg").innerHTML=t?`<div class="msg ${cl}">${esc(t)}</div>`:"";}
+
+async function guardar(){
+  const lote=el("nLote").value.trim().toUpperCase();
+  const fecha=el("nFecha").value;
+  const nota=el("nNota").value.trim();
+  const meds=[...el("meds").querySelectorAll(".medrow")].map(r=>({
+    ind:r.querySelector(".mInd").value, occ:r.querySelector(".mOcc").value.trim(),
+    val:r.querySelector(".mVal").value})).filter(m=>m.ind&&m.val!=="");
+  if(!lote||!fecha) return fmsg("Falta el lote o la fecha.","err");
+  if(!meds.length&&!nota&&!S.fotosPend.length)
+    return fmsg("Cargá al menos una medición, una nota o una foto.","err");
+
+  el("btnGuardar").disabled=true; fmsg("Guardando…","ok");
+  try{
+    const mon=(await api("mon_monitoreos",{method:"POST",body:JSON.stringify([{
+      fecha,lote,campania:CAMPANIA,
+      cultivo:el("nCultivo").value.trim()||null, variedad:el("nVariedad").value.trim()||null,
+      fenologia:el("nFeno").value.trim()||null, scouter:el("nScouter").value.trim()||null,
+      nota:nota||null, lat:S.gps?.lat??null, lon:S.gps?.lon??null,
+      origen:"app", ext_id:"app-"+crypto.randomUUID()}])}))[0];
+
+    if(meds.length){
+      const occById=Object.fromEntries(S.occs.map(o=>[o.nombre.toLowerCase(),o]));
+      const indById=Object.fromEntries(S.inds.map(i=>[String(i.id),i]));
+      const rows=[];
+      for(const m of meds){
+        let oid=null;
+        if(m.occ){
+          const found=occById[m.occ.toLowerCase()];
+          if(found)oid=found.id;
+          else{
+            const cat=indById[m.ind]?.categoria_id;
+            const nueva=(await api("mon_ocurrencias",{method:"POST",body:JSON.stringify(
+              [{categoria_id:cat,nombre:m.occ,activo:true}])}))[0];
+            S.occs.push(nueva); occById[m.occ.toLowerCase()]=nueva; oid=nueva.id;
+          }
+        }
+        rows.push({monitoreo_id:mon.id,indicador_id:Number(m.ind),ocurrencia_id:oid,valor:Number(m.val)});
+      }
+      await api("mon_valores",{method:"POST",body:JSON.stringify(rows),prefer:"return=minimal"});
+    }
+
+    for(const f of S.fotosPend){
+      const ext=(f.name.split(".").pop()||"jpg").toLowerCase();
+      const path=`${CAMPANIA.replace("/","-")}/${lote}/${Date.now()}-${Math.random().toString(36).slice(2,7)}.${ext}`;
+      const up=await fetch(`${S.url}/storage/v1/object/monitoreo/${path}`,{method:"POST",
+        headers:{apikey:S.key,Authorization:`Bearer ${S.key}`,"Content-Type":f.type||"image/jpeg"},body:f});
+      if(!up.ok) throw new Error("foto: "+await up.text());
+      await api("mon_fotos",{method:"POST",body:JSON.stringify([{monitoreo_id:mon.id,path}]),prefer:"return=minimal"});
+    }
+
+    fmsg(`Guardado: ${lote} del ${fd(fecha)} · ${meds.length} mediciones · ${S.fotosPend.length} fotos.`,"ok");
+    limpiar(false); await cargar();
+  }catch(e){ fmsg("No se pudo guardar. "+e.message,"err"); }
+  finally{ el("btnGuardar").disabled=false; }
+}
+function limpiar(msg=true){
+  ["nLote","nVariedad","nFeno","nNota"].forEach(i=>el(i).value="");
+  el("meds").innerHTML=""; addMed(); S.fotosPend=[]; pintarThumbs();
+  if(msg)fmsg("","");
+}
+
+/* =========================== eventos =========================== */
+document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
-  ["panel","lotes","analisis","bandeja"].forEach(t=>el("tab-"+t).style.display = t===b.dataset.tab?"":"none");
-  el("filters").style.display = b.dataset.tab==="bandeja"?"none":"flex";
-}));
-["fCultivo","fSistema","fEquipo","fSem","fDesde","fHasta"].forEach(id=>el(id).addEventListener("change",render));
-el("fReset").addEventListener("click",()=>{["fCultivo","fSistema","fEquipo","fSem","fDesde","fHasta"].forEach(id=>el(id).value="");render();});
-el("btnRefresh").addEventListener("click",()=>cargar().catch(e=>alert(e.message)));
-el("tblLotes").querySelectorAll("th").forEach(th=>th.addEventListener("click",()=>{
-  const k=th.dataset.k; S.sort = {k, dir: S.sort.k===k? -S.sort.dir : 1}; tablaLotes();
-}));
+  ["resumen","monitoreo","stand","notas","cargar"].forEach(t=>
+    el("s-"+t).style.display=t===b.dataset.t?"":"none");
+  el("filters").style.display=b.dataset.t==="cargar"?"none":"flex";});
+["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"].forEach(i=>el(i).onchange=render);
+el("fReset").onclick=()=>{["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"]
+  .forEach(i=>el(i).value="");render();};
+el("btnRefresh").onclick=()=>cargar().catch(e=>alert(e.message));
+el("btnAddMed").onclick=e=>{e.preventDefault();addMed();};
+el("btnGuardar").onclick=e=>{e.preventDefault();guardar();};
+el("btnLimpiar").onclick=e=>{e.preventDefault();limpiar();};
+[["tRes","res",tablaRes],["tMon","mon",tablaMon],["tStand","st",stand]].forEach(([t,k,fn])=>
+  el(t).querySelectorAll("th[data-k]").forEach(th=>th.onclick=()=>{
+    const c=S.sort[k]||{}; S.sort[k]={k:th.dataset.k,dir:c.k===th.dataset.k?-(c.dir||1):1}; fn();}));
 
-/* ============ arranque ============ */
-function arrancar(url,key){
-  S.url=url.replace(/\/+$/,""); S.key=key;
+/* =========================== arranque =========================== */
+function arrancar(u,k){
+  S.url=u.replace(/\/+$/,""); S.key=k;
   el("cfgScreen").style.display="none"; el("app").style.display="";
   cargar().catch(e=>{
     el("app").style.display="none"; el("cfgScreen").style.display="";
-    el("cfgErr").innerHTML=`<div class="err">No pude leer los datos. ${e.message}<br>Revisá que la anon key sea la del proyecto y que las políticas RLS permitan lectura a <span class="mono">anon</span>.</div>`;
-  });
+    el("cfgErr").innerHTML=`<div class="msg err">No pude leer los datos. ${esc(e.message)}<br>
+      Revisá que hayas corrido los scripts SQL y que la anon key sea la del proyecto.</div>`;});
 }
-el("cfgGo").addEventListener("click",()=>arrancar(el("cfgUrl").value.trim(), el("cfgKey").value.trim()));
+el("cfgGo").onclick=()=>arrancar(el("cfgUrl").value.trim(),el("cfgKey").value.trim());
+el("cfgUrl").value=SUPABASE_URL;
 if(SUPABASE_ANON_KEY) arrancar(SUPABASE_URL,SUPABASE_ANON_KEY);
-else { el("cfgScreen").style.display=""; el("cfgUrl").value=SUPABASE_URL; }
-setInterval(()=>{ if(S.key) cargar().catch(()=>{}); }, 120000);
+else el("cfgScreen").style.display="";
+setInterval(()=>{if(S.key&&el("s-cargar").style.display==="none")cargar().catch(()=>{});},180000);
 </script>
 </body>
 </html>
