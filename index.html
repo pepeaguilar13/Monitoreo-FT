@@ -717,6 +717,12 @@ const CAMPANIA = "26/27";
 const S={url:"",key:"",vals:[],mons:[],fotos:[],inds:[],occs:[],cats:[],
          lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],ch:{},sort:{},fotosPend:[],gps:null};
 const el=id=>document.getElementById(id);
+const hoyISO=()=>{const d=new Date();
+  return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);};
+// crypto.randomUUID no existe en iOS anteriores a 15.4
+const uuid=()=>(self.crypto?.randomUUID)?crypto.randomUUID()
+  :"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{
+     const r=Math.random()*16|0; return (c==="x"?r:(r&0x3|0x8)).toString(16);});
 const nf=(v,d=0)=>v==null||v===""||isNaN(v)?"–":Number(v).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fd=s=>{if(!s)return "–";const d=new Date(s+(String(s).length<=10?"T12:00:00":""));return isNaN(d)?String(s).slice(0,10):d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -2041,17 +2047,21 @@ async function guardar(){
     return fmsg("Cargá al menos una medición, la fenología, una nota o una foto.","err");
 
   el("btnGuardar").disabled=true; fmsg("Guardando…","ok");
+  let paso="preparar los datos", monId=null;
   try{
     const sb=M.ctx||{};
+    paso="crear el monitoreo";
     const mon=(await api("mon_monitoreos",{method:"POST",body:JSON.stringify([{
-      fecha:new Date().toISOString().slice(0,10), lote:M.lote, campania:CAMPANIA,
+      fecha:hoyISO(), lote:M.lote, campania:CAMPANIA,
       cultivo:sb.cultivo||null, variedad:sb.variedad||null, fenologia:feno,
       superficie_ha:sb.ha!=null?Number(sb.ha):null,
       scouter:localStorage_get("scouter")||null, nota:nota||null,
       lat:S.gps?.lat??null, lon:S.gps?.lon??null,
-      origen:"app", ext_id:"app-"+crypto.randomUUID()}])}))[0];
+      origen:"app", ext_id:"app-"+uuid()}])}))[0];
+    monId=mon.id;
 
     if(V.length){
+      paso="guardar las mediciones";
       const byName={}; S.occs.forEach(o=>byName[(o.categoria_id+"|"+o.nombre).toLowerCase()]=o);
       const indCat={}; S.inds.forEach(i=>indCat[i.id]=i.categoria_id);
       const rows=[];
@@ -2086,6 +2096,7 @@ async function guardar(){
       await api("mon_valores",{method:"POST",body:JSON.stringify(rows),prefer:"return=minimal"});
     }
 
+    paso="subir las fotos";
     const slug=x=>String(x).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9_-]/g,"_");
 
     // Fotos etiquetadas por especie: alimentan el atlas propio.
@@ -2127,6 +2138,7 @@ async function guardar(){
     }
 
     const lote=M.lote, nV=V.length, nF=M.fotos.length+espFotos.length;
+    paso="recargar los datos";
     await cargar();
     reiniciarCarga();
     const det=[nV?`${nV} mediciones`:null, okFotos?`${okFotos} de ${nF} fotos`:null]
@@ -2135,7 +2147,13 @@ async function guardar(){
       fmsg(`Se guardó ${lote}${det?" con "+det:""}, pero ${nF-okFotos} foto(s) no subieron: ${errFoto}`,"err");
     else
       fmsg(`Guardado ${lote}${det?": "+det:""}. Elegí el próximo lote.`,"ok");
-  }catch(e){ fmsg("No se pudo guardar el monitoreo. "+e.message,"err"); }
+  }catch(e){
+    console.error("guardar ·",paso,e);
+    const salvado = monId
+      ? "El monitoreo quedó guardado igual: revisalo en Registros antes de cargarlo de nuevo."
+      : "No se creó ningún registro, podés reintentar.";
+    fmsg(`Falló al ${paso}. ${e.name||"Error"}: ${e.message}. ${salvado}`,"err");
+  }
   finally{ el("btnGuardar").disabled=false; }
 }
 function localStorage_get(){return null;}   // sin almacenamiento local por ahora
@@ -2311,17 +2329,19 @@ async function cGuardar(){
   if(!V.length&&!nota&&!C.fotos.length) return cMsg("Cargá al menos los granos contados.","err");
 
   el("cGuardar").disabled=true; cMsg("Guardando…","ok");
+  let cpaso="crear el control", cId=null;
   try{
     const extra=[C.d.contratista?`contratista: ${C.d.contratista}`:null,
                  C.d.maquinista?`maquinista: ${C.d.maquinista}`:null,
                  `medido con ${C.d.marco}`].filter(Boolean).join(" · ");
     const mon=(await api("mon_monitoreos",{method:"POST",body:JSON.stringify([{
-      fecha:new Date().toISOString().slice(0,10), lote:C.lote, campania:CAMPANIA,
+      fecha:hoyISO(), lote:C.lote, campania:CAMPANIA,
       cultivo:C.ctx?.cultivo||null, variedad:C.ctx?.variedad||null,
       superficie_ha:C.ctx?.ha!=null?Number(C.ctx.ha):null,
       scouter:null, nota:[nota,extra].filter(Boolean).join(" · ")||null,
       lat:S.gps?.lat??null, lon:S.gps?.lon??null,
-      origen:"app", ext_id:"cos-"+crypto.randomUUID()}])}))[0];
+      origen:"app", ext_id:"cos-"+uuid()}])}))[0];
+    cId=mon.id; cpaso="guardar las mediciones";
 
     if(V.length){
       const byName={}; S.occs.forEach(o=>byName[(o.categoria_id+"|"+o.nombre).toLowerCase()]=o);
@@ -2333,6 +2353,7 @@ async function cGuardar(){
       }
       await api("mon_valores",{method:"POST",body:JSON.stringify(rows),prefer:"return=minimal"});
     }
+    cpaso="subir las fotos";
     let okF=0;
     const slug=x=>String(x).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9_-]/g,"_");
     for(const f of C.fotos){
@@ -2349,7 +2370,12 @@ async function cGuardar(){
     const lote=C.lote;
     await cargar(); cReiniciar(); tablaCosecha();
     cMsg(`Control de ${lote} guardado${okF?`, ${okF} fotos`:""}.`,"ok");
-  }catch(e){ cMsg("No se pudo guardar. "+e.message,"err"); }
+  }catch(e){
+    console.error("cosecha ·",cpaso,e);
+    cMsg(`Falló al ${cpaso}. ${e.name||"Error"}: ${e.message}. ${cId
+      ? "El control quedó guardado: revisalo en la tabla de abajo."
+      : "No se creó ningún registro, podés reintentar."}`,"err");
+  }
   finally{ el("cGuardar").disabled=false; }
 }
 function cReiniciar(){
@@ -2462,7 +2488,8 @@ navigator.geolocation?.getCurrentPosition(
 
 /* =========================== arranque =========================== */
 function arrancar(u,k){
-  S.url=u.replace(/\/+$/,""); S.key=k;
+  S.url=String(u).trim().replace(/\/+$/,"");
+  S.key=String(k).replace(/\s/g,"");
   el("cfgScreen").style.display="none"; el("app").style.display="";
   cargar().catch(e=>{
     el("app").style.display="none"; el("cfgScreen").style.display="";
