@@ -196,6 +196,12 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px}
 .gal a{display:block;border-radius:8px;overflow:hidden;border:1px solid var(--line);aspect-ratio:4/3}
 .gal img{width:100%;height:100%;object-fit:cover;display:block}
+.gal a{position:relative}
+.gal a.rota{background:var(--sand)}
+.gal a.rota::after{content:"formato no soportado";position:absolute;inset:0;display:flex;
+  align-items:center;justify-content:center;font-size:11px;color:var(--ink2);text-align:center;padding:8px}
+.gal a figcaption{position:absolute;left:0;right:0;bottom:0;background:rgba(38,38,31,.72);color:#fff;
+  font-size:10.5px;padding:3px 6px;font-family:'Geist Mono',monospace}
 .nota{border-bottom:1px solid var(--sand);padding:11px 0}
 .nota .meta{font-size:11px;color:var(--ink2);margin-bottom:3px}
 .nota .txt{font-size:13.5px;line-height:1.45}
@@ -802,8 +808,10 @@ function notas(){
   el("gal").innerHTML=F.length?F.slice(0,60).map(f=>{
     const m=ms.find(x=>x.id===f.monitoreo_id)||{};
     const u=`${S.url}/storage/v1/object/public/monitoreo/${f.path}`;
-    return `<a href="${u}" target="_blank" rel="noopener" title="${esc(m.lote||"")} · ${fd(m.fecha)}">
-      <img src="${u}" alt="${esc(f.epigrafe||m.lote||"foto")}" loading="lazy"></a>`;}).join("")
+    return `<a href="${u}" target="_blank" rel="noopener" title="${esc(m.lote||"")} · ${fd(m.fecha)}${m.scouter?" · "+esc(m.scouter):""}">
+      <img src="${u}" alt="${esc(f.epigrafe||m.lote||"foto")}" loading="lazy"
+           onerror="this.closest('a').classList.add('rota')">
+      <figcaption>${esc(m.lote||"")} · ${fd(m.fecha)}</figcaption></a>`;}).join("")
     :'<div class="empty"><b>Sin fotos</b>Se cargan desde la pestaña Monitoreo.</div>';
 
   const N=ms.filter(m=>m.nota&&m.nota.trim());
@@ -1169,6 +1177,22 @@ function cajaDe(m){
 }
 
 /* ---- fotos ---- */
+// El iPhone saca en HEIC, que Chrome no muestra, y las fotos pesan 3-5 MB.
+// Se reescalan y convierten a JPEG antes de subirlas.
+async function aJpeg(file,max=1600,q=0.82){
+  const bmp=await (self.createImageBitmap
+    ? createImageBitmap(file)
+    : new Promise((ok,err)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=err;
+        i.src=URL.createObjectURL(file);}));
+  const e=Math.min(1,max/Math.max(bmp.width,bmp.height));
+  const c=document.createElement("canvas");
+  c.width=Math.round(bmp.width*e); c.height=Math.round(bmp.height*e);
+  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+  const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",q));
+  if(bmp.close) bmp.close();
+  if(!blob) throw new Error("no se pudo convertir la imagen");
+  return blob;
+}
 function pintarThumbs(){
   el("thumbs").innerHTML=M.fotos.map((f,i)=>
     `<div class="thumb"><img src="${URL.createObjectURL(f)}" alt=""><button data-i="${i}">✕</button></div>`).join("");
@@ -1289,20 +1313,33 @@ async function guardar(){
       await api("mon_valores",{method:"POST",body:JSON.stringify(rows),prefer:"return=minimal"});
     }
 
-    for(const f of M.fotos){
-      const ext=(f.name.split(".").pop()||"jpg").toLowerCase();
-      const path=`${CAMPANIA.replace("/","-")}/${M.lote}/${Date.now()}-${Math.random().toString(36).slice(2,7)}.${ext}`;
-      const up=await fetch(`${S.url}/storage/v1/object/monitoreo/${path}`,{method:"POST",
-        headers:{apikey:S.key,Authorization:`Bearer ${S.key}`,"Content-Type":f.type||"image/jpeg"},body:f});
-      if(!up.ok) throw new Error("foto: "+await up.text());
-      await api("mon_fotos",{method:"POST",body:JSON.stringify([{monitoreo_id:mon.id,path}]),prefer:"return=minimal"});
+    // Las fotos van aparte: si alguna falla, el monitoreo ya está guardado igual.
+    let okFotos=0, errFoto=null;
+    const slug=x=>String(x).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9_-]/g,"_");
+    for(let i=0;i<M.fotos.length;i++){
+      try{
+        fmsg(`Guardado. Subiendo foto ${i+1} de ${M.fotos.length}…`,"ok");
+        const blob=await aJpeg(M.fotos[i]);
+        const path=`${slug(CAMPANIA)}/${slug(M.lote)}/${Date.now()}-${Math.random().toString(36).slice(2,7)}.jpg`;
+        const up=await fetch(`${S.url}/storage/v1/object/monitoreo/${path}`,{method:"POST",
+          headers:{apikey:S.key,Authorization:`Bearer ${S.key}`,"Content-Type":"image/jpeg","x-upsert":"true"},
+          body:blob});
+        if(!up.ok) throw new Error(await up.text());
+        await api("mon_fotos",{method:"POST",body:JSON.stringify([{monitoreo_id:mon.id,path}]),prefer:"return=minimal"});
+        okFotos++;
+      }catch(e){ errFoto=e.message; console.error("foto",i,e); }
     }
 
-    const lote=M.lote;
+    const lote=M.lote, nV=V.length, nF=M.fotos.length;
     await cargar();
     reiniciarCarga();
-    fmsg(`Guardado ${lote}: ${V.length} mediciones${M.fotos.length?", "+M.fotos.length+" fotos":""}. Elegí el próximo lote.`,"ok");
-  }catch(e){ fmsg("No se pudo guardar. "+e.message,"err"); }
+    const det=[nV?`${nV} mediciones`:null, okFotos?`${okFotos} de ${nF} fotos`:null]
+      .filter(Boolean).join(" · ");
+    if(errFoto&&okFotos<nF)
+      fmsg(`Se guardó ${lote}${det?" con "+det:""}, pero ${nF-okFotos} foto(s) no subieron: ${errFoto}`,"err");
+    else
+      fmsg(`Guardado ${lote}${det?": "+det:""}. Elegí el próximo lote.`,"ok");
+  }catch(e){ fmsg("No se pudo guardar el monitoreo. "+e.message,"err"); }
   finally{ el("btnGuardar").disabled=false; }
 }
 function localStorage_get(){return null;}   // sin almacenamiento local por ahora
@@ -1335,7 +1372,9 @@ el("qLote").addEventListener("keydown",e=>{
   else if(el("qLote").value.trim()) elegirLote(el("qLote").value.trim().toUpperCase());
 });
 el("nFotos").addEventListener("change",e=>{
-  [...e.target.files].forEach(f=>M.fotos.push(f)); e.target.value=""; pintarThumbs();});
+  const n=e.target.files.length;
+  [...e.target.files].forEach(f=>M.fotos.push(f)); e.target.value=""; pintarThumbs();
+  if(n) fmsg(`${M.fotos.length} foto(s) listas. Se comprimen al guardar.`,"ok");});
 navigator.geolocation?.getCurrentPosition(
   p=>{S.gps={lat:p.coords.latitude,lon:p.coords.longitude};
       el("gpsTxt").textContent=`GPS ${S.gps.lat.toFixed(5)}, ${S.gps.lon.toFixed(5)}`;},
