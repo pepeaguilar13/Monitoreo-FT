@@ -221,7 +221,8 @@ const CAMPANIA = "26/27";
     <div class="tw"><table id="tStand"><thead><tr>
       <th data-k="fecha">Fecha</th><th data-k="lote">Lote</th><th data-k="seccion">Secc.</th>
       <th data-k="superficie_ha">ha</th><th data-k="cultivo">Cultivo</th>
-      <th data-k="pl_m">pl/m lin</th><th data-k="surco">Surco cm</th>
+      <th data-k="variedad">Variedad</th>
+      <th data-k="pl_m">pl/m lin</th><th data-k="surco">Surco cm</th><th data-k="pl_m2">pl/m²</th>
       <th data-k="real">Densidad real</th><th data-k="obj">Objetivo</th>
       <th data-k="coef">Logro</th><th data-k="sem">Estado</th><th data-k="scouter">Monitoreador</th>
     </tr></thead><tbody></tbody></table></div>
@@ -550,25 +551,61 @@ function tablaMon(){
 
 /* =========================== stand =========================== */
 function standData(){
-  const b={};
+  const sb=idxSiembra(),b={};
+  // Cropwise a veces guarda dos bloques por lote: uno en ceros y otro con los
+  // valores reales. Se toma siempre el mayor valor no nulo de cada indicador.
+  const may=(a,v)=>(v==null||isNaN(v))?a:(a==null?Number(v):Math.max(a,Number(v)));
+
   fVals().filter(v=>v.categoria_id==="stand").forEach(v=>{
     const k=v.lote+"|"+v.fecha;
-    const o=b[k]=b[k]||{lote:v.lote,seccion:seccion(v.lote),fecha:v.fecha,cultivo:v.cultivo,
+    const o=b[k]=b[k]||{lote:v.lote,fecha:v.fecha,cultivo:v.cultivo,
       superficie_ha:v.superficie_ha,scouter:v.scouter,n:v.n_muestras};
-    const n=v.indicador;
-    if(n==="Densidad real")o.real=v.valor;
-    else if(n==="Densidad objetivo")o.obj=v.valor;
-    else if(n==="Coeficiente de logro")o.coef=v.valor;
-    else if(n==="Espaciamiento entre surcos")o.surco=v.valor;
-    else if(n==="Plantas por metro lineal")o.pl_m=v.valor;});
+    switch(v.indicador){
+      case "Densidad real":                o.real_cw=may(o.real_cw,v.valor); break;
+      case "Densidad objetivo":            o.obj_cw =may(o.obj_cw, v.valor); break;
+      case "Coeficiente de logro":         o.coef_cw=may(o.coef_cw,v.valor); break;
+      case "Espaciamiento entre surcos":   o.surco  =may(o.surco,  v.valor); break;
+      case "Plantas por metro lineal":     o.pl_m   =may(o.pl_m,   v.valor); break;
+      case "Plantas por metro cuadrado":   o.pl_m2  =may(o.pl_m2,  v.valor); break;
+    }
+  });
+
+  // densidad objetivo del maestro de siembras: viene en pl/m² (trigo, cebada)
+  // o en pl/ha (cártamo, garbanzo). Se normaliza a pl/ha.
+  const aHa=v=>v==null||!isFinite(v)||v<=0?null:(v<5000?v*10000:v);
+
   const L=Object.values(b);
   L.forEach(o=>{
-    if(o.coef==null&&o.real&&o.obj)o.coef=o.real/o.obj;
-    o.sem=o.coef==null?null:o.coef<=0.80?"critico":o.coef<=0.90?"atencion":"ok";});
+    const si=sb[o.lote]||{};
+    o.seccion=si.seccion||seccion(o.lote);
+    o.sistema=si.sistema||null;
+    o.cultivo=o.cultivo||si.cultivo||null;
+    o.variedad=si.variedad||null;
+    o.superficie_ha=o.superficie_ha||(si.ha!=null?Number(si.ha):null);
+
+    // densidad real: la de Cropwise si existe; si no, se calcula
+    o.real = (o.real_cw>0?o.real_cw:null)
+          ?? (o.pl_m2>0 ? o.pl_m2*10000 : null)
+          ?? ((o.pl_m>0&&o.surco>0) ? (o.pl_m/(o.surco/100))*10000 : null);
+    o.calc = (o.real_cw>0) ? null : (o.real!=null ? "calculada" : null);
+
+    // plantas por m²: para mostrar y para el cálculo inverso
+    o.pl_m2 = o.pl_m2>0 ? o.pl_m2 : (o.real!=null ? o.real/10000 : null);
+
+    // objetivo: el de Cropwise si existe; si no, el del maestro de siembras
+    o.obj = (o.obj_cw>0?o.obj_cw:null) ?? aHa(si.densidad_obj);
+    o.obj_src = (o.obj_cw>0) ? null : (o.obj!=null ? "siembra" : null);
+
+    o.coef = (o.coef_cw>0?o.coef_cw:null) ??
+             ((o.real&&o.obj) ? o.real/o.obj : null);
+    o.sem  = o.coef==null?null:o.coef<=0.80?"critico":o.coef<=0.90?"atencion":"ok";
+  });
+
   const u={};
-  L.sort((a,b2)=>b2.fecha.localeCompare(a.fecha)).forEach(o=>{if(!u[o.lote])u[o.lote]=o;});
+  L.sort((a,c)=>String(c.fecha).localeCompare(String(a.fecha))).forEach(o=>{if(!u[o.lote])u[o.lote]=o;});
   return Object.values(u);
 }
+
 function stand(){
   const D=standData().filter(o=>o.real!=null||o.coef!=null);
   el("s-stand").querySelectorAll(".chartbox").forEach(b=>b.style.display=D.length?"":"none");
@@ -606,14 +643,17 @@ function stand(){
   const L=sortBy("coef",D,"st");
   el("capStand").textContent=`${D.length} lotes. Se muestra la última medición de cada uno.`;
   el("tStand").querySelector("tbody").innerHTML=L.length?L.map(o=>`<tr>
-    <td class="mono">${fd(o.fecha)}</td><td class="mono"><b>${esc(o.lote)}</b></td><td class="mono">${esc(o.seccion)}</td>
+    <td class="mono">${fd(o.fecha)}</td><td class="mono"><b>${esc(o.lote)}</b></td><td class="mono">${esc(o.seccion||"–")}</td>
     <td class="num">${nf(o.superficie_ha,0)}</td><td>${esc(o.cultivo||"–")}</td>
+    <td>${esc(o.variedad||"–")}</td>
     <td class="num">${nf(o.pl_m,1)}</td><td class="num">${nf(o.surco,1)}</td>
-    <td class="num">${nf(o.real,0)}</td><td class="num">${nf(o.obj,0)}</td>
+    <td class="num">${nf(o.pl_m2,0)}</td>
+    <td class="num">${nf(o.real,0)}${o.calc?' <span style="color:var(--ink3);font-size:10px" title="calculada a partir de pl/m² o pl/m lineal">calc</span>':''}</td>
+    <td class="num">${nf(o.obj,0)}${o.obj_src?' <span style="color:var(--ink3);font-size:10px" title="tomada del maestro de siembras">sb</span>':''}</td>
     <td class="num">${o.coef==null?"–":nf(o.coef*100,1)+" %"}</td>
     <td>${o.sem?`<span class="pill ${o.sem}">${o.sem}</span>`:'<span class="pill na">–</span>'}</td>
     <td>${esc(o.scouter||"–")}</td></tr>`).join("")
-    :`<tr><td colspan="12"><div class="empty"><b>Sin mediciones de stand</b>Cargá una desde la pestaña Cargar.</div></td></tr>`;
+    :`<tr><td colspan="15"><div class="empty"><b>Sin mediciones de stand</b>Cargá una desde la pestaña Cargar.</div></td></tr>`;
 }
 
 /* =========================== notas y fotos =========================== */
