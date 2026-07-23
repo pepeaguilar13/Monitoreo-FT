@@ -306,6 +306,94 @@ details[open] summary::before{content:"▾ "}
 .cfg p{font-size:13px;color:var(--ink2);margin:0 0 16px;line-height:1.5}
 .cfg input{width:100%;font:inherit;font-size:13px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-family:'Geist Mono',monospace}
 .cfg label{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);margin:12px 0 4px}
+
+/* ============ ficha de lote ============ */
+.ficha{margin-bottom:16px}
+.fhero{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:20px 22px;margin-bottom:11px;display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start}
+.fhero .fid{min-width:150px}
+.fhero .fnom{font-family:'Instrument Serif',serif;font-size:58px;line-height:.92;letter-spacing:-.025em}
+.fhero .fsub{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);margin-top:8px}
+.fhero .fcul{font-family:'Instrument Serif',serif;font-size:26px;line-height:1.15;margin-bottom:2px}
+.fhero .fvar{font-size:13px;color:var(--ink2)}
+.fhero dl{display:flex;flex-wrap:wrap;gap:20px 26px;margin:12px 0 0}
+.fhero dt{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.fhero dd{margin:3px 0 0;font-family:'Geist Mono',monospace;font-size:15px}
+.fhero dd span{font-size:11px;color:var(--ink3);font-family:Geist,sans-serif}
+.fsem{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap}
+.fsemb{border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-width:92px}
+.fsemb .fl{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)}
+.fsemb .fv{font-size:13px;font-weight:600;margin-top:4px}
+.fsemb.ok{background:#EEF4E7;border-color:#C4D6B0} .fsemb.ok .fv{color:#3E6B28}
+.fsemb.atencion{background:#FBF3E2;border-color:#E7D3A6} .fsemb.atencion .fv{color:#8A6110}
+.fsemb.critico{background:#FAEBE7;border-color:#E3BCB1} .fsemb.critico .fv{color:var(--crit)}
+.fsemb.na .fv{color:var(--ink3);font-weight:400}
+
+.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:11px}
+.bx{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 17px;
+  display:flex;flex-direction:column;min-width:0}
+.bx h3{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink2);
+  margin:0 0 12px;font-weight:500}
+.bx .big{font-family:'Geist Mono',monospace;font-size:38px;line-height:1;letter-spacing:-.03em}
+.bx .big small{font-size:14px;color:var(--ink2);letter-spacing:0}
+.bx .pie{font-size:11.5px;color:var(--ink2);margin-top:auto;padding-top:11px;line-height:1.45}
+.b3{grid-column:span 3} .b4{grid-column:span 4} .b5{grid-column:span 5}
+.b6{grid-column:span 6} .b8{grid-column:span 8} .b12{grid-column:span 12}
+@media(max-width:1000px){.b3,.b4,.b5{grid-column:span 6}.b8{grid-column:span 12}}
+@media(max-width:620px){
+  .bento{grid-template-columns:repeat(2,1fr);gap:8px}
+  .b3,.b4,.b5,.b6,.b8,.b12{grid-column:span 2}
+  .b3.mitad{grid-column:span 1}
+  .bx{padding:13px 14px;border-radius:11px}
+  .bx .big{font-size:30px}
+  .fhero{padding:16px;gap:16px}
+  .fhero .fnom{font-size:44px}
+  .fsem{margin-left:0;width:100%}
+  .fsemb{flex:1;min-width:0}
+}
+
+/* calicata: perfil de humedad en corte */
+.cali{display:flex;gap:13px;align-items:stretch}
+.calicol{width:76px;border-radius:7px;overflow:hidden;border:1px solid var(--line);
+  display:flex;flex-direction:column;flex-shrink:0}
+.calicap{flex:1;position:relative;min-height:34px;display:flex;align-items:center;justify-content:center}
+.calicap+.calicap{border-top:1px solid rgba(255,255,255,.35)}
+.calicap b{font-family:'Geist Mono',monospace;font-size:14px;color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.35)}
+.calicap.vacia{background:repeating-linear-gradient(45deg,var(--sand),var(--sand) 5px,#E4DECC 5px,#E4DECC 10px)}
+.calicap.vacia b{color:var(--ink3);text-shadow:none;font-size:11px}
+.caliesc{display:flex;flex-direction:column;justify-content:space-between;
+  font-family:'Geist Mono',monospace;font-size:10px;color:var(--ink3);padding:2px 0}
+.caliesc span{flex:1;display:flex;align-items:center}
+.calileg{font-size:11px;color:var(--ink2);line-height:1.5;margin-top:11px}
+.calileg i{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:3px}
+
+/* arco de logro de stand */
+.arco{display:flex;align-items:center;gap:15px}
+.arco svg{flex-shrink:0}
+
+/* cronología de campaña */
+.crono{position:relative;padding:26px 0 6px}
+.cline{position:absolute;left:0;right:0;top:34px;height:2px;background:var(--sand)}
+.cline i{position:absolute;left:0;top:0;height:100%;background:var(--olive)}
+.chito{position:absolute;transform:translateX(-50%);text-align:center;width:76px}
+.chito .cpto{width:11px;height:11px;border-radius:50%;background:var(--olive);margin:0 auto 6px;
+  border:2px solid var(--panel);box-shadow:0 0 0 1px var(--line)}
+.chito.hoy .cpto{background:var(--crit);width:13px;height:13px}
+.chito.riego .cpto{background:#4E7A5E}
+.chito .cfec{font-family:'Geist Mono',monospace;font-size:10px;color:var(--ink3)}
+.chito .clab{font-size:10.5px;color:var(--ink2);line-height:1.25;margin-top:1px}
+.cronowrap{overflow-x:auto;padding-bottom:6px}
+.cronoin{position:relative;height:82px;min-width:520px}
+
+.fgal{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px}
+.fgal a{display:block;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.fgal img{width:100%;height:100%;object-fit:cover;display:block}
+.fnota{font-size:12.5px;line-height:1.5;padding:8px 0;border-bottom:1px solid var(--sand)}
+.fnota:last-child{border-bottom:0}
+.fnota .fm{font-family:'Geist Mono',monospace;font-size:10.5px;color:var(--ink3);margin-bottom:2px}
+.vacio{font-size:12px;color:var(--ink3);padding:10px 0}
+
 canvas{max-width:100%;display:block}
 .chartbox{position:relative;height:250px;width:100%}
 .chartbox canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
@@ -397,7 +485,9 @@ const CAMPANIA = "26/27";
 <!-- ===== RESUMEN ===== -->
 <section id="s-resumen" style="display:none">
   <div class="kpis" id="kpis"></div>
-  <div class="card">
+  <div id="ficha" style="display:none"></div>
+
+  <div class="card" id="cardTabla">
     <h2>Estado por lote</h2>
     <p class="cap" id="capRes"></p>
     <div class="tw" style="max-height:640px;overflow-y:auto"><table id="tRes"><thead><tr>
@@ -652,6 +742,235 @@ function fMons(){const f=F(),sb=idxSiembra();return S.mons.filter(m=>
   (!f.sis||sb[m.lote]?.sistema===f.sis)&&(!f.lot||String(m.lote).toUpperCase()===f.lot)&&
   (!f.d1||(m.fecha||"")>=f.d1)&&(!f.d2||(m.fecha||"")<=f.d2));}
 
+
+/* =========================== ficha de lote =========================== */
+// Rampa de suelo: del ocre seco al azul de saturación.
+const HUMCOL={1:"#B0765A",1.5:"#C9A063",2:"#8B9A5B",2.5:"#4E7A5E",3:"#3D6B7D"};
+const HUMTXT={1:"seco",1.5:"50 % CC",2:"75 % CC",2.5:"capacidad de campo",3:"saturado"};
+const humCol=v=>v==null?null:HUMCOL[[1,1.5,2,2.5,3].reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a)];
+
+function datosLote(lote){
+  const sb=idxSiembra()[lote]||{}, rg=idxRiego()[lote]||{};
+  const mons=S.mons.filter(m=>String(m.lote).toUpperCase()===lote).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  const vals=S.vals.filter(v=>String(v.lote).toUpperCase()===lote);
+  const feno=mons.find(m=>m.fenologia);
+  const st=standData().find(d=>String(d.lote).toUpperCase()===lote);
+
+  // humedad: la lectura más reciente de cada profundidad
+  const hum={}; let humFecha=null;
+  ["0-20 cm","20-40 cm","40-60 cm","60-80 cm"].forEach(pr=>{
+    const c=vals.filter(v=>v.indicador==="Humedad "+pr).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)))[0];
+    if(c){hum[pr]=c.valor; if(!humFecha||c.fecha>humFecha)humFecha=c.fecha;}
+  });
+
+  // último semáforo por categoría
+  const cats={}, ult={};
+  vals.forEach(v=>{const k=v.categoria_id; if(!ult[k]||v.fecha>ult[k])ult[k]=v.fecha;});
+  vals.forEach(v=>{
+    if(v.fecha!==ult[v.categoria_id]||!v.semaforo)return;
+    const c=cats[v.categoria_id]=cats[v.categoria_id]||{sem:null,top:[],fecha:v.fecha};
+    c.sem=peor(c.sem,v.semaforo);
+    if(v.semaforo!=="ok"&&v.ocurrencia)c.top.push(`${v.ocurrencia} ${nf(v.valor,v.decimales??1)}${v.unidad||""}`);
+  });
+
+  const dias=f=>f?Math.round((Date.now()-new Date(f+"T12:00:00"))/864e5):null;
+  return {lote,sb,rg,mons,vals,feno,st,hum,humFecha,cats,dias,
+          fotos:S.fotos.filter(f=>mons.some(m=>m.id===f.monitoreo_id))};
+}
+
+function fichaLote(lote){
+  const D=datosLote(lote), sb=D.sb, rg=D.rg;
+  const ddSiembra=D.dias(sb.fecha_siembra);
+  const ultima=D.mons[0];
+
+  const semb=(id,lab)=>{
+    const c=D.cats[id];
+    return `<div class="fsemb ${c?.sem||'na'}"><div class="fl">${lab}</div>
+      <div class="fv">${c?.sem||"sin dato"}</div></div>`;
+  };
+
+  el("ficha").innerHTML=`<div class="ficha">
+    <div class="fhero">
+      <div class="fid">
+        <div class="fnom">${esc(lote)}</div>
+        <div class="fsub">${esc(sb.sistema||"sistema sin dato")}${sb.seccion?" · sección "+esc(sb.seccion):""}${rg.equipos?.length?" · "+esc(rg.equipos.join("/")):""}</div>
+      </div>
+      <div>
+        <div class="fcul">${esc(sb.cultivo||ultima?.cultivo||"Sin cultivo")}</div>
+        <div class="fvar">${esc(sb.variedad||"variedad sin cargar")}</div>
+        <dl>
+          <div><dt>Superficie</dt><dd>${nf(sb.ha,0)} <span>ha</span></dd></div>
+          <div><dt>Siembra</dt><dd>${fd(sb.fecha_siembra)} ${ddSiembra?`<span>${ddSiembra} d</span>`:""}</dd></div>
+          <div><dt>Antecesor</dt><dd style="font-family:Geist,sans-serif;font-size:13px">${esc(sb.antecesor||"–")}</dd></div>
+          <div><dt>Última visita</dt><dd>${ultima?fd(ultima.fecha):"–"} ${ultima?`<span>${D.dias(ultima.fecha)} d</span>`:""}</dd></div>
+        </dl>
+      </div>
+      <div class="fsem">
+        ${semb("malezas","Malezas")}${semb("plagas","Plagas")}
+        ${semb("enfermedades","Enfermedades")}${semb("stand","Stand")}
+      </div>
+    </div>
+
+    <div class="bento">
+      ${bxFenologia(D)}
+      ${bxHumedad(D)}
+      ${bxRiego(D)}
+      ${bxStand(D)}
+      ${bxSanidad(D)}
+      ${bxCrono(D)}
+      ${bxFotos(D)}
+      ${bxNotas(D)}
+    </div>
+  </div>`;
+}
+
+function bxFenologia(D){
+  const f=D.feno, d=f?D.dias(f.fecha):null;
+  const dd=D.dias(D.sb.fecha_siembra);
+  return `<div class="bx b3 mitad"><h3>Fenología</h3>
+    <div class="big" style="${!f?"color:var(--ink3);font-size:22px":""}">${f?esc(f.fenologia):"sin registro"}</div>
+    <div class="pie">${f
+      ? `Anotada el ${fd(f.fecha)}${d>21?`, hace <b style="color:var(--warn)">${d} días</b>`:d!=null?`, hace ${d} días`:""}.
+         ${dd?`El lote lleva ${dd} días desde la siembra.`:""}`
+      : `Todavía nadie anotó el estadio.${dd?` El lote lleva ${dd} días desde la siembra.`:""}`}</div></div>`;
+}
+
+function bxHumedad(D){
+  const PR=["0-20 cm","20-40 cm","40-60 cm","60-80 cm"];
+  const hay=PR.some(p=>D.hum[p]!=null);
+  const capas=PR.map(p=>{
+    const v=D.hum[p];
+    if(v==null) return `<div class="calicap vacia"><b>–</b></div>`;
+    const et=[1,1.5,2,2.5,3].reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a);
+    const lab={1:"1",1.5:"1+",2:"2",2.5:"2+",3:"3"}[et];
+    return `<div class="calicap" style="background:${humCol(v)}" title="${p}: ${HUMTXT[et]}"><b>${lab}</b></div>`;
+  }).join("");
+  const vs=PR.map(p=>D.hum[p]).filter(v=>v!=null);
+  const prom=vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null;
+  const cc=prom==null?null:{1:25,1.5:50,2:75,2.5:100,3:115}[[1,1.5,2,2.5,3].reduce((a,b)=>Math.abs(b-prom)<Math.abs(a-prom)?b:a)];
+  return `<div class="bx b3 mitad"><h3>Perfil de humedad</h3>
+    <div class="cali">
+      <div class="calicol">${capas}</div>
+      <div class="caliesc">${PR.map(p=>`<span>${p}</span>`).join("")}</div>
+    </div>
+    ${hay?`<div class="calileg">
+      <i style="background:#B0765A"></i>seco
+      <i style="background:#C9A063;margin-left:9px"></i>50 %
+      <i style="background:#8B9A5B;margin-left:9px"></i>75 %
+      <i style="background:#4E7A5E;margin-left:9px"></i>CC
+      <i style="background:#3D6B7D;margin-left:9px"></i>saturado</div>`:""}
+    <div class="pie">${hay
+      ? `Medido el ${fd(D.humFecha)}. Promedio del perfil ${nf(prom,2)}, cerca del <b>${cc} % de capacidad de campo</b>.`
+      : `Sin lecturas de humedad. Se cargan desde Monitoreo.`}</div></div>`;
+}
+
+function bxRiego(D){
+  const r=D.rg, pct=r.cumplimiento_pct!=null?Number(r.cumplimiento_pct):null;
+  const ap=r.mm_aplicado!=null?Number(r.mm_aplicado):null;
+  return `<div class="bx b3 mitad"><h3>Riego de la campaña</h3>
+    <div class="big">${ap==null?"–":nf(ap,0)}<small> mm</small></div>
+    ${r.mm_planificado!=null?`<div style="margin-top:11px">
+      <div class="bar" style="height:7px"><i style="width:${Math.min(100,pct||0)}%;
+        background:${pct>=90?"var(--olive)":pct>=70?"var(--warn)":"var(--crit)"}"></i></div>
+      <div style="font-size:11px;color:var(--ink2);margin-top:5px;font-family:'Geist Mono',monospace">
+        ${nf(pct,0)} % de ${nf(r.mm_planificado,0)} mm planificados</div></div>`:""}
+    <div class="pie">${r.mm_pendiente>0?`Faltan <b>${nf(r.mm_pendiente,0)} mm</b> del plan.`:
+      ap!=null?"Plan de riego cumplido.":"Este lote no tiene plan de riego cargado."}
+      ${r.ult_wk_regada?` Última semana regada: ${r.ult_wk_regada}.`:""}</div></div>`;
+}
+
+function bxStand(D){
+  const st=D.st;
+  const c=st?.coef, pc=c==null?null:Math.min(1.3,c);
+  const R=34, C=2*Math.PI*R, frac=pc==null?0:Math.min(1,pc/1.3);
+  const col=c==null?"#C9C3B0":c<=0.8?"var(--crit)":c<=0.9?"var(--warn)":"var(--olive)";
+  return `<div class="bx b3 mitad"><h3>Stand de plantas</h3>
+    <div class="arco">
+      <svg width="82" height="82" viewBox="0 0 82 82" aria-hidden="true">
+        <circle cx="41" cy="41" r="${R}" fill="none" stroke="var(--sand)" stroke-width="9"/>
+        <circle cx="41" cy="41" r="${R}" fill="none" stroke="${col}" stroke-width="9"
+          stroke-linecap="round" stroke-dasharray="${(C*frac).toFixed(1)} ${C.toFixed(1)}"
+          transform="rotate(-90 41 41)"/>
+        <text x="41" y="46" text-anchor="middle" font-family="Geist Mono,monospace"
+          font-size="17" fill="var(--ink)">${c==null?"–":nf(c*100,0)+"%"}</text>
+      </svg>
+      <div style="font-family:'Geist Mono',monospace;font-size:12.5px;line-height:1.7">
+        ${st?.real!=null?`<div>${nf(st.real/1000,0)}k <span style="color:var(--ink3)">pl/ha</span></div>`:""}
+        ${st?.obj!=null?`<div style="color:var(--ink2)">${nf(st.obj/1000,0)}k objetivo</div>`:""}
+        ${st?.pl_m!=null?`<div style="color:var(--ink3);font-size:11.5px">${nf(st.pl_m,1)} pl/m lineal</div>`:""}
+      </div>
+    </div>
+    <div class="pie">${st
+      ? (st.dudoso?`<b style="color:#5B4A82">Revisar:</b> ${esc(st.dudoso)}.`
+        :`Medido el ${fd(st.fecha)}${st.obj_src==="sb"?", objetivo del maestro de siembras":""}.`)
+      : "Sin medición de stand en este lote."}</div></div>`;
+}
+
+function bxSanidad(D){
+  const cats=["malezas","plagas","enfermedades"].map(id=>{
+    const c=D.cats[id]; if(!c) return null;
+    const nom={malezas:"Malezas",plagas:"Plagas",enfermedades:"Enfermedades"}[id];
+    return `<div style="padding:9px 0;border-bottom:1px solid var(--sand)">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span class="sq ${c.sem}"></span><b style="font-size:13.5px">${nom}</b>
+        <span style="margin-left:auto;font-family:'Geist Mono',monospace;font-size:11px;color:var(--ink3)">${fd(c.fecha)}</span>
+      </div>
+      ${c.top.length?`<div style="font-size:12px;color:var(--ink2);margin-top:4px;padding-left:21px">
+        ${esc(c.top.slice(0,4).join(" · "))}</div>`:""}
+    </div>`;
+  }).filter(Boolean);
+  return `<div class="bx b6"><h3>Sanidad · última recorrida de cada categoría</h3>
+    ${cats.length?cats.join(""):'<div class="vacio">Todavía no se midió nada sanitario en este lote.</div>'}
+    </div>`;
+}
+
+function bxCrono(D){
+  const hitos=[];
+  if(D.sb.fecha_siembra) hitos.push({f:D.sb.fecha_siembra,lab:"Siembra",tipo:"siembra"});
+  D.mons.slice().reverse().forEach(m=>{
+    const q=[]; if(m.fenologia)q.push(m.fenologia);
+    hitos.push({f:m.fecha,lab:q.length?q.join(" "):"Recorrida",tipo:"mon"});
+  });
+  hitos.push({f:new Date().toISOString().slice(0,10),lab:"Hoy",tipo:"hoy"});
+  const ts=hitos.map(h=>+new Date(h.f+"T12:00:00")).filter(t=>!isNaN(t));
+  if(ts.length<2) return "";
+  const t0=Math.min(...ts), t1=Math.max(...ts), span=Math.max(1,t1-t0);
+  const vis=hitos.filter((h,i)=>hitos.length<=9||h.tipo!=="mon"||i%Math.ceil(hitos.length/8)===0||i===hitos.length-2);
+  return `<div class="bx b6"><h3>Cronología de la campaña</h3>
+    <div class="cronowrap"><div class="cronoin">
+      <div class="cline"><i style="width:100%"></i></div>
+      ${vis.map(h=>{
+        const t=+new Date(h.f+"T12:00:00"); if(isNaN(t))return "";
+        const x=Math.min(97,Math.max(3,(t-t0)/span*100));
+        return `<div class="chito ${h.tipo==="hoy"?"hoy":""}" style="left:${x}%">
+          <div class="cpto"></div><div class="cfec">${fd(h.f)}</div>
+          <div class="clab">${esc(h.lab)}</div></div>`;
+      }).join("")}
+    </div></div>
+    <div class="pie">${D.mons.length} ${D.mons.length===1?"recorrida":"recorridas"} desde
+      ${fd(D.mons[D.mons.length-1]?.fecha)}.</div></div>`;
+}
+
+function bxFotos(D){
+  const F=D.fotos.slice(0,8);
+  return `<div class="bx b6"><h3>Fotos del lote</h3>
+    ${F.length?`<div class="fgal">${F.map(f=>{
+      const u=`${S.url}/storage/v1/object/public/monitoreo/${f.path}`;
+      const m=D.mons.find(x=>x.id===f.monitoreo_id)||{};
+      return `<a href="${u}" target="_blank" rel="noopener" title="${fd(m.fecha)}${f.epigrafe?" · "+esc(f.epigrafe):""}">
+        <img src="${u}" alt="${esc(f.epigrafe||"foto del lote")}" loading="lazy"></a>`;}).join("")}</div>`
+    :'<div class="vacio">Sin fotos. Se sacan desde Monitoreo.</div>'}</div>`;
+}
+
+function bxNotas(D){
+  const N=D.mons.filter(m=>m.nota&&m.nota.trim()).slice(0,6);
+  return `<div class="bx b6"><h3>Notas de campo</h3>
+    ${N.length?N.map(m=>`<div class="fnota">
+      <div class="fm">${fd(m.fecha)}${m.scouter?" · "+esc(m.scouter):""}</div>
+      ${esc(m.nota)}</div>`).join("")
+    :'<div class="vacio">Sin observaciones escritas.</div>'}</div>`;
+}
+
 /* =========================== resumen =========================== */
 function resumenLotes(){
   const sb=idxSiembra(),rg=idxRiego(),f=F(),out={};
@@ -717,6 +1036,14 @@ function resumenLotes(){
 function render(){
   const F_=["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"];
   el("fAviso").style.display=F_.some(i=>el(i).value)?"":"none";
+  const lote=el("fLote").value.trim().toUpperCase();
+  const hay=lote&&[...S.siembras.map(x=>x.lote),...S.mons.map(m=>m.lote)]
+    .some(l=>String(l).toUpperCase()===lote);
+  el("ficha").style.display=hay?"":"none";
+  el("cardTabla").style.display=hay?"none":"";
+  if(hay) fichaLote(lote);
+  document.querySelectorAll("#s-resumen .grid2").forEach(g=>g.style.display=hay?"none":"");
+  el("kpis").style.display=hay?"none":"";
   kpis();tablaRes();mapa();chartCat();rank();chartEvo();tablaMon();stand();notas();}
 
 function kpis(){
