@@ -117,7 +117,9 @@ td.wrap-td{white-space:normal;min-width:200px;max-width:400px}
 .cfg p{font-size:13px;color:var(--ink2);margin:0 0 16px;line-height:1.5}
 .cfg input{width:100%;font:inherit;font-size:13px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-family:'Geist Mono',monospace}
 .cfg label{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);margin:12px 0 4px}
-canvas{max-width:100%}
+canvas{max-width:100%;display:block}
+.chartbox{position:relative;height:250px;width:100%}
+.chartbox canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
 details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 </style>
 </head>
@@ -186,7 +188,7 @@ const CAMPANIA = "26/27";
   </div>
   <div class="grid2">
     <div class="card"><h2>Mapa de estado</h2><p class="cap">Cada lote por sección, con el peor semáforo vigente.</p><div id="mapaLotes"></div></div>
-    <div class="card"><h2>Presión por categoría</h2><p class="cap">Lotes en cada estado, según la última medición.</p><canvas id="chCat" height="230"></canvas></div>
+    <div class="card"><h2>Presión por categoría</h2><p class="cap">Lotes en cada estado, según la última medición.</p><div class="chartbox"><canvas id="chCat"></canvas></div></div>
   </div>
 </section>
 
@@ -194,7 +196,7 @@ const CAMPANIA = "26/27";
 <section id="s-monitoreo" style="display:none">
   <div class="grid2">
     <div class="card"><h2>Ranking de presión</h2><p class="cap">Ocurrencias más frecuentes por encima del umbral de control.</p><div class="tw" style="max-height:330px;overflow-y:auto"><table id="tRank"><thead><tr><th>Ocurrencia</th><th>Categoría</th><th>Lotes</th><th>Máx.</th><th>Estado</th></tr></thead><tbody></tbody></table></div></div>
-    <div class="card"><h2>Evolución</h2><p class="cap">Registros por semana, por categoría.</p><canvas id="chEvo" height="230"></canvas></div>
+    <div class="card"><h2>Evolución</h2><p class="cap">Registros por semana, por categoría.</p><div class="chartbox"><canvas id="chEvo"></canvas></div></div>
   </div>
   <div class="card">
     <h2>Registros</h2><p class="cap" id="capMon"></p>
@@ -211,8 +213,8 @@ const CAMPANIA = "26/27";
 <section id="s-stand" style="display:none">
   <div class="kpis" id="kpisStand"></div>
   <div class="grid2">
-    <div class="card"><h2>Objetivo vs. logrado</h2><p class="cap">Cada punto es un lote. La diagonal marca el 100 %.</p><canvas id="chStand" height="230"></canvas></div>
-    <div class="card"><h2>Coeficiente de logro por cultivo</h2><p class="cap">Promedio ponderado por superficie.</p><canvas id="chLogro" height="230"></canvas></div>
+    <div class="card"><h2>Objetivo vs. logrado</h2><p class="cap">Cada punto es un lote. La diagonal marca el 100 %.</p><div class="chartbox"><canvas id="chStand"></canvas></div></div>
+    <div class="card"><h2>Coeficiente de logro por cultivo</h2><p class="cap">Promedio ponderado por superficie.</p><div class="chartbox"><canvas id="chLogro"></canvas></div></div>
   </div>
   <div class="card">
     <h2>Stand por lote</h2><p class="cap" id="capStand"></p>
@@ -483,11 +485,18 @@ function mapa(){
     el("fLote").value=c.dataset.lote; render();});
 }
 
-function chart(id,cfg){if(S.ch[id])S.ch[id].destroy();const c=el(id);if(c)S.ch[id]=new Chart(c,cfg);}
+function chart(id,cfg){
+  const c=el(id); if(!c) return;
+  if(S.ch[id]){S.ch[id].destroy(); delete S.ch[id];}
+  if(!c.offsetParent) return;                 // pestaña oculta: no dibujar
+  cfg.options=Object.assign({responsive:true,maintainAspectRatio:false,animation:false},cfg.options||{});
+  S.ch[id]=new Chart(c,cfg);
+}
 const COL={ok:"#7FA860",atencion:"#E0A62B",critico:"#B0402B"};
 
 function chartCat(){
   const R=resumenLotes(),cats=S.cats.filter(c=>R.some(r=>r.cats[c.id]));
+  el("chCat").closest(".chartbox").style.display=cats.length?"":"none";
   chart("chCat",{type:"bar",data:{labels:cats.map(c=>c.nombre),datasets:
     ["ok","atencion","critico"].map(s=>({label:s,backgroundColor:COL[s],borderRadius:3,
       data:cats.map(c=>R.filter(r=>r.cats[c.id]?.sem===s).length)}))},
@@ -512,6 +521,7 @@ function rank(){
 
 function chartEvo(){
   const w={},cats=[...new Set(fVals().map(v=>v.categoria))];
+  el("chEvo").closest(".chartbox").style.display=cats.length?"":"none";
   fVals().forEach(v=>{const d=new Date(v.fecha);if(isNaN(d))return;
     const o=new Date(d);o.setDate(d.getDate()-((d.getDay()+6)%7));
     const k=o.toISOString().slice(0,10);(w[k]=w[k]||{})[v.categoria]=((w[k]||{})[v.categoria]||0)+1;});
@@ -561,6 +571,7 @@ function standData(){
 }
 function stand(){
   const D=standData().filter(o=>o.real!=null||o.coef!=null);
+  el("s-stand").querySelectorAll(".chartbox").forEach(b=>b.style.display=D.length?"":"none");
   const con=D.filter(o=>o.coef!=null),w=con.reduce((a,o)=>a+(Number(o.superficie_ha)||1),0);
   const prom=w?con.reduce((a,o)=>a+o.coef*(Number(o.superficie_ha)||1),0)/w:null;
   el("kpisStand").innerHTML=[
@@ -729,7 +740,8 @@ document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
   ["resumen","monitoreo","stand","notas","cargar"].forEach(t=>
     el("s-"+t).style.display=t===b.dataset.t?"":"none");
-  el("filters").style.display=b.dataset.t==="cargar"?"none":"flex";});
+  el("filters").style.display=b.dataset.t==="cargar"?"none":"flex";
+  requestAnimationFrame(render);});
 ["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"].forEach(i=>el(i).onchange=render);
 el("fReset").onclick=()=>{["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"]
   .forEach(i=>el(i).value="");render();};
