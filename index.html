@@ -173,6 +173,19 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .esc button[aria-pressed=true]{background:var(--olivedk);border-color:var(--olivedk);color:#fff;font-weight:600}
 .leyenda{font-size:11px;color:var(--ink2);margin-top:10px;line-height:1.5}
 
+.fgrupos{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.fgrupo{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 12px;
+  font:inherit;font-size:13px;cursor:pointer}
+.fgrupo:hover{background:var(--sand)}
+.fgrupo[aria-pressed=true]{background:var(--olivedk);border-color:var(--olivedk);color:#fff;font-weight:500}
+.festados{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:5px}
+.festado{display:flex;flex-direction:column;gap:1px;text-align:left;border:1px solid var(--line);
+  background:var(--panel);border-radius:8px;padding:9px 11px;font:inherit;cursor:pointer}
+.festado:hover{background:var(--sand)}
+.festado b{font-family:'Geist Mono',monospace;font-size:14px}
+.festado span{font-size:11.5px;color:var(--ink2);line-height:1.3}
+.festado[aria-pressed=true]{background:#E3E8D6;border-color:var(--olive)}
+.festado[aria-pressed=true] span{color:var(--olivedk)}
 .esprow{display:grid;grid-template-columns:1.5fr 1.3fr .7fr auto;gap:8px;align-items:end;
   padding:9px 0;border-bottom:1px solid var(--sand)}
 @media(max-width:760px){.esprow{grid-template-columns:1fr 1fr}}
@@ -854,6 +867,44 @@ function elegirLote(lote){
 }
 
 /* ---- módulos disponibles ---- */
+/* escalas fenológicas por cultivo */
+const ZADOKS=[
+ ["Z0","Germinación",["Z0.0 grano seco","Z0.1 imbibición","Z0.5 emergencia de la radícula","Z0.7 emergencia del coleoptile","Z0.9 hoja en el ápice del coleoptile"]],
+ ["Z1","Plántula",["Z1.0 primera hoja","Z1.1 1 hoja desplegada","Z1.2 2 hojas","Z1.3 3 hojas","Z1.4 4 hojas","Z1.5 5 hojas"]],
+ ["Z2","Macollaje",["Z2.0 macollo principal","Z2.1 1 macollo","Z2.2 2 macollos","Z2.3 3 macollos","Z2.4 4 macollos","Z2.5 5 macollos"]],
+ ["Z3","Encañazón",["Z3.0 encañazón","Z3.1 primer nudo","Z3.2 segundo nudo","Z3.3 tercer nudo","Z3.7 hoja bandera visible","Z3.9 lígula de hoja bandera"]],
+ ["Z4","Embuchado",["Z4.1 vaina engrosada","Z4.5 embuchado medio","Z4.9 primeras aristas"]],
+ ["Z5","Espigazón",["Z5.1 inicio de espigazón","Z5.5 media espiga","Z5.9 espigazón completa"]],
+ ["Z6","Floración",["Z6.1 inicio de floración","Z6.5 media floración","Z6.9 fin de floración"]],
+ ["Z7","Grano lechoso",["Z7.1 grano acuoso","Z7.3 lechoso temprano","Z7.7 lechoso tardío"]],
+ ["Z8","Grano pastoso",["Z8.3 pastoso temprano","Z8.5 pastoso blando","Z8.7 pastoso duro"]],
+ ["Z9","Madurez",["Z9.1 madurez fisiológica","Z9.2 madurez de cosecha","Z9.3 sobremadurez"]],
+];
+const VR_SOJA=[
+ ["V","Vegetativo",["Ve emergencia","Vc cotiledonar","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10"]],
+ ["R","Reproductivo",["R1 una flor abierta","R2 flor en nudos superiores","R3 vaina de 5 mm","R4 vaina de 2 cm","R5 grano de 3 mm","R5.5 llenado pleno","R6 vaina con grano lleno","R7 madurez fisiológica","R8 madurez de cosecha"]],
+];
+const VR_MAIZ=[
+ ["V","Vegetativo",["Ve emergencia","V2","V4","V6","V8","V10","V12","Vt panojamiento"]],
+ ["R","Reproductivo",["R1 espigazón","R2 ampolla","R3 lechoso","R4 pastoso","R5 dentado","R6 madurez fisiológica"]],
+];
+const VR_GARB=[
+ ["V","Vegetativo",["Emergencia","2-4 nudos","6-8 nudos","10-12 nudos","Ramificación"]],
+ ["R","Reproductivo",["Botón floral","Inicio de floración","Plena floración","Formación de vainas","Llenado de granos","Madurez fisiológica","Madurez de cosecha"]],
+];
+function escalaDe(cultivo){
+  const c=(cultivo||"").toLowerCase();
+  if(c.includes("trigo")||c.includes("cebada")||c.includes("candeal")) return {n:"Zadoks",g:ZADOKS};
+  if(c.includes("soja")) return {n:"Fehr y Caviness",g:VR_SOJA};
+  if(c.includes("maíz")||c.includes("maiz")||c.includes("sorgo")) return {n:"Ritchie",g:VR_MAIZ};
+  if(c.includes("garbanzo")||c.includes("arveja")||c.includes("poroto")) return {n:"garbanzo",g:VR_GARB};
+  if(c.includes("cártamo")||c.includes("cartamo")||c.includes("girasol")||
+     c.includes("colza")||c.includes("camelina"))
+    return {n:"general",g:[["V","Vegetativo",["Emergencia","Roseta","Elongación","Ramificación"]],
+                           ["R","Reproductivo",["Botón floral","Inicio de floración","Plena floración","Llenado","Madurez fisiológica","Madurez de cosecha"]]]};
+  return null;
+}
+
 const MODS=[
   {id:"fenologia", t:"Fenología",        d:"estadio del cultivo"},
   {id:"humedad",   t:"Humedad de suelo", d:"perfil por profundidad"},
@@ -875,8 +926,19 @@ function pintarMods(){
 }
 
 /* ---- cajas de cada módulo ---- */
-const ESC_HUM=[["1","seco"],["1+",""],["2","medio"],["2+",""],["3","húmedo"],["3+",""],["4","exceso"]];
-const HUM_VAL={"1":1,"1+":1.5,"2":2,"2+":2.5,"3":3,"3+":3.5,"4":4};
+// Escala LIAG: 1 seco · 1+ 50 % CC · 2 75 % CC · 2+ capacidad de campo · 3 saturado
+const MARCOS=[{id:"aro",     t:"Aro",     a:0.25, d:"1/4 m²"},
+              {id:"bandeja", t:"Bandeja", a:0.10, d:"0,1 m²"}];
+// Peso de mil granos por cultivo, mediana de los 864 controles históricos de FT.
+// Es solo el valor sugerido: se puede corregir en el momento.
+const P1000={"trigo candeal":42,"trigo pan":40,"cebada":42,"garbanzo":374,"soja":172,
+             "maíz":285,"maiz":285,"arveja":127,"poroto":230,"cártamo":38,"cartamo":38,
+             "girasol":58,"colza":4,"camelina":1.1,"sorgo":28};
+const p1000De=c=>P1000[(c||"").toLowerCase().trim()]??null;
+const CONTRATISTAS=["TRAVASSI S.","TRAVASSI O.","RATTI S.","LODI D.","EMILIANI S.","GUTIERREZ","DDS"];
+const ESC_HUM=[["1","seco"],["1+","50 % CC"],["2","75 % CC"],["2+","capacidad de campo"],["3","saturado"]];
+const HUM_VAL={"1":1,"1+":1.5,"2":2,"2+":2.5,"3":3};
+const HUM_CC ={"1":25,"1+":50,"2":75,"2+":100,"3":115};
 const PROF=["0-20 cm","20-40 cm","40-60 cm","60-80 cm"];
 
 function pintarBoxes(){
@@ -884,11 +946,11 @@ function pintarBoxes(){
   MODS.filter(m=>M.mods[m.id]).forEach(m=>box.insertAdjacentHTML("beforeend",cajaDe(m)));
   box.querySelectorAll(".quitar").forEach(b=>b.onclick=()=>{delete M.mods[b.dataset.m];pintarMods();pintarBoxes();});
   // escala de humedad
-  box.querySelectorAll(".esc").forEach(e=>e.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  box.querySelectorAll(".hum .esc button").forEach(b=>b.onclick=()=>{
     const p=b.closest(".prof").dataset.p;
-    M.mods.humedad[p]=(M.mods.humedad[p]===b.dataset.v)?null:b.dataset.v;
-    pintarBoxes();
-  }));
+    M.mods.humedad[p]=(M.mods.humedad[p]===b.dataset.v)?null:b.dataset.v; pintarBoxes();});
+  box.querySelectorAll(".esc.gen button").forEach(b=>b.onclick=()=>{
+    M.mods.general.valor=(String(M.mods.general.valor)===b.dataset.v)?null:b.dataset.v; pintarBoxes();});
   // filas de especies
   box.querySelectorAll(".addesp").forEach(b=>b.onclick=()=>{
     (M.mods[b.dataset.m].filas=M.mods[b.dataset.m].filas||[]).push({});
@@ -904,8 +966,18 @@ function pintarBoxes(){
   });
   box.querySelectorAll(".delesp").forEach(b=>b.onclick=()=>{
     M.mods[b.dataset.m].filas.splice(+b.dataset.fila,1); pintarBoxes();});
-  // recuperar foco tras redibujar
-  if(box.dataset.foco){const f=box.querySelector(`[data-k="${box.dataset.foco}"]`); if(f){f.focus();}}
+  box.querySelectorAll(".fgrupo.marco").forEach(b=>b.onclick=()=>{
+    M.mods.cosecha.marco=b.dataset.marco; pintarBoxes();});
+  const cm=box.querySelector("#cambiarMarco");
+  if(cm) cm.onclick=()=>{M.mods.cosecha.marco=(M.mods.cosecha.marco==="aro")?"bandeja":"aro";pintarBoxes();};
+  box.querySelectorAll(".fgrupo:not(.marco)").forEach(b=>b.onclick=()=>{
+    M.mods.fenologia.grupo=(M.mods.fenologia.grupo===b.dataset.g)?null:b.dataset.g; pintarBoxes();});
+  box.querySelectorAll(".festado").forEach(b=>b.onclick=()=>{
+    M.mods.fenologia.valor=(M.mods.fenologia.valor===b.dataset.v)?null:b.dataset.v; pintarBoxes();});
+  box.querySelectorAll("select[data-campo]").forEach(sel=>sel.onchange=()=>{
+    const {m,campo,fila}=sel.dataset;
+    if(fila!=null) M.mods[m].filas[+fila][campo]=sel.value; else M.mods[m][campo]=sel.value;
+    if(m==="cosecha") pintarBoxes();});
 }
 
 function hd(m,extra=""){return `<header><h3>${m.t}</h3><span class="cap" style="margin:0">${extra}</span>
@@ -916,13 +988,26 @@ function cajaDe(m){
   switch(m.id){
 
   case "fenologia":{
-    const ej=(M.ctx?.cultivo||"").toLowerCase().includes("trigo")||
-             (M.ctx?.cultivo||"").toLowerCase().includes("cebada")?"Z2.1, Z3.2, Z5.5 (Zadoks)":"V4, R3, R5.3";
-    return `<div class="modbox">${hd(m,"escala del cultivo")}
-      <div class="fld" style="max-width:260px"><label>Estadio</label>
-        <input data-m="fenologia" data-campo="valor" data-k="feno" value="${esc(d.valor||"")}"
-               placeholder="${ej}" style="font-family:'Geist Mono',monospace;font-size:16px"></div>
-      <div class="leyenda">Se guarda en el monitoreo y pasa al resumen del lote.</div></div>`;}
+    const e=escalaDe(M.ctx?.cultivo);
+    if(!e) return `<div class="modbox">${hd(m,"escribí el estadio")}
+      <div class="fld" style="max-width:280px"><label>Estadio</label>
+        <input data-m="fenologia" data-campo="valor" value="${esc(d.valor||"")}"
+               style="font-family:'Geist Mono',monospace;font-size:16px"></div></div>`;
+    const abierto=d.grupo??null;
+    const grupos=e.g.map(([k,t,items])=>{
+      const sel=items.some(i=>i.split(" ")[0]===d.valor);
+      return `<button class="fgrupo" data-g="${k}" aria-pressed="${abierto===k||sel}">${k} · ${t}</button>`;
+    }).join("");
+    const act=e.g.find(([k])=>k===abierto)||(d.valor?e.g.find(([,,items])=>items.some(i=>i.split(" ")[0]===d.valor)):null);
+    const items=act?`<div class="festados">${act[2].map(i=>{
+      const cod=i.split(" ")[0], resto=i.slice(cod.length).trim();
+      return `<button class="festado" data-v="${esc(cod)}" aria-pressed="${d.valor===cod}">
+        <b>${esc(cod)}</b>${resto?`<span>${esc(resto)}</span>`:""}</button>`;}).join("")}</div>`:"";
+    return `<div class="modbox">${hd(m,"escala "+e.n)}
+      <div class="fgrupos">${grupos}</div>
+      ${items}
+      ${d.valor?`<div class="calc">Estadio seleccionado <b>${esc(d.valor)}</b></div>`:""}
+      </div>`;}
 
   case "humedad":{
     const prof=PROF.map((p,i)=>`<div class="prof" data-p="p${i}">
@@ -931,21 +1016,65 @@ function cajaDe(m){
           `<button data-v="${v}" aria-pressed="${d["p"+i]===v}" title="${l}">${v}</button>`).join("")}</div>
       </div>`).join("");
     const vals=PROF.map((_,i)=>HUM_VAL[d["p"+i]]).filter(v=>v!=null);
+    const ccs =PROF.map((_,i)=>HUM_CC [d["p"+i]]).filter(v=>v!=null);
     const prom=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+    const cc  =ccs.length ?ccs.reduce((a,b)=>a+b,0)/ccs.length  :null;
     return `<div class="modbox">${hd(m,"una lectura por profundidad")}
       <div class="hum">${prof}</div>
-      ${prom!=null?`<div class="calc">Promedio del perfil <b>${nf(prom,2)}</b>
-        · ${prom<1.75?"perfil seco":prom<2.5?"medio":prom<3.5?"húmedo":"exceso"}</div>`:""}
-      <div class="leyenda"><b>1</b> seco, punto de marchitez · <b>2</b> medio ·
-        <b>3</b> húmedo, capacidad de campo · <b>4</b> exceso, saturación.
-        El <b>+</b> es el valor intermedio (1+ = 1,5).</div></div>`;}
+      ${prom!=null?`<div class="calc">Perfil <b>${nf(prom,2)}</b> · agua útil estimada
+        <b>${nf(cc,0)} %</b> de capacidad de campo
+        · ${cc<40?"perfil seco, riego urgente":cc<62?"por debajo del 50 %":cc<90?"adecuado":cc<=105?"a capacidad de campo":"saturado"}</div>`:""}
+      <div class="leyenda"><b>1</b> seco · <b>1+</b> 50 % de capacidad de campo ·
+        <b>2</b> 75 % · <b>2+</b> capacidad de campo · <b>3</b> saturado.</div></div>`;}
 
-  case "malezas": case "plagas": case "enfermedades":{
+  case "plagas":{
+    const rapidos=[["chinches","Chinches por paño","Chinches","chinches por paño de 1 m"],
+                   ["bolilleras","Bolilleras por paño","Bolillera",""],
+                   ["medidoras","Medidoras + anticarsia por paño","Medidoras y anticarsia",""],
+                   ["picudos","Picudos por paño","Picudo",""]];
+    const quick=rapidos.map(([k,nom,,ay])=>`<div class="fld">
+        <label>${esc(nom.replace(" por paño",""))}</label>
+        <input type="number" step="any" inputmode="decimal" data-m="plagas" data-campo="${k}"
+               value="${esc(d[k]||"")}" placeholder="por paño"></div>`).join("");
+    const inds=S.inds.filter(i=>i.categoria_id==="plagas");
+    const occs=S.occs.filter(o=>o.categoria_id==="plagas"&&o.activo!==false);
+    const filas=(d.filas=d.filas||[]);
+    const rows=filas.map((f,i)=>`<div class="esprow">
+      <div class="fld"><label>Plaga</label>
+        <input data-m="plagas" data-fila="${i}" data-campo="occ" list="dl-plagas"
+               value="${esc(f.occ||"")}" placeholder="buscar o escribir"></div>
+      <div class="fld"><label>Indicador</label>
+        <select data-m="plagas" data-fila="${i}" data-campo="ind"><option value="">–</option>
+          ${inds.map(x=>`<option value="${x.id}" ${String(f.ind)===String(x.id)?"selected":""}>${esc(x.nombre)}${x.unidad?" ("+esc(x.unidad)+")":""}</option>`).join("")}
+        </select></div>
+      <div class="fld"><label>Valor</label>
+        <input type="number" step="any" inputmode="decimal" data-m="plagas" data-fila="${i}"
+               data-campo="val" value="${esc(f.val||"")}"></div>
+      <div class="fld"><label>&nbsp;</label><button class="btn sm delesp" data-m="plagas" data-fila="${i}">✕</button></div>
+    </div>`).join("");
+    return `<div class="modbox">${hd(m,"conteo por paño de 1 m")}
+      <div class="form" style="margin-bottom:4px">${quick}</div>
+      <div class="leyenda" style="margin-bottom:12px">Umbrales: chinches 0,8 · bolilleras 1,0 ·
+        medidoras y anticarsia 15 · picudos 1,0 por paño.</div>
+      ${rows}
+      <datalist id="dl-plagas">${occs.map(o=>`<option value="${esc(o.nombre)}">`).join("")}</datalist>
+      <button class="btn sm addesp" data-m="plagas" style="margin-top:6px">+ Otra plaga del catálogo</button>
+      </div>`;}
+
+  case "malezas": case "enfermedades":{
     const inds=S.inds.filter(i=>i.categoria_id===m.id);
     const occs=S.occs.filter(o=>o.categoria_id===m.id&&o.activo!==false);
     const filas=(d.filas=d.filas||[{}]);
-    const rows=filas.map((f,i)=>`<div class="esprow">
-      <div class="fld"><label>${m.id==="malezas"?"Maleza":m.id==="plagas"?"Plaga":"Enfermedad"}</label>
+    const enm=m.id==="malezas"?`<div class="form" style="margin-bottom:10px"><div class="fld">
+        <label>Evaluación general</label>
+        <select data-m="malezas" data-campo="enm">
+          <option value="">–</option>
+          <option value="1" ${d.enm==="1"?"selected":""}>Limpio</option>
+          <option value="2" ${d.enm==="2"?"selected":""}>Partes para carpir</option>
+          <option value="3" ${d.enm==="3"?"selected":""}>Sucio, aplicar</option>
+        </select></div></div>`:"";
+    const rows=enm+filas.map((f,i)=>`<div class="esprow">
+      <div class="fld"><label>${m.id==="malezas"?"Maleza":"Enfermedad"}</label>
         <input data-m="${m.id}" data-fila="${i}" data-campo="occ" data-k="${m.id}-occ-${i}"
                list="dl-${m.id}" value="${esc(f.occ||"")}" placeholder="buscar o escribir"></div>
       <div class="fld"><label>Indicador</label>
@@ -985,35 +1114,55 @@ function cajaDe(m){
       </div>`;}
 
   case "cosecha":{
-    const gm2=parseFloat(d.gm2)||null, pmg=parseFloat(d.pmg)||null;
-    const kg=(gm2&&pmg)?gm2*pmg/100:null;
+    // paso 1: con qué mide
+    if(!d.marco) return `<div class="modbox">${hd(m,"¿con qué medís?")}
+      <div class="fgrupos" style="margin:0">${MARCOS.map(x=>
+        `<button class="fgrupo marco" data-marco="${x.id}">${x.t} · ${x.d}</button>`).join("")}</div>
+      <div class="leyenda">El aro cubre 1/4 de metro cuadrado; la bandeja, 0,1.</div></div>`;
+
+    const mc=MARCOS.find(x=>x.id===d.marco);
+    const sug=p1000De(M.ctx?.cultivo);
+    const g=parseFloat(d.gm2)||null;
+    const pmg=(d.pmg!==""&&d.pmg!=null)?parseFloat(d.pmg):sug;
     const rend=parseFloat(d.rend)||null;
+    const kg=(g&&pmg)?(g*pmg/1000)/mc.a*10:null;     // g por marco -> g/m² -> kg/ha
     const pct=(kg&&rend)?kg/rend*100:null;
-    return `<div class="modbox">${hd(m,"marco de 1 m²")}
+    return `<div class="modbox">${hd(m,`${mc.t} · ${mc.d}`)}
       <div class="form" style="margin-bottom:6px">
-        <div class="fld"><label>Granos caídos por m²</label>
-          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="gm2" value="${esc(d.gm2||"")}"></div>
-        <div class="fld"><label>Peso de mil granos (g)</label>
-          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="pmg" value="${esc(d.pmg||"")}"></div>
-        <div class="fld"><label>Rendimiento del lote (kg/ha)</label>
+        <div class="fld"><label>Granos en la ${mc.t.toLowerCase()}</label>
+          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="gm2"
+                 value="${esc(d.gm2||"")}" style="font-size:17px;font-family:'Geist Mono',monospace"></div>
+        <div class="fld"><label>Rinde en el lugar (kg/ha)</label>
           <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="rend" value="${esc(d.rend||"")}"></div>
-        <div class="fld"><label>Origen</label>
-          <select data-m="cosecha" data-campo="origen">
-            ${["Cabezal","Cola","Precosecha","Total"].map(o=>
-              `<option ${d.origen===o?"selected":""}>${o}</option>`).join("")}</select></div>
+        <div class="fld"><label>Peso de mil granos (g)</label>
+          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="pmg"
+                 value="${esc(d.pmg??"")}" placeholder="${sug!=null?sug:"–"}"></div>
+        <div class="fld"><label>Grano verde (%)</label>
+          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="verde" value="${esc(d.verde||"")}"></div>
+        <div class="fld"><label>Grano partido (%)</label>
+          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="partido" value="${esc(d.partido||"")}"></div>
+        <div class="fld"><label>Contratista</label>
+          <input data-m="cosecha" data-campo="contratista" list="dl-contratista" value="${esc(d.contratista||"")}"></div>
+        <div class="fld"><label>Maquinista</label>
+          <input data-m="cosecha" data-campo="maquinista" value="${esc(d.maquinista||"")}"></div>
       </div>
+      <datalist id="dl-contratista">${CONTRATISTAS.map(c=>`<option value="${esc(c)}">`).join("")}</datalist>
+      ${sug!=null&&(d.pmg===""||d.pmg==null)?`<div class="leyenda" style="margin-bottom:8px">
+        Peso de mil granos sugerido para ${esc(M.ctx?.cultivo||"el cultivo")}:
+        <b>${nf(sug,1)} g</b>, mediana de los controles anteriores. Cambialo si tenés el dato del lote.</div>`:""}
       ${kg!=null?`<div class="calc">Pérdida <b>${nf(kg,1)}</b> kg/ha
-        ${pct!=null?` · <b>${nf(pct,2)} %</b> del rendimiento`:""}
-        ${pct!=null?(pct>3?" — muy alta":pct>1.5?" — por encima del umbral":" — aceptable"):""}</div>`
-       :`<div class="leyenda">kg/ha = granos por m² × peso de mil granos ÷ 100.</div>`}
+        ${pct!=null?` · <b>${nf(pct,2)} %</b> del rinde`
+                   :` · cargá el rinde para saber el porcentaje`}
+        ${pct!=null?(pct>3?" — muy alta, parar y regular":pct>1.5?" — por encima del umbral":" — aceptable"):""}</div>`
+       :`<div class="leyenda">kg/ha = granos × peso de mil granos ÷ 1000 ÷ ${mc.d.replace(",",".")} × 10.</div>`}
+      <button class="btn sm" id="cambiarMarco" style="margin-top:10px">Cambiar a ${mc.id==="aro"?"bandeja":"aro"}</button>
       </div>`;}
 
   case "general":
     return `<div class="modbox">${hd(m,"impresión general del lote")}
       <div class="prof" data-p="g" style="max-width:330px;border:0;padding:0">
-        <div class="esc">${[1,2,3,4].map(v=>
-          `<button data-v="${v}" aria-pressed="${String(d.valor)===String(v)}"
-            onclick="M.mods.general.valor='${v}';pintarBoxes()">${v}</button>`).join("")}</div></div>
+        <div class="esc gen">${[1,2,3,4].map(v=>
+          `<button data-v="${v}" aria-pressed="${String(d.valor)===String(v)}">${v}</button>`).join("")}</div></div>
       <div class="leyenda"><b>1</b> malo · <b>2</b> regular · <b>3</b> bueno · <b>4</b> muy bueno.</div></div>`;
   }
   return "";
@@ -1038,11 +1187,13 @@ function valoresDe(){
     if(id&&val!=null&&val!==""&&!isNaN(val)) V.push({ind:id,val:Number(val),occ:occ||null});};
 
   if(m.humedad){
-    const vals=[];
-    PROF.forEach((p,i)=>{const v=HUM_VAL[m.humedad["p"+i]];
-      if(v!=null){vals.push(v); push("suelo","Humedad "+p,v,"Perfil de suelo");}});
-    if(vals.length) push("suelo","Humedad promedio del perfil",
-      vals.reduce((a,b)=>a+b,0)/vals.length,"Perfil de suelo");
+    const vals=[],ccs=[];
+    PROF.forEach((p,i)=>{const k=m.humedad["p"+i], v=HUM_VAL[k];
+      if(v!=null){vals.push(v); ccs.push(HUM_CC[k]); push("suelo","Humedad "+p,v,"Perfil de suelo");}});
+    if(vals.length){
+      push("suelo","Humedad promedio del perfil",vals.reduce((a,b)=>a+b,0)/vals.length,"Perfil de suelo");
+      push("suelo","Agua útil estimada",ccs.reduce((a,b)=>a+b,0)/ccs.length,"Perfil de suelo");
+    }
   }
   if(m.general&&m.general.valor) push("general","Estado general (1-4)",m.general.valor,"Estado general del lote");
 
@@ -1059,19 +1210,31 @@ function valoresDe(){
               push("stand","Coeficiente de logro",real/obj,"Stand de plantas");}
     }
   }
-  if(m.cosecha){
-    const g=parseFloat(m.cosecha.gm2), pmg=parseFloat(m.cosecha.pmg), rend=parseFloat(m.cosecha.rend);
-    const occ="Control de pérdidas";
-    push("cosecha","Granos caídos por m²",g,occ);
+  if(m.cosecha&&m.cosecha.marco){
+    const c=m.cosecha, occ="Control de pérdidas";
+    const aro=(MARCOS.find(x=>x.id===c.marco)||MARCOS[0]).a;
+    const g=parseFloat(c.gm2), rend=parseFloat(c.rend);
+    const pmg=(c.pmg!==""&&c.pmg!=null)?parseFloat(c.pmg):p1000De(M.ctx?.cultivo);
+    push("cosecha","Granos por aro",g,occ);
     push("cosecha","Peso de mil granos",pmg,occ);
+    push("cosecha","Rinde en el lugar",rend,occ);
+    push("cosecha","Grano verde",parseFloat(c.verde),occ);
+    push("cosecha","Grano partido",parseFloat(c.partido),occ);
     if(g&&pmg){
-      const kg=g*pmg/100;
-      const nom={Cabezal:"Pérdida por cabezal",Cola:"Pérdida por cola",
-                 Precosecha:"Pérdida precosecha",Total:"Pérdida total"}[m.cosecha.origen||"Total"];
-      push("cosecha",nom,kg,occ);
+      const kg=(g*pmg/1000)/aro*10;
+      push("cosecha","Pérdida",kg,occ);
       if(rend) push("cosecha","Pérdida sobre rendimiento",kg/rend*100,occ);
     }
   }
+  if(m.plagas){
+    [["chinches","Chinches por paño","Chinches"],
+     ["bolilleras","Bolilleras por paño","Bolillera"],
+     ["medidoras","Medidoras + anticarsia por paño","Medidoras y anticarsia"],
+     ["picudos","Picudos por paño","Picudo"]]
+    .forEach(([k,nom,occ])=>push("plagas",nom,m.plagas[k],occ));
+  }
+  if(m.malezas?.enm) push("malezas","Enmalezamiento (1-3)",m.malezas.enm,"Evaluación general");
+
   ["malezas","plagas","enfermedades"].forEach(c=>{
     (m[c]?.filas||[]).forEach(f=>{
       if(f.ind&&f.val!=null&&f.val!=="") V.push({ind:Number(f.ind),val:Number(f.val),occ:(f.occ||"").trim()||null});
@@ -1085,6 +1248,11 @@ async function guardar(){
   if(!M.lote) return fmsg("Elegí un lote primero.","err");
   const V=valoresDe(), nota=el("nNota").value.trim();
   const feno=M.mods.fenologia?.valor?.trim()||null;
+  const c=M.mods.cosecha;
+  if(c&&(c.contratista||c.maquinista)){
+    const extra=`Cosecha — contratista: ${c.contratista||"–"} · maquinista: ${c.maquinista||"–"}`;
+    el("nNota").value=(el("nNota").value.trim()?el("nNota").value.trim()+" · ":"")+extra;
+  }
   if(!V.length&&!nota&&!M.fotos.length&&!feno)
     return fmsg("Cargá al menos una medición, la fenología, una nota o una foto.","err");
 
