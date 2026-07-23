@@ -329,7 +329,7 @@ details[open] summary::before{content:"▾ "}
 .fsemb.critico{background:#FAEBE7;border-color:#E3BCB1} .fsemb.critico .fv{color:var(--crit)}
 .fsemb.na .fv{color:var(--ink3);font-weight:400}
 
-.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:11px}
+.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:11px;align-items:start}
 .bx{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 17px;
   display:flex;flex-direction:column;min-width:0}
 .bx h3{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink2);
@@ -344,19 +344,51 @@ details[open] summary::before{content:"▾ "}
   .bento{grid-template-columns:repeat(2,1fr);gap:8px}
   .b3,.b4,.b5,.b6,.b8,.b12{grid-column:span 2}
   .b3.mitad{grid-column:span 1}
-  .bx{padding:13px 14px;border-radius:11px}
-  .bx .big{font-size:30px}
-  .fhero{padding:16px;gap:16px}
-  .fhero .fnom{font-size:44px}
-  .fsem{margin-left:0;width:100%}
-  .fsemb{flex:1;min-width:0}
+  .bx{padding:12px 13px;border-radius:11px}
+  .bx h3{font-size:9px;letter-spacing:.09em;margin-bottom:9px}
+  .bx .big{font-size:27px}
+  .bx .pie{font-size:11px;padding-top:9px;margin-top:9px;border-top:1px solid var(--sand)}
+
+  /* stand: el arco arriba y los números abajo, sin partirse */
+  .arco{flex-direction:column;align-items:flex-start;gap:8px}
+  .arco svg{width:66px;height:66px}
+  .arcod .l1{font-size:14px} .arcod .l2{font-size:11.5px} .arcod .l3{font-size:10.5px}
+
+  /* calicata: la columna manda, las etiquetas se achican */
+  .cali{gap:7px}
+  .calicol{width:58px}
+  .calicap{min-height:29px}
+  .calicap b{font-size:13px}
+  .caliesc{font-size:9px}
+  .calileg{font-size:10px;margin-top:9px}
+
+  .cronoin{min-width:440px;height:80px}
+  .cronotrack{left:38px;right:38px}
+  .chito{width:66px}
+  .chito .clab{font-size:9.5px}
+
+  .fhero{padding:15px;gap:14px;border-radius:12px}
+  .fhero .fnom{font-size:46px}
+  .fhero .fcul{font-size:22px}
+  .fhero dl{gap:12px 18px}
+  .fhero dd{font-size:14px}
+  .fsem{margin-left:0;width:100%;display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+  .fsemb{min-width:0;padding:7px 6px;text-align:center;border-radius:9px}
+  .fsemb .fl{font-size:8px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fsemb .fv{font-size:11px;margin-top:3px}
+
+  .fgal{grid-template-columns:repeat(3,1fr);gap:5px}
+}
+@media(max-width:380px){
+  .fsem{grid-template-columns:repeat(2,1fr)}
+  .fhero .fnom{font-size:40px}
 }
 
 /* calicata: perfil de humedad en corte */
-.cali{display:flex;gap:13px;align-items:stretch}
-.calicol{width:76px;border-radius:7px;overflow:hidden;border:1px solid var(--line);
+.cali{display:flex;gap:9px;align-items:stretch}
+.calicol{width:64px;border-radius:7px;overflow:hidden;border:1px solid var(--line);
   display:flex;flex-direction:column;flex-shrink:0}
-.calicap{flex:1;position:relative;min-height:34px;display:flex;align-items:center;justify-content:center}
+.calicap{flex:1;position:relative;min-height:31px;display:flex;align-items:center;justify-content:center}
 .calicap+.calicap{border-top:1px solid rgba(255,255,255,.35)}
 .calicap b{font-family:'Geist Mono',monospace;font-size:14px;color:#fff;
   text-shadow:0 1px 3px rgba(0,0,0,.35)}
@@ -369,12 +401,17 @@ details[open] summary::before{content:"▾ "}
 .calileg i{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:3px}
 
 /* arco de logro de stand */
-.arco{display:flex;align-items:center;gap:15px}
+.arco{display:flex;align-items:center;gap:14px;min-width:0}
 .arco svg{flex-shrink:0}
+.arcod{font-family:'Geist Mono',monospace;min-width:0}
+.arcod .l1{font-size:15px;white-space:nowrap}
+.arcod .l1 span{font-size:10.5px;color:var(--ink3);margin-left:3px}
+.arcod .l2{font-size:12px;color:var(--ink2);white-space:nowrap;margin-top:2px}
+.arcod .l3{font-size:11px;color:var(--ink3);white-space:nowrap;margin-top:2px}
 
 /* cronología de campaña */
 .crono{position:relative;padding:26px 0 6px}
-.cline{position:absolute;left:0;right:0;top:34px;height:2px;background:var(--sand)}
+.cline{position:absolute;left:0;right:0;top:32px;height:2px;background:var(--sand)}
 .cline i{position:absolute;left:0;top:0;height:100%;background:var(--olive)}
 .chito{position:absolute;transform:translateX(-50%);text-align:center;width:76px}
 .chito .cpto{width:11px;height:11px;border-radius:50%;background:var(--olive);margin:0 auto 6px;
@@ -384,7 +421,8 @@ details[open] summary::before{content:"▾ "}
 .chito .cfec{font-family:'Geist Mono',monospace;font-size:10px;color:var(--ink3)}
 .chito .clab{font-size:10.5px;color:var(--ink2);line-height:1.25;margin-top:1px}
 .cronowrap{overflow-x:auto;padding-bottom:6px}
-.cronoin{position:relative;height:82px;min-width:520px}
+.cronoin{position:relative;height:84px;min-width:520px}
+.cronotrack{position:absolute;left:44px;right:44px;top:0;bottom:0}
 
 .fgal{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px}
 .fgal a{display:block;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
@@ -807,7 +845,7 @@ function fichaLote(lote){
       </div>
       <div class="fsem">
         ${semb("malezas","Malezas")}${semb("plagas","Plagas")}
-        ${semb("enfermedades","Enfermedades")}${semb("stand","Stand")}
+        ${semb("enfermedades","Enferm.")}${semb("stand","Stand")}
       </div>
     </div>
 
@@ -828,7 +866,7 @@ function bxFenologia(D){
   const f=D.feno, d=f?D.dias(f.fecha):null;
   const dd=D.dias(D.sb.fecha_siembra);
   return `<div class="bx b3 mitad"><h3>Fenología</h3>
-    <div class="big" style="${!f?"color:var(--ink3);font-size:22px":""}">${f?esc(f.fenologia):"sin registro"}</div>
+    <div class="big" style="${!f?"color:var(--ink3);font-size:17px;font-family:Geist,sans-serif":""}">${f?esc(f.fenologia):"sin registro"}</div>
     <div class="pie">${f
       ? `Anotada el ${fd(f.fecha)}${d>21?`, hace <b style="color:var(--warn)">${d} días</b>`:d!=null?`, hace ${d} días`:""}.
          ${dd?`El lote lleva ${dd} días desde la siembra.`:""}`
@@ -894,10 +932,10 @@ function bxStand(D){
         <text x="41" y="46" text-anchor="middle" font-family="Geist Mono,monospace"
           font-size="17" fill="var(--ink)">${c==null?"–":nf(c*100,0)+"%"}</text>
       </svg>
-      <div style="font-family:'Geist Mono',monospace;font-size:12.5px;line-height:1.7">
-        ${st?.real!=null?`<div>${nf(st.real/1000,0)}k <span style="color:var(--ink3)">pl/ha</span></div>`:""}
-        ${st?.obj!=null?`<div style="color:var(--ink2)">${nf(st.obj/1000,0)}k objetivo</div>`:""}
-        ${st?.pl_m!=null?`<div style="color:var(--ink3);font-size:11.5px">${nf(st.pl_m,1)} pl/m lineal</div>`:""}
+      <div class="arcod">
+        ${st?.real!=null?`<div class="l1">${nf(st.real/1000,0)}k<span>pl/ha</span></div>`:""}
+        ${st?.obj!=null?`<div class="l2">${nf(st.obj/1000,0)}k objetivo</div>`:""}
+        ${st?.pl_m!=null?`<div class="l3">${nf(st.pl_m,1)} pl/m</div>`:""}
       </div>
     </div>
     <div class="pie">${st
@@ -938,14 +976,16 @@ function bxCrono(D){
   const vis=hitos.filter((h,i)=>hitos.length<=9||h.tipo!=="mon"||i%Math.ceil(hitos.length/8)===0||i===hitos.length-2);
   return `<div class="bx b6"><h3>Cronología de la campaña</h3>
     <div class="cronowrap"><div class="cronoin">
-      <div class="cline"><i style="width:100%"></i></div>
-      ${vis.map(h=>{
-        const t=+new Date(h.f+"T12:00:00"); if(isNaN(t))return "";
-        const x=Math.min(97,Math.max(3,(t-t0)/span*100));
-        return `<div class="chito ${h.tipo==="hoy"?"hoy":""}" style="left:${x}%">
-          <div class="cpto"></div><div class="cfec">${fd(h.f)}</div>
-          <div class="clab">${esc(h.lab)}</div></div>`;
-      }).join("")}
+      <div class="cronotrack">
+        <div class="cline"><i style="width:100%"></i></div>
+        ${vis.map(h=>{
+          const t=+new Date(h.f+"T12:00:00"); if(isNaN(t))return "";
+          const x=((t-t0)/span*100).toFixed(2);
+          return `<div class="chito ${h.tipo==="hoy"?"hoy":""}" style="left:${x}%">
+            <div class="cpto"></div><div class="cfec">${fd(h.f)}</div>
+            <div class="clab">${esc(h.lab)}</div></div>`;
+        }).join("")}
+      </div>
     </div></div>
     <div class="pie">${D.mons.length} ${D.mons.length===1?"recorrida":"recorridas"} desde
       ${fd(D.mons[D.mons.length-1]?.fecha)}.</div></div>`;
