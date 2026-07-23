@@ -80,7 +80,7 @@ td.wrap-td{white-space:normal;min-width:200px;max-width:400px}
 #tRes .gsep{border-left:1px solid var(--line)}
 .grouphd{display:flex;gap:0;font-size:9px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--ink3);padding:0 0 6px}
-.mini{display:inline-block;width:52px;height:6px;background:var(--sand);border-radius:3px;
+.mini{display:inline-block;width:38px;height:6px;background:var(--sand);border-radius:3px;
   overflow:hidden;vertical-align:1px;margin-right:5px}
 .mini i{display:block;height:100%;border-radius:3px;background:var(--olive)}
 .mini i.w{background:var(--warn)} .mini i.c{background:var(--crit)}
@@ -96,6 +96,8 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .pill.atencion{background:#F7EBCF;color:#8A6110}
 .pill.critico{background:#F5DED8;color:var(--crit)}
 .pill.na{background:var(--sand);color:var(--ink3)}
+.pill.revisar{background:#E7E2F2;color:#5B4A82}
+.sq.revisar{background:#8B79B8}
 .sq{display:inline-block;width:13px;height:13px;border-radius:3px;background:var(--sand);vertical-align:-2px}
 .sq.ok{background:#7FA860} .sq.atencion{background:#E0A62B} .sq.critico{background:var(--crit)}
 .sqs{display:flex;gap:3px}
@@ -200,7 +202,7 @@ const CAMPANIA = "26/27";
       <th data-k="lote">Lote</th><th data-k="superficie_ha">ha</th>
       <th data-k="cultivo">Cultivo</th><th data-k="variedad">Variedad</th>
       <th data-k="f_siembra">Siembra</th><th data-k="fenologia">Fenología</th>
-      <th data-k="cumpl" class="gsep">Riego</th><th data-k="riego_pend">Pend.</th>
+      <th data-k="riego_mm" class="gsep">Riego mm</th><th data-k="riego_pend">Pend.</th>
       <th data-k="_dias">Últ. visita</th>
       <th>Mal.</th><th>Plag.</th><th>Enf.</th>
       <th data-k="pl_coef">Stand</th>
@@ -503,10 +505,13 @@ function tablaRes(){
     <td class="num">${nf(r.superficie_ha,0)}</td><td>${esc(r.cultivo||"–")}</td>
     <td>${esc(r.variedad||"–")}</td><td class="mono">${fd(r.f_siembra)}</td>
     <td class="mono">${r.fenologia?`<span title="registrada el ${fd(r.fenoFecha)}">${esc(r.fenologia)}</span>`:'<span style="color:var(--ink3)">–</span>'}</td>
-    <td class="gsep" title="${r.cumpl==null?'sin plan de riego':`${nf(r.riego_mm,0)} de ${nf(r.riego_plan,0)} mm aplicados`}">
-      ${r.cumpl==null?'<span style="color:var(--ink3)">–</span>'
-        :`<span class="mini"><i class="${r.cumpl>=90?'':r.cumpl>=70?'w':'c'}" style="width:${Math.min(100,r.cumpl)}%"></i></span><span class="mono" style="font-size:12px">${nf(r.cumpl,0)}%</span>`}</td>
-    <td class="num">${r.riego_pend?nf(r.riego_pend,0)+' <span style="color:var(--ink3);font-size:10px">mm</span>':'–'}</td>
+    <td class="gsep num" title="${r.riego_mm==null?'sin plan de riego'
+        :`${nf(r.riego_mm,0)} de ${nf(r.riego_plan,0)} mm · ${nf(r.cumpl,0)} % de cumplimiento`+
+         (r.ult_wk?` · última semana regada: ${r.ult_wk}`:'')}">
+      ${r.riego_mm==null?'<span style="color:var(--ink3)">–</span>'
+        :`<span class="mini"><i class="${r.cumpl>=90?'':r.cumpl>=70?'w':'c'}" style="width:${Math.min(100,r.cumpl||0)}%"></i></span>`+
+         `<b class="mono">${nf(r.riego_mm,0)}</b><span style="color:var(--ink3);font-size:10px"> /${nf(r.riego_plan,0)}</span>`}</td>
+    <td class="num">${r.riego_pend?nf(r.riego_pend,0):'–'}</td>
     <td class="mono">${r.fecha?fd(r.fecha)+`<span class="dias ${r._dias>21?'vold':r._dias>14?'old':''}">${r._dias}d</span>`:'<span style="color:var(--ink3)">–</span>'}</td>
     <td>${sqOf("malezas",r)}</td>
     <td>${sqOf("plagas",r)}</td>
@@ -617,9 +622,14 @@ function standData(){
     }
   });
 
-  // densidad objetivo del maestro de siembras: viene en pl/m² (trigo, cebada)
-  // o en pl/ha (cártamo, garbanzo). Se normaliza a pl/ha.
-  const aHa=v=>v==null||!isFinite(v)||v<=0?null:(v<5000?v*10000:v);
+  // Las densidades vienen en pl/m² (trigo, cebada) o en pl/ha (cártamo, garbanzo).
+  // Se normaliza todo a pl/ha y se descarta lo que no es plausible.
+  const aHa=v=>{
+    v=Number(v);
+    if(v==null||!isFinite(v)||v<=0) return null;
+    if(v<5000) v*=10000;                      // venía en pl/m²
+    return (v<20000||v>8e6) ? null : v;       // fuera de rango agronómico: no sirve
+  };
 
   const L=Object.values(b);
   L.forEach(o=>{
@@ -639,13 +649,24 @@ function standData(){
     // plantas por m²: para mostrar y para el cálculo inverso
     o.pl_m2 = o.pl_m2>0 ? o.pl_m2 : (o.real!=null ? o.real/10000 : null);
 
-    // objetivo: el de Cropwise si existe; si no, el del maestro de siembras
-    o.obj = (o.obj_cw>0?o.obj_cw:null) ?? aHa(si.densidad_obj);
-    o.obj_src = (o.obj_cw>0) ? null : (o.obj!=null ? "siembra" : null);
+    // objetivo: manda el maestro de siembras, que es el plan agronómico cargado
+    // por lote y variedad. Cropwise queda de respaldo y solo si es plausible.
+    const objMaestro=aHa(si.densidad_obj), objCw=aHa(o.obj_cw);
+    o.obj     = objMaestro ?? objCw;
+    o.obj_src = objMaestro!=null ? "sb" : (objCw!=null ? "cw" : null);
 
-    o.coef = (o.coef_cw>0?o.coef_cw:null) ??
+    o.coef = (o.coef_cw>0&&o.coef_cw<3?o.coef_cw:null) ??
              ((o.real&&o.obj) ? o.real/o.obj : null);
-    o.sem  = o.coef==null?null:o.coef<=0.80?"critico":o.coef<=0.90?"atencion":"ok";
+
+    // control de plausibilidad: un logro fuera de rango es un error de carga,
+    // no un lote excepcional. Se marca para revisar en vez de pintarlo de verde.
+    o.dudoso = (o.coef!=null&&(o.coef>1.6||o.coef<0.2)) ? "logro fuera de rango"
+             : (o.pl_m>200) ? "plantas por metro lineal improbable"
+             : (o.real!=null&&(o.real<20000||o.real>8e6)) ? "densidad fuera de rango"
+             : null;
+    o.sem = o.dudoso ? "revisar"
+          : o.coef==null ? null
+          : o.coef<=0.80 ? "critico" : o.coef<=0.90 ? "atencion" : "ok";
   });
 
   const u={};
@@ -656,16 +677,18 @@ function standData(){
 function stand(){
   const D=standData().filter(o=>o.real!=null||o.coef!=null);
   el("s-stand").querySelectorAll(".chartbox").forEach(b=>b.style.display=D.length?"":"none");
-  const con=D.filter(o=>o.coef!=null),w=con.reduce((a,o)=>a+(Number(o.superficie_ha)||1),0);
+  const con=D.filter(o=>o.coef!=null&&!o.dudoso),w=con.reduce((a,o)=>a+(Number(o.superficie_ha)||1),0);
   const prom=w?con.reduce((a,o)=>a+o.coef*(Number(o.superficie_ha)||1),0)/w:null;
   el("kpisStand").innerHTML=[
     ["Lotes con stand",nf(D.length),"última medición por lote",""],
     ["Logro promedio",prom==null?"–":nf(prom*100,1)+"<small>%</small>","ponderado por hectárea",""],
     ["Bajo 90 %",nf(con.filter(o=>o.coef<=0.90).length),"por debajo del umbral",con.filter(o=>o.coef<=0.90).length?"warn":""],
-    ["Bajo 80 %",nf(con.filter(o=>o.coef<=0.80).length),"resiembra a evaluar",con.filter(o=>o.coef<=0.80).length?"crit":""]
+    ["Bajo 80 %",nf(con.filter(o=>o.sem==="critico").length),"resiembra a evaluar",con.filter(o=>o.sem==="critico").length?"crit":""],
+    ["Sin objetivo",nf(D.filter(o=>o.obj==null).length),"falta densidad en el maestro",D.filter(o=>o.obj==null).length?"warn":""],
+    ["A revisar",nf(D.filter(o=>o.dudoso).length),"valores fuera de rango",D.filter(o=>o.dudoso).length?"warn":""]
   ].map(([l,v,h,c])=>`<div class="kpi ${c}"><div class="lab">${l}</div><div class="val">${v}</div><div class="hint">${h}</div></div>`).join("");
 
-  const pts=D.filter(o=>o.real&&o.obj);
+  const pts=D.filter(o=>o.real&&o.obj&&!o.dudoso);
   const mx=Math.max(1,...pts.flatMap(o=>[o.real,o.obj]))/1e6;
   chart("chStand",{type:"scatter",data:{datasets:[
     {data:pts.map(o=>({x:o.obj/1e6,y:o.real/1e6,l:o.lote})),pointRadius:4,
@@ -696,9 +719,11 @@ function stand(){
     <td class="num">${nf(o.pl_m,1)}</td><td class="num">${nf(o.surco,1)}</td>
     <td class="num">${nf(o.pl_m2,0)}</td>
     <td class="num">${nf(o.real,0)}${o.calc?' <span style="color:var(--ink3);font-size:10px" title="calculada a partir de pl/m² o pl/m lineal">calc</span>':''}</td>
-    <td class="num">${nf(o.obj,0)}${o.obj_src?' <span style="color:var(--ink3);font-size:10px" title="tomada del maestro de siembras">sb</span>':''}</td>
+    <td class="num">${o.obj==null?'<span style="color:var(--ink3)">–</span>'
+      :nf(o.obj,0)+` <span style="color:var(--ink3);font-size:10px" title="${o.obj_src==="sb"?"del maestro de siembras":"de Cropwise"}">${o.obj_src}</span>`}</td>
     <td class="num">${o.coef==null?"–":nf(o.coef*100,1)+" %"}</td>
-    <td>${o.sem?`<span class="pill ${o.sem}">${o.sem}</span>`:'<span class="pill na">–</span>'}</td>
+    <td>${o.sem?`<span class="pill ${o.sem}" ${o.dudoso?`title="${esc(o.dudoso)}"`:""}>${o.sem}</span>`
+      :'<span class="pill na">sin objetivo</span>'}</td>
     <td>${esc(o.scouter||"–")}</td></tr>`).join("")
     :`<tr><td colspan="15"><div class="empty"><b>Sin mediciones de stand</b>Cargá una desde la pestaña Cargar.</div></td></tr>`;
 }
