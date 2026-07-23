@@ -126,7 +126,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 <!-- ============ CONFIGURACIÓN ============ -->
 <script>
 const SUPABASE_URL = "https://bnaurkovjdnclxtzvdsf.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuYXVya292amRuY2x4dHp2ZHNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NTc3NTksImV4cCI6MjA5OTUzMzc1OX0.BWug5kNc4T3HkKd31_NA9DVyRGkn5sRGbECyCJNrOrk";   // <-- pegá acá la anon key
+const SUPABASE_ANON_KEY = "";   // <-- pegá acá la anon key
 const CAMPANIA = "26/27";
 </script>
 
@@ -178,7 +178,8 @@ const CAMPANIA = "26/27";
       <th data-k="lote">Lote</th><th data-k="sistema">Sistema</th><th data-k="seccion">Secc.</th><th data-k="superficie_ha">ha</th>
       <th data-k="cultivo">Cultivo</th><th data-k="variedad">Variedad</th>
       <th data-k="f_siembra">Siembra</th><th data-k="fenologia">Fenología</th>
-      <th data-k="riego_mm">Riego mm</th><th data-k="balance">Balance</th>
+      <th data-k="equipo">Equipo</th><th data-k="riego_mm">Riego mm</th>
+      <th data-k="riego_pend">Pend. mm</th><th data-k="cumpl">Cumpl.</th>
       <th data-k="_dias">Últ. monitoreo</th><th>Malezas</th><th>Plagas</th><th>Enferm.</th><th>Stand</th>
       <th data-k="_peor">Alerta</th>
     </tr></thead><tbody></tbody></table></div>
@@ -300,17 +301,12 @@ async function cargar(){
     soft("mon_fotos?select=*&order=creado_en.desc&limit=400"),
     soft("lotes?select=*&limit=5000"),
     soft(`mon_siembras?select=*&campania=eq.${camp}&limit=5000`),
-    soft("riegos?select=*&limit=20000")
+    soft("v_mon_riego_lote?select=*&limit=5000")
   ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
   poblar(); render();
 }
-
-/* detección tolerante de columnas en tablas que no controlamos */
-function pick(obj,cands){ if(!obj)return null; const ks=Object.keys(obj);
-  for(const c of cands){const k=ks.find(x=>x.toLowerCase()===c);if(k)return k;}
-  return ks.find(x=>cands.some(c=>x.toLowerCase().includes(c)))||null; }
 
 let _sbCache=null,_sbLen=-1;
 function idxSiembra(){
@@ -320,15 +316,8 @@ function idxSiembra(){
 }
 const secDe=l=>{const s=idxSiembra()[l]; return s?.seccion||seccion(l);};
 function idxRiego(){
-  const o={}; if(!S.riegos.length)return o;
-  const s=S.riegos[0],kL=pick(s,["lote"]),
-        kMM=pick(s,["mm","lamina","milimetros"]),kH=pick(s,["horas","hs"]),
-        kB=pick(s,["balance","bh","agua_util","reserva"]);
-  S.riegos.forEach(r=>{const l=String(r[kL]||"").trim(); if(!l)return;
-    o[l]=o[l]||{mm:0,horas:0,balance:null};
-    if(kMM&&!isNaN(Number(r[kMM])))o[l].mm+=Number(r[kMM])||0;
-    if(kH &&!isNaN(Number(r[kH]))) o[l].horas+=Number(r[kH])||0;
-    if(kB &&r[kB]!=null&&!isNaN(Number(r[kB])))o[l].balance=Number(r[kB]);});
+  const o={};
+  S.riegos.forEach(r=>{const l=String(r.lote||"").trim(); if(l) o[l]=r;});
   return o;
 }
 
@@ -343,9 +332,9 @@ function poblar(){
   set("fLote",[...S.siembras.map(s=>s.lote),...S.mons.map(m=>m.lote)]);
   set("fCat",S.cats.map(c=>c.nombre),"Todas");
   el("hdCamp").textContent=CAMPANIA;
-  el("dlLotes").innerHTML=[...new Set([...S.mons.map(m=>m.lote),...S.lotes.map(l=>l.lote)])]
+  el("dlLotes").innerHTML=[...new Set([...S.siembras.map(s=>s.lote),...S.mons.map(m=>m.lote)])]
     .filter(Boolean).sort().map(l=>`<option value="${esc(l)}">`).join("");
-  el("dlCultivos").innerHTML=[...new Set(S.mons.map(m=>m.cultivo))].filter(Boolean).sort()
+  el("dlCultivos").innerHTML=[...new Set([...S.siembras.map(s=>s.cultivo),...S.mons.map(m=>m.cultivo)])].filter(Boolean).sort()
     .map(c=>`<option value="${esc(c)}">`).join("");
   el("dlScouters").innerHTML=[...new Set(S.mons.map(m=>m.scouter))].filter(Boolean).sort()
     .map(c=>`<option value="${esc(c)}">`).join("");
@@ -403,7 +392,12 @@ function resumenLotes(){
 
   Object.values(out).forEach(o=>{
     const r=rg[o.lote]||{};
-    o.riego_mm=r.mm||null; o.riego_hs=r.horas||null; o.balance=r.balance;
+    o.riego_mm=r.mm_aplicado!=null?Number(r.mm_aplicado):null;
+    o.riego_plan=r.mm_planificado!=null?Number(r.mm_planificado):null;
+    o.riego_pend=r.mm_pendiente!=null?Number(r.mm_pendiente):null;
+    o.cumpl=r.cumplimiento_pct!=null?Number(r.cumplimiento_pct):null;
+    o.ult_wk=r.ult_wk_regada??null;
+    o.equipo=(r.equipos&&r.equipos.length)?r.equipos.join("/"):null;
     o._peor=Object.values(o.cats).reduce((a,c)=>peor(a,c.sem),null);
     o._alertas=[...new Set(Object.values(o.cats).flatMap(c=>c.top))].slice(0,3);
     o._dias=o.fecha?Math.round((Date.now()-new Date(o.fecha+"T12:00:00"))/864e5):null;
@@ -432,7 +426,10 @@ function kpis(){
     ["En crítico",nf(crit.length),`${nf(haCrit,0)} ha comprometidas`,crit.length?"crit":""],
     ["En atención",nf(aten.length),"sobre umbral de control",aten.length?"warn":""],
     ["Últimos 7 días",nf(rec),"lotes recorridos",""],
-    ["Sin visita +14 d",nf(viejo),"recorrida atrasada",viejo?"warn":""]
+    ["Sin visita +14 d",nf(viejo),"recorrida atrasada",viejo?"warn":""],
+    ["Riego pendiente",nf(R.reduce((a,r)=>a+(r.riego_pend||0),0),0)+"<small> mm</small>",
+      `${R.filter(r=>r.cumpl!=null&&r.cumpl<70).length} lotes bajo 70 % de cumplimiento`,
+      R.filter(r=>r.cumpl!=null&&r.cumpl<70).length?"warn":""]
   ].map(([l,val,h,cl])=>`<div class="kpi ${cl}"><div class="lab">${l}</div><div class="val">${val}</div><div class="hint">${h}</div></div>`).join("");
 }
 
@@ -458,7 +455,10 @@ function tablaRes(){
     <td class="num">${nf(r.superficie_ha,0)}</td><td>${esc(r.cultivo||"–")}</td>
     <td>${esc(r.variedad||"–")}</td><td class="mono">${fd(r.f_siembra)}</td>
     <td class="mono">${esc(r.fenologia||"–")}</td>
-    <td class="num">${nf(r.riego_mm,0)}</td><td class="num">${r.balance==null?"–":nf(r.balance,0)}</td>
+    <td class="mono">${esc(r.equipo||"–")}</td>
+    <td class="num">${r.riego_mm==null?"–":nf(r.riego_mm,0)+' <span style="color:var(--ink3);font-size:11px">/'+nf(r.riego_plan,0)+'</span>'}</td>
+    <td class="num">${r.riego_pend==null?"–":nf(r.riego_pend,0)}</td>
+    <td class="num">${r.cumpl==null?"–":`<span class="pill ${r.cumpl>=90?'ok':r.cumpl>=70?'atencion':'critico'}">${nf(r.cumpl,0)} %</span>`}</td>
     <td class="mono">${r.fecha?fd(r.fecha)+' <span style="color:var(--ink3)">'+r._dias+'d</span>':'–'}</td>
     <td><span class="sqs">${sqOf("malezas",r)}</span></td>
     <td><span class="sqs">${sqOf("plagas",r)}</span></td>
@@ -466,7 +466,7 @@ function tablaRes(){
     <td><span class="sqs">${sqOf("stand",r)}</span></td>
     <td>${r._peor?`<span class="pill ${r._peor}">${r._peor}</span> <span style="font-size:11px;color:var(--ink2)">${esc(r._alertas.join(", "))}</span>`
         :r.sinMonitoreo?'<span class="pill na">sin recorrer</span>':'<span class="pill na">sin umbral</span>'}</td>
-  </tr>`).join(""):`<tr><td colspan="16"><div class="empty"><b>Sin datos con estos filtros</b>Probá limpiarlos.</div></td></tr>`;
+  </tr>`).join(""):`<tr><td colspan="18"><div class="empty"><b>Sin datos con estos filtros</b>Probá limpiarlos.</div></td></tr>`;
 }
 
 function mapa(){
