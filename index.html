@@ -193,15 +193,20 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .calc b{font-family:'Geist Mono',monospace;font-size:16px}
 .savebar{position:sticky;bottom:0;background:linear-gradient(transparent,var(--bg) 22%);
   padding:16px 0 6px;display:flex;gap:9px;align-items:center;flex-wrap:wrap;z-index:20}
-.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px}
-.gal a{display:block;border-radius:8px;overflow:hidden;border:1px solid var(--line);aspect-ratio:4/3}
-.gal img{width:100%;height:100%;object-fit:cover;display:block}
-.gal a{position:relative}
-.gal a.rota{background:var(--sand)}
-.gal a.rota::after{content:"formato no soportado";position:absolute;inset:0;display:flex;
-  align-items:center;justify-content:center;font-size:11px;color:var(--ink2);text-align:center;padding:8px}
-.gal a figcaption{position:absolute;left:0;right:0;bottom:0;background:rgba(38,38,31,.72);color:#fff;
-  font-size:10.5px;padding:3px 6px;font-family:'Geist Mono',monospace}
+.gal{display:flex;flex-direction:column;gap:18px}
+.galgrupo{border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;background:var(--bg)}
+.galhd{display:flex;flex-wrap:wrap;align-items:baseline;gap:9px;margin-bottom:9px;font-size:12.5px;color:var(--ink2)}
+.galhd b{font-size:15px;color:var(--ink)}
+.galhd .n{margin-left:auto;font-size:11px;color:var(--ink3)}
+.galfotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.galfotos a{display:block;border-radius:8px;overflow:hidden;border:1px solid var(--line);
+  aspect-ratio:4/3;position:relative;background:var(--panel)}
+.galfotos img{width:100%;height:100%;object-fit:cover;display:block}
+.galfotos a.rota::after{content:"no se pudo mostrar";position:absolute;inset:0;display:flex;
+  align-items:center;justify-content:center;font-size:11px;color:var(--ink2);text-align:center;padding:8px;
+  background:var(--sand)}
+.galnota{margin-top:9px;font-size:13px;line-height:1.45;color:var(--ink2);
+  border-left:2px solid var(--line);padding-left:10px}
 .nota{border-bottom:1px solid var(--sand);padding:11px 0}
 .nota .meta{font-size:11px;color:var(--ink2);margin-bottom:3px}
 .nota .txt{font-size:13.5px;line-height:1.45}
@@ -262,6 +267,8 @@ const CAMPANIA = "26/27";
   <div class="f"><label>Desde</label><input type="date" id="fD1"></div>
   <div class="f"><label>Hasta</label><input type="date" id="fD2"></div>
   <div class="f"><label>&nbsp;</label><button class="btn" id="fReset">Limpiar</button></div>
+  <div class="f" id="fAviso" style="display:none"><label>&nbsp;</label>
+    <span class="pill atencion" style="padding:6px 11px">filtros activos</span></div>
 </div>
 
 <!-- ===== RESUMEN ===== -->
@@ -513,7 +520,10 @@ function resumenLotes(){
     (!f.lot||o.lote===f.lot)&&(!f.sis||o.sistema===f.sis));
 }
 
-function render(){kpis();tablaRes();mapa();chartCat();rank();chartEvo();tablaMon();stand();notas();}
+function render(){
+  const F_=["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"];
+  el("fAviso").style.display=F_.some(i=>el(i).value)?"":"none";
+  kpis();tablaRes();mapa();chartCat();rank();chartEvo();tablaMon();stand();notas();}
 
 function kpis(){
   const R=resumenLotes(),v=fVals();
@@ -802,20 +812,45 @@ function stand(){
 
 /* =========================== notas y fotos =========================== */
 function notas(){
-  const ms=fMons(),ids=new Set(ms.map(m=>m.id));
+  // El índice se arma con TODOS los monitoreos, no solo los filtrados:
+  // así una foto nunca queda sin identificar aunque su recorrida no pase el filtro.
+  const todos={}; S.mons.forEach(m=>todos[m.id]=m);
+  const ids=new Set(fMons().map(m=>m.id));
   const F=S.fotos.filter(f=>ids.has(f.monitoreo_id));
-  el("capFotos").textContent=`${F.length} fotos.`;
-  el("gal").innerHTML=F.length?F.slice(0,60).map(f=>{
-    const m=ms.find(x=>x.id===f.monitoreo_id)||{};
-    const u=`${S.url}/storage/v1/object/public/monitoreo/${f.path}`;
-    return `<a href="${u}" target="_blank" rel="noopener" title="${esc(m.lote||"")} · ${fd(m.fecha)}${m.scouter?" · "+esc(m.scouter):""}">
-      <img src="${u}" alt="${esc(f.epigrafe||m.lote||"foto")}" loading="lazy"
-           onerror="this.closest('a').classList.add('rota')">
-      <figcaption>${esc(m.lote||"")} · ${fd(m.fecha)}</figcaption></a>`;}).join("")
-    :'<div class="empty"><b>Sin fotos</b>Se cargan desde la pestaña Monitoreo.</div>';
 
-  const N=ms.filter(m=>m.nota&&m.nota.trim());
-  el("capNotas").textContent=`${N.length} notas.`;
+  el("capFotos").textContent=`${F.length} ${F.length===1?"foto":"fotos"}.`;
+
+  // agrupadas por lote y fecha
+  const g={};
+  F.forEach(f=>{
+    const m=todos[f.monitoreo_id]||{};
+    const k=`${m.lote||"sin lote"}|${m.fecha||""}`;
+    (g[k]=g[k]||{m,fotos:[]}).fotos.push(f);
+  });
+  const grupos=Object.entries(g).sort((a,b)=>
+    String(b[1].m.fecha||"").localeCompare(String(a[1].m.fecha||"")));
+
+  el("gal").innerHTML = grupos.length ? grupos.map(([,{m,fotos}])=>`
+    <div class="galgrupo">
+      <div class="galhd">
+        <b class="mono">${esc(m.lote||"sin lote")}</b>
+        <span>${fd(m.fecha)}</span>
+        ${m.cultivo?`<span>${esc(m.cultivo)}</span>`:""}
+        ${m.fenologia?`<span class="mono">${esc(m.fenologia)}</span>`:""}
+        ${m.scouter?`<span>${esc(m.scouter)}</span>`:""}
+        <span class="n">${fotos.length} ${fotos.length===1?"foto":"fotos"}</span>
+      </div>
+      <div class="galfotos">${fotos.map(f=>{
+        const u=`${S.url}/storage/v1/object/public/monitoreo/${f.path}`;
+        return `<a href="${u}" target="_blank" rel="noopener">
+          <img src="${u}" alt="${esc(f.epigrafe||m.lote||"foto")}" loading="lazy"
+               onerror="this.closest('a').classList.add('rota')"></a>`;}).join("")}</div>
+      ${m.nota?`<div class="galnota">${esc(m.nota)}</div>`:""}
+    </div>`).join("")
+    : '<div class="empty"><b>Sin fotos</b>Se cargan desde la pestaña Monitoreo.</div>';
+
+  const N=fMons().filter(m=>m.nota&&m.nota.trim());
+  el("capNotas").textContent=`${N.length} ${N.length===1?"nota":"notas"}.`;
   el("notas").innerHTML=N.length?N.slice(0,150).map(m=>`<div class="nota">
     <div class="meta"><span class="mono">${fd(m.fecha)}</span> · <b class="mono">${esc(m.lote)}</b>
       ${m.cultivo?" · "+esc(m.cultivo):""}${m.fenologia?" · "+esc(m.fenologia):""}
