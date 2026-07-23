@@ -199,6 +199,38 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
   padding:7px 2px;font:inherit;font-size:13px;font-family:'Geist Mono',monospace;cursor:pointer}
 .esc button:hover{background:var(--sand)}
 .esc button[aria-pressed=true]{background:var(--olivedk);border-color:var(--olivedk);color:#fff;font-weight:600}
+/* lista de umbrales por plaga */
+.ulista{display:flex;flex-direction:column;gap:1px}
+.ufila{display:grid;grid-template-columns:1fr 128px 108px;gap:11px;align-items:center;
+  padding:10px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+.ufila+.ufila{margin-top:5px}
+.ufila.ok{border-color:#BCD3A8;background:#F4F8EF}
+.ufila.atencion{border-color:#E7CD93;background:#FDF7E9}
+.ufila.critico{border-color:#DFB0A4;background:#FCF0ED}
+.uinfo{display:flex;flex-direction:column;gap:1px;min-width:0}
+.uinfo b{font-size:14px}
+.uinfo i{font-size:11.5px;color:var(--ink2);font-style:italic}
+.umeta{font-size:10.5px;color:var(--ink3);letter-spacing:.02em}
+.uobs{font-size:11px;color:var(--ink2);margin-top:3px;line-height:1.35}
+.uval{display:flex;flex-direction:column;gap:2px}
+.uval input{width:100%;font:inherit;font-size:16px;font-family:'Geist Mono',monospace;
+  padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);text-align:right}
+.uuni{font-size:10px;color:var(--ink3);text-align:right;line-height:1.25}
+.uumb{text-align:right;font-size:12px;color:var(--ink2)}
+.uumb b{font-family:'Geist Mono',monospace;font-size:14px;color:var(--ink)}
+.uumb .sinu{font-size:11px;color:var(--ink3)}
+.resp{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;margin-top:3px}
+.resp.ralto{color:var(--ok)} .resp.rmedio{color:var(--ink3)} .resp.rbajo{color:var(--warn)}
+@media(max-width:640px){
+  .ufila{grid-template-columns:1fr 96px;gap:8px;padding:9px}
+  .uumb{grid-column:1/-1;text-align:left;border-top:1px solid var(--line);padding-top:6px;font-size:11.5px}
+  .resp{display:inline;margin-left:8px}
+  .uobs{display:none}
+}
+details summary{list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"▸ ";color:var(--ink3)}
+details[open] summary::before{content:"▾ "}
 .umb{font-size:10px;color:var(--ink3);margin-top:3px;letter-spacing:.02em}
 .umb.ok{color:var(--ok)} .umb.atencion{color:var(--warn);font-weight:600}
 .umb.critico{color:var(--crit);font-weight:600}
@@ -507,7 +539,7 @@ const CAMPANIA = "26/27";
 <script>
 /* =========================== estado =========================== */
 const S={url:"",key:"",vals:[],mons:[],fotos:[],inds:[],occs:[],cats:[],
-         lotes:[],siembras:[],riegos:[],ch:{},sort:{},fotosPend:[],gps:null};
+         lotes:[],siembras:[],riegos:[],umbrales:[],ch:{},sort:{},fotosPend:[],gps:null};
 const el=id=>document.getElementById(id);
 const nf=(v,d=0)=>v==null||v===""||isNaN(v)?"–":Number(v).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fd=s=>{if(!s)return "–";const d=new Date(s+(String(s).length<=10?"T12:00:00":""));return isNaN(d)?String(s).slice(0,10):d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});};
@@ -529,7 +561,7 @@ const soft=async p=>{try{return await api(p)}catch(e){console.warn(e.message);re
 async function cargar(){
   el("liveTxt").textContent="cargando…";
   const camp=encodeURIComponent(CAMPANIA);
-  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos]=await Promise.all([
+  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos,S.umbrales]=await Promise.all([
     api(`v_mon_valores?select=*&campania=eq.${camp}&order=fecha.desc&limit=30000`),
     api(`mon_monitoreos?select=*&campania=eq.${camp}&order=fecha.desc&limit=5000`),
     api("mon_indicadores?select=*&activo=is.true&order=categoria_id,nombre"),
@@ -538,7 +570,8 @@ async function cargar(){
     soft("mon_fotos?select=*&order=creado_en.desc&limit=400"),
     soft("lotes?select=*&limit=5000"),
     soft(`mon_siembras?select=*&campania=eq.${camp}&limit=5000`),
-    soft("v_mon_riego_lote?select=*&limit=5000")
+    soft("v_mon_riego_lote?select=*&limit=5000"),
+    soft("mon_umbrales?select=*&activo=is.true&order=cultivo,plaga")
   ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
@@ -1085,6 +1118,60 @@ function ventanaDe(fen){
   if(r<=5) return "R5";
   return "R6-R7";
 }
+/* umbrales por cultivo y estadio, desde mon_umbrales */
+function umbralesDe(cultivo,fen){
+  if(!cultivo) return [];
+  const c=String(cultivo).toLowerCase();
+  const base=S.umbrales.filter(u=>{
+    const uc=String(u.cultivo||"").toLowerCase();
+    return c.includes(uc)||uc.includes(c.split(" ")[0]);
+  });
+  if(fen==null) return base;
+  if(!fen) return base;
+  const n=(String(fen).match(/(\d+)/)||[])[1];
+  const letra=String(fen).toUpperCase()[0];
+  return base.filter(u=>{
+    const e=String(u.estado||"").toUpperCase();
+    if(!e||/TODOS|VEGETATIVO-REPRODUCTIVO/.test(e)) return true;
+    if(letra==="V"&&/VEGETATIV|EMERGENCIA|COTILED|HOJAS|MACOLL|V\d/.test(e)) return true;
+    if(letra==="R"&&/REPRODUCT|FLORAC|VAINA|LLENADO|GRANO|CAPSULA|CAPÍTULO|R\d/.test(e)) return true;
+    if(letra==="Z"){
+      const z=Number(n||0);
+      if(z<=2&&/EMERGENCIA|MACOLL|PRESIEMBRA|COTILED/.test(e)) return true;
+      if(z>=3&&z<=4&&/ENCAÑAZ|MACOLL/.test(e)) return true;
+      if(z>=5&&/ESPIGAZ|FLORAC|LLENADO|LECHOSO|GRANO/.test(e)) return true;
+      return false;
+    }
+    // coincidencia directa del código: R3-R6 contiene R4
+    const m=e.match(/([VRZ])(\d+)\s*-\s*[VRZ]?(\d+)/);
+    if(m&&m[1]===letra&&n) return Number(n)>=Number(m[2])&&Number(n)<=Number(m[3]);
+    return false;
+  });
+}
+function semUmbral(v,u){
+  if(v==null||isNaN(v)||u.umbral_inf==null) return null;
+  if(u.umbral_sup!=null&&v>=u.umbral_sup) return "critico";
+  if(v>=u.umbral_inf) return "atencion";
+  return "ok";
+}
+function filasLibres(cat,d){
+  const inds=S.inds.filter(i=>i.categoria_id===cat);
+  const occs=S.occs.filter(o=>o.categoria_id===cat&&o.activo!==false);
+  const filas=(d.filas=d.filas||[]);
+  return filas.map((f,i)=>`<div class="esprow">
+    <div class="fld"><label>Plaga</label>
+      <input data-m="${cat}" data-fila="${i}" data-campo="occ" list="dl-${cat}" value="${esc(f.occ||"")}"></div>
+    <div class="fld"><label>Indicador</label>
+      <select data-m="${cat}" data-fila="${i}" data-campo="ind"><option value="">–</option>
+        ${inds.map(x=>`<option value="${x.id}" ${String(f.ind)===String(x.id)?"selected":""}>${esc(x.nombre)}</option>`).join("")}
+      </select></div>
+    <div class="fld"><label>Valor</label>
+      <input type="number" step="any" inputmode="decimal" data-m="${cat}" data-fila="${i}" data-campo="val" value="${esc(f.val||"")}"></div>
+    <div class="fld"><label>&nbsp;</label><button class="btn sm delesp" data-m="${cat}" data-fila="${i}">✕</button></div>
+  </div>`).join("")
+  +`<datalist id="dl-${cat}">${occs.map(o=>`<option value="${esc(o.nombre)}">`).join("")}</datalist>
+    <button class="btn sm addesp" data-m="${cat}" style="margin-top:8px">+ Agregar</button>`;
+}
 function semDe(v,ind){
   if(v==null||isNaN(v)||!ind||ind.umbral_control==null) return null;
   if(ind.invertido) return v<=(ind.umbral_dano??-1e18)?"critico":v<=ind.umbral_control?"atencion":"ok";
@@ -1213,64 +1300,51 @@ function cajaDe(m){
         <b>2</b> 75 % · <b>2+</b> capacidad de campo · <b>3</b> saturado.</div></div>`;}
 
   case "plagas":{
-    // El umbral de chinches depende del estadio: se elige la ventana según
-    // la fenología cargada, con los valores que LIAG tenía en Cropwise.
     const fen=(M.mods.fenologia?.valor||M.ctx?.feno?.fenologia||"").toUpperCase();
-    const vent=ventanaDe(fen);
-    const CH=["Chinche verde","Chinche de alfalfa","Chinche de los cuernos","Chinche panza verde"];
-    const OR=[["Bolillera por metro","Bolillera"],["Medidora por metro","Isoca medidora"],
-              ["Falsa medidora por metro","Falsa Medidora"],
-              ["Oruga de las leguminosas por metro","Oruga de las leguminosas"],
-              ["Defoliación","Defoliación"]];
+    const U=umbralesDe(M.ctx?.cultivo,fen);
+    const otros=umbralesDe(M.ctx?.cultivo,null).filter(u=>!U.includes(u));
 
-    const chFila=CH.map(c=>{
-      const nom=`${c} ${vent}`;
-      const ind=S.inds.find(x=>x.categoria_id==="plagas"&&x.nombre===nom);
-      const val=d["ch_"+c]||"";
-      const est=ind&&val!==""?semDe(Number(val),ind):null;
-      return `<div class="fld"><label>${esc(c.replace("Chinche ","Ch. "))}</label>
-        <input type="number" step="any" inputmode="decimal" data-m="plagas" data-campo="ch_${esc(c)}"
-               value="${esc(val)}" placeholder="por metro">
-        <span class="umb ${est||''}">${ind?`umbral ${nf(ind.umbral_control,2)}`:"sin umbral"}</span></div>`;
-    }).join("");
+    const fila=(u,i)=>{
+      const k="u"+u.id, val=d[k]??"";
+      const est=(val==="")?null:semUmbral(Number(val),u);
+      // El paño vertical captura ~60 % de los picudos: se muestra la
+      // población corregida, pero se guarda el conteo tal cual se hizo.
+      const corr=(/picudo/i.test(u.plaga)&&/paño|pano/i.test(u.metodo||"")&&val!==""&&!isNaN(val))
+        ? Number(val)/0.65 : null;
+      return `<div class="ufila ${est||''}">
+        <div class="uinfo">
+          <b>${esc(u.plaga)}</b>
+          ${u.cientifico?`<i>${esc(u.cientifico)}</i>`:""}
+          <span class="umeta">${esc(u.estado||"")}${u.metodo?" · "+esc(u.metodo):""}</span>
+          ${u.observaciones?`<span class="uobs">${esc(u.observaciones)}</span>`:""}
+        </div>
+        <div class="uval">
+          <input type="number" step="any" inputmode="decimal" data-m="plagas" data-campo="${k}"
+                 value="${esc(val)}" placeholder="${u.umbral_inf==null?"–":""}">
+          <span class="uuni">${esc(u.unidad||"")}${corr!=null?`<br><b title="el paño vertical captura el 60 %">≈ ${nf(corr,1)} reales</b>`:""}</span>
+        </div>
+        <div class="uumb">
+          ${u.umbral_inf==null?'<span class="sinu">sin umbral</span>'
+            :`<b>${nf(u.umbral_inf,u.umbral_inf<10?1:0)}</b>${u.umbral_sup!=null&&u.umbral_sup!==u.umbral_inf?` – ${nf(u.umbral_sup,u.umbral_sup<10?1:0)}`:""}`}
+          <span class="resp r${esc((u.respaldo||"").toLowerCase())}" title="nivel de respaldo de la fuente">${esc(u.respaldo||"")}</span>
+        </div>
+      </div>`;
+    };
 
-    const orFila=OR.map(([nom,occ])=>{
-      const ind=S.inds.find(x=>x.categoria_id==="plagas"&&x.nombre===nom);
-      const val=d["or_"+occ]||"";
-      const est=ind&&val!==""?semDe(Number(val),ind):null;
-      return `<div class="fld"><label>${esc(occ)}</label>
-        <input type="number" step="any" inputmode="decimal" data-m="plagas" data-campo="or_${esc(occ)}"
-               value="${esc(val)}" placeholder="${nom.includes("Defoli")?"%":"larvas/m"}">
-        <span class="umb ${est||''}">${ind?`umbral ${nf(ind.umbral_control,1)}`:""}</span></div>`;
-    }).join("");
+    if(!M.ctx?.cultivo) return `<div class="modbox">${hd(m,"")}
+      <div class="leyenda">El lote no tiene cultivo cargado, así que no puedo traer los umbrales.
+      Usá el catálogo general de abajo.</div>${filasLibres("plagas",d)}</div>`;
 
-    const inds=S.inds.filter(i=>i.categoria_id==="plagas");
-    const occs=S.occs.filter(o=>o.categoria_id==="plagas"&&o.activo!==false);
-    const filas=(d.filas=d.filas||[]);
-    const rows=filas.map((f,i)=>`<div class="esprow">
-      <div class="fld"><label>Plaga</label>
-        <input data-m="plagas" data-fila="${i}" data-campo="occ" list="dl-plagas"
-               value="${esc(f.occ||"")}" placeholder="buscar o escribir"></div>
-      <div class="fld"><label>Indicador</label>
-        <select data-m="plagas" data-fila="${i}" data-campo="ind"><option value="">–</option>
-          ${inds.map(x=>`<option value="${x.id}" ${String(f.ind)===String(x.id)?"selected":""}>${esc(x.nombre)}${x.unidad?" ("+esc(x.unidad)+")":""}</option>`).join("")}
-        </select></div>
-      <div class="fld"><label>Valor</label>
-        <input type="number" step="any" inputmode="decimal" data-m="plagas" data-fila="${i}"
-               data-campo="val" value="${esc(f.val||"")}"></div>
-      <div class="fld"><label>&nbsp;</label><button class="btn sm delesp" data-m="plagas" data-fila="${i}">✕</button></div>
-    </div>`).join("");
-
-    return `<div class="modbox">${hd(m,`conteo en paño de 1 m · umbrales de ${vent}`)}
-      ${fen?`<div class="leyenda" style="margin-bottom:10px">Los umbrales de chinches se ajustan
-        al estadio <b>${esc(fen)}</b>. Si cargás la fenología primero, se actualizan solos.</div>`
-       :`<div class="leyenda" style="margin-bottom:10px">Sin fenología cargada se usan los umbrales
-        de <b>hasta R2</b>, los más exigentes. Cargá el estadio para afinarlos.</div>`}
-      <div class="form" style="margin-bottom:12px">${chFila}</div>
-      <div class="form" style="margin-bottom:8px">${orFila}</div>
-      ${rows}
-      <datalist id="dl-plagas">${occs.map(o=>`<option value="${esc(o.nombre)}">`).join("")}</datalist>
-      <button class="btn sm addesp" data-m="plagas" style="margin-top:6px">+ Otra plaga del catálogo</button>
+    return `<div class="modbox">${hd(m,`${esc(M.ctx.cultivo)}${fen?" · "+esc(fen):""}`)}
+      ${U.length?`<div class="ulista">${U.map(fila).join("")}</div>`
+        :`<div class="leyenda">No hay umbrales cargados para ${esc(M.ctx.cultivo)} en este estadio.</div>`}
+      ${otros.length?`<details style="margin-top:12px"><summary>Otras plagas de ${esc(M.ctx.cultivo)} (${otros.length})</summary>
+        <div class="ulista" style="margin-top:9px">${otros.map(fila).join("")}</div></details>`:""}
+      <div class="leyenda" style="margin-top:12px">El umbral es orientativo: cambia con el precio del
+        cultivo, el costo del tratamiento y el estado del lote. Verde, naranja y rojo salen del rango
+        inferior y superior de la fuente.</div>
+      <details style="margin-top:10px"><summary>Cargar otra plaga del catálogo</summary>
+        ${filasLibres("plagas",d)}</details>
       </div>`;}
 
   case "malezas": case "enfermedades":{
@@ -1455,14 +1529,14 @@ function valoresDe(){
     }
   }
   if(m.plagas){
-    const vent=ventanaDe(m.fenologia?.valor||M.ctx?.feno?.fenologia||"");
-    ["Chinche verde","Chinche de alfalfa","Chinche de los cuernos","Chinche panza verde"]
-      .forEach(c=>push("plagas",`${c} ${vent}`,m.plagas["ch_"+c],c));
-    [["Bolillera por metro","Bolillera"],["Medidora por metro","Isoca medidora"],
-     ["Falsa medidora por metro","Falsa Medidora"],
-     ["Oruga de las leguminosas por metro","Oruga de las leguminosas"],
-     ["Defoliación","Defoliación"]]
-      .forEach(([nom,occ])=>push("plagas",nom,m.plagas["or_"+occ],occ));
+    // cada umbral cargado se guarda contra su propio indicador,
+    // creado al vuelo si todavía no existe
+    Object.keys(m.plagas).filter(k=>/^u\d+$/.test(k)).forEach(k=>{
+      const u=S.umbrales.find(x=>"u"+x.id===k);
+      const v=m.plagas[k];
+      if(!u||v===""||v==null||isNaN(v)) return;
+      V.push({umbral:u, val:Number(v), occ:u.plaga});
+    });
   }
   if(m.malezas?.enm) push("malezas","Enmalezamiento (1-3)",m.malezas.enm,"Evaluación general");
 
@@ -1503,9 +1577,22 @@ async function guardar(){
       const indCat={}; S.inds.forEach(i=>indCat[i.id]=i.categoria_id);
       const rows=[];
       for(const v of V){
+        // los valores que vienen de mon_umbrales necesitan su indicador
+        if(v.umbral){
+          const nom=`${v.umbral.plaga} (${v.umbral.unidad||"conteo"})`;
+          let ind=S.inds.find(x=>x.categoria_id==="plagas"&&x.nombre===nom);
+          if(!ind){
+            ind=(await api("mon_indicadores",{method:"POST",body:JSON.stringify([{
+              categoria_id:"plagas", nombre:nom, unidad:v.umbral.unidad||null,
+              umbral_control:v.umbral.umbral_inf, umbral_dano:v.umbral.umbral_sup,
+              invertido:false, decimales:2, activo:true}])}))[0];
+            S.inds.push(ind);
+          }
+          v.ind=ind.id; delete v.umbral;
+        }
         let oid=null;
         if(v.occ){
-          const cat=indCat[v.ind], k=(cat+"|"+v.occ).toLowerCase();
+          const cat=indCat[v.ind]||"plagas", k=(cat+"|"+v.occ).toLowerCase();
           let o=byName[k];
           if(!o){
             o=(await api("mon_ocurrencias",{method:"POST",
