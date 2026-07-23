@@ -28,6 +28,8 @@ header{background:var(--panel);border-bottom:1px solid var(--line);position:stic
 .hd{max-width:1500px;margin:0 auto;padding:13px 16px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 .hd h1{font-family:'Instrument Serif',serif;font-weight:400;font-size:28px;margin:0;letter-spacing:-.01em}
 .hd .sub{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2)}
+.hd .build{font-family:'Geist Mono',monospace;font-size:10px;color:var(--ink3);
+  border:1px solid var(--line);border-radius:5px;padding:2px 6px}
 .hd .right{margin-left:auto;display:flex;gap:8px;align-items:center}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--crit);display:inline-block}
 .dot.live{background:var(--ok)}
@@ -461,10 +463,12 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = "";   // <-- pegá acá la anon key
 const CAMPANIA = "26/27";
+const BUILD = "v14 · 23-07 18:45";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
   <h1>Monitoreo</h1><span class="sub">Finca Tolloche · <span id="hdCamp"></span></span>
+  <span class="build" id="hdBuild"></span>
   <div class="right">
     <span class="mono" style="font-size:12px;color:var(--ink2)"><span class="dot" id="dot"></span> <span id="liveTxt">sin conectar</span></span>
     <button class="btn sm" id="btnRefresh">Actualizar</button>
@@ -790,6 +794,7 @@ function poblar(){
 
   set("fCat",S.cats.map(c=>c.nombre),"Todas");
   el("hdCamp").textContent=CAMPANIA;
+  el("hdBuild").textContent=BUILD;
   if(el("qRes")&&!el("qRes").children.length) buscarLote();
   if(el("cQRes")&&!el("cQRes").children.length) cBuscar();
 }
