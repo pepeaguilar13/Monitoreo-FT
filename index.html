@@ -706,7 +706,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v33 · 24-07 01:05";   // subí este número en cada cambio
+const BUILD = "v34 · 24-07 01:25";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -869,6 +869,13 @@ const BUILD = "v33 · 24-07 01:05";   // subí este número en cada cambio
       <p class="cap">Superficie y avance del monitoreo.</p><div id="porCultivo"></div></div>
     <div class="card"><h2>Reparto por variedad</h2>
       <p class="cap">Dentro de cada cultivo, cuánto de cada material.</p><div id="porVariedad"></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h2>Reparto por actividad</h2>
+      <p class="cap">Diferencia garbanzo de garbanzo DDS, candeal de candeal cobertura.</p>
+      <div id="porActividad"></div></div>
+    <div class="card"><h2>Reparto por sistema</h2>
+      <p class="cap">Aspersión, gravedad y secano.</p><div id="porSistema"></div></div>
   </div>
   <div class="card"><h2>Reparto por sección</h2>
     <p class="cap">Cada sección con su superficie y su avance.</p><div id="porSeccion"></div></div>
@@ -2947,12 +2954,13 @@ function pintarFranja(){
 
 /* =========================== campaña =========================== */
 const DIMS={
-  cultivo:{n:"Cultivo",  f:r=>r.cultivo||"sin cultivo"},
-  variedad:{n:"Variedad",f:r=>r.variedad||"sin variedad"},
-  sistema:{n:"Sistema",  f:r=>r.sistema||"sin sistema"},
-  seccion:{n:"Sección",  f:r=>r.seccion||"–"},
+  cultivo:{n:"Cultivo",    f:r=>r.cultivo||"sin cultivo"},
+  actividad:{n:"Actividad",f:r=>r.actividad||r.cultivo||"sin actividad"},
+  variedad:{n:"Variedad",  f:r=>r.variedad||"sin variedad"},
+  sistema:{n:"Sistema",    f:r=>r.sistema||"sin sistema"},
+  seccion:{n:"Sección",    f:r=>r.seccion||"–"},
   antecesor:{n:"Antecesor",f:r=>r.antecesor||"sin antecesor"},
-  estado:{n:"Estado",    f:r=>r.sinMonitoreo?"sin recorrer":(r._peor||"sin umbral")},
+  estado:{n:"Estado",      f:r=>r._sin?"sin recorrer":(r._peor||"sin umbral")},
   ninguna:{n:"— sin cruzar —", f:()=>"Total"},
 };
 
@@ -2965,7 +2973,17 @@ function campania(){
     ["pvF","pvC","pvM"].forEach(i=>el(i).onchange=campania);
   }
   const kf=el("pvF").value||"cultivo", kc=el("pvC").value||"sistema", med=el("pvM").value||"ha";
-  const R=resumenLotes();
+
+  // La matriz trabaja sobre cada SIEMBRA, no sobre el lote: así un lote con dos
+  // cultivos —Q14 tiene candeal y pan— aporta sus hectáreas a cada uno por separado.
+  const est={}; resumenLotes().forEach(r=>est[K(r.lote)]=r);
+  const R=(S.sdet.length?S.sdet:S.siembras).map(x=>{
+    const e=est[K(x.lote)]||{};
+    return {...x, superficie_ha:Number(x.ha)||0,
+            sistema:x.sistema||e.sistema, seccion:x.seccion||e.seccion,
+            _peor:e._peor, _sin:e.sinMonitoreo!==false ? !!e.sinMonitoreo : false,
+            sinMonitoreo:!!e.sinMonitoreo};
+  }).filter(x=>x.lote);
   if(!R.length){ el("matriz").innerHTML='<div class="vacio">Sin datos de la campaña.</div>'; return; }
 
   const HA=L=>L.reduce((a,r)=>a+(Number(r.superficie_ha)||0),0);
@@ -2995,12 +3013,13 @@ function campania(){
     <tbody>${FIL.map(f=>{
       const L=sub(f,null), t=valor(L);
       return `<tr>
-        <td class="e"><b>${esc(f)}</b><span>${L.length} lote${L.length===1?"":"s"} · ${nf(HA(L),0)} ha</span></td>
+        <td class="e"><b>${esc(f)}</b><span>${(()=>{const n=new Set(L.map(r=>K(r.lote))).size;
+          return `${n} lote${n===1?"":"s"} · ${nf(HA(L),0)} ha`;})()}</span></td>
         ${COL.map(c=>{
-          const v=celdas[f+"|"+c], n=sub(f,c).length;
+          const v=celdas[f+"|"+c];
           return v>0
             ? `<td class="v" style="--i:${(max?v/max:0).toFixed(3)}" data-f="${esc(f)}" data-c="${esc(c)}"
-                 title="${esc(f)} · ${esc(c)}: ${fmt(v)} ${uni} en ${n} lote${n===1?"":"s"}">${fmt(v)}</td>`
+                 title="${esc(f)} · ${esc(c)}: ${fmt(v)} ${uni} en ${new Set(sub(f,c).map(r=>K(r.lote))).size} lotes">${fmt(v)}</td>`
             : `<td class="z">·</td>`;}).join("")}
         <td class="tot">${fmt(t)}</td>
         ${med==="ha"?`<td class="tot pc">${nf(t/totalGen*100,1)}</td>`:""}</tr>`;}).join("")}
@@ -3027,9 +3046,10 @@ function campania(){
     el(cont).innerHTML=grupos.map(g=>{
       const L=g.L, h=HA(L); if(!h) return "";
       const hr=HA(L.filter(r=>!r.sinMonitoreo));
-      const cr=L.filter(r=>r._peor==="critico").length;
+      const cr=new Set(L.filter(r=>r._peor==="critico").map(r=>K(r.lote))).size;
       return `<div class="brow">
-        <div class="bl"><b>${esc(g.n)}</b><span>${g.s||`${L.length} lote${L.length===1?"":"s"}`}${cr?` · <i>${cr} crítico${cr>1?"s":""}</i>`:""}</span></div>
+        <div class="bl"><b>${esc(g.n)}</b><span>${g.s||(()=>{const n=new Set(L.map(r=>K(r.lote))).size;
+          return `${n} lote${n===1?"":"s"}`;})()}${cr?` · <i>${cr} crítico${cr>1?"s":""}</i>`:""}</span></div>
         <div class="bb"><span class="bt" style="width:${(h/tot*100).toFixed(2)}%"><i style="width:${(hr/h*100).toFixed(1)}%"></i></span></div>
         <div class="bn">${nf(h,0)}<span> ha</span><br><small>${nf(hr/h*100,0)} % recorrido</small></div>
       </div>`;}).join("")||'<div class="vacio">Sin datos.</div>';
@@ -3048,6 +3068,14 @@ function campania(){
     V.forEach(v=>vars_.push({n:v,s:c,L:R.filter(r=>r.cultivo===c&&(r.variedad||"sin variedad")===v)}));
   });
   barras("porVariedad",vars_);
+
+  const acts=[...new Set(R.map(r=>r.actividad||r.cultivo).filter(Boolean))]
+    .sort((a,b)=>HA(R.filter(r=>(r.actividad||r.cultivo)===b))-HA(R.filter(r=>(r.actividad||r.cultivo)===a)));
+  barras("porActividad",acts.map(a=>({n:a,L:R.filter(r=>(r.actividad||r.cultivo)===a)})));
+
+  const sis=[...new Set(R.map(r=>r.sistema).filter(Boolean))]
+    .sort((a,b)=>HA(R.filter(r=>r.sistema===b))-HA(R.filter(r=>r.sistema===a)));
+  barras("porSistema",sis.map(x=>({n:x,L:R.filter(r=>r.sistema===x)})));
 
   const secs=[...new Set(R.map(r=>r.seccion).filter(Boolean))]
     .sort((a,b)=>HA(R.filter(r=>r.seccion===b))-HA(R.filter(r=>r.seccion===a)));
