@@ -10,21 +10,59 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
-  --bg:#F6F4ED; --panel:#FFF; --ink:#26261F; --ink2:#5C5B4E; --ink3:#8E8974;
-  --line:#DED8C6; --sand:#EDE8DA;
-  --olive:#6B7A4F; --olivedk:#48542F;
-  --ok:#5F8B45; --warn:#C08A1E; --crit:#B0402B;
-  --r:10px;
+  /* ---- escala de verdes derivada del isotipo LIAG (#9ACD32) ----
+     El lima de marca se usa en dosis chicas: foco, acentos, estado sano.
+     Los tonos profundos hacen la estructura, para que la lectura larga no canse. */
+  --g50:#F4F8EA; --g100:#E7F0D2; --g200:#CFE3A8; --g300:#B2D275;
+  --g400:#9ACD32; --g500:#7DAB2A; --g600:#628723; --g700:#4B681E;
+  --g800:#3A5119; --g900:#2A3A13;
+
+  /* ---- neutros, apenas cálidos para que el verde no se enfríe ---- */
+  --bg:#F7F6F0; --panel:#FFFFFF; --sand:#EFEDE3; --line:#DEDACA;
+  --ink:#242419; --ink2:#5B5A4C; --ink3:#8E8B79;
+
+  /* ---- semánticos ---- */
+  --olive:var(--g500); --olivedk:var(--g700); --olive-lt:var(--g100);
+  --ok:var(--g600); --warn:#C08A1E; --crit:#A83E2A;
+  --okbg:var(--g50); --warnbg:#FBF3E0; --critbg:#FAEDE9;
+  --okln:var(--g200); --warnln:#E8D4A2; --critln:#E2BCB1;
+
+  /* ---- forma ---- */
+  --r:12px; --r-sm:9px; --r-lg:16px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font-family:Geist,system-ui,sans-serif;font-size:14px;-webkit-text-size-adjust:100%}
 .mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
-.wrap{max-width:1500px;margin:0 auto;padding:0 16px 70px}
+.wrap{max-width:1500px;margin:0 auto;padding:0 18px 72px}
+@media(max-width:620px){
+  .wrap{padding:0 11px 64px}
+  .card{padding:14px 14px;margin-bottom:10px;border-radius:var(--r-sm)}
+  .card h2{font-size:19px}
+  .kpis{gap:7px;margin-bottom:14px}
+  .kpi{padding:11px 12px;border-radius:var(--r-sm)}
+  .kpi .val{font-size:22px;margin-top:3px}
+  .kpi .lab{font-size:9px}
+  .kpi .hint{font-size:10px}
+  .grid2{gap:10px}
+  .filters{gap:7px;margin-bottom:12px}
+  .f select,.f input{min-width:0;width:100%;font-size:16px;padding:9px 10px}
+  .f{flex:1 1 132px;min-width:0}
+  nav.tabs{margin:0 -11px 12px;padding:0 11px}
+  nav.tabs button{padding:11px 12px}
+  .franja{border-radius:var(--r-sm)}
+  .hcard{border-radius:var(--r-sm)}
+  .fhero{border-radius:var(--r-sm)}
+  .bx{border-radius:var(--r-sm)}
+  header .hd{padding:11px 13px}
+  .tw{margin:0 -14px;padding:0 14px}
+}
 h2{font-family:'Instrument Serif',serif;font-weight:400;font-size:21px;margin:0 0 2px;letter-spacing:-.01em}
 .cap{font-size:12px;color:var(--ink2);margin:0 0 14px}
 
 header{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:60}
+header::after{content:"";display:block;height:2px;
+  background:linear-gradient(90deg,var(--g400) 0%,var(--g600) 34%,transparent 34%)}
 .hd{max-width:1500px;margin:0 auto;padding:13px 16px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 .hd .logo{height:30px;width:auto;display:block;align-self:center;flex-shrink:0}
 .hd h1{font-family:'Instrument Serif',serif;font-weight:400;font-size:28px;margin:0;letter-spacing:-.01em;
@@ -43,22 +81,23 @@ header{background:var(--panel);border-bottom:1px solid var(--line);position:stic
 
 .btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 13px;border-radius:var(--r);font:inherit;font-size:13px;cursor:pointer}
 .btn:hover{background:var(--sand)}
-.btn.pri{background:var(--olivedk);border-color:var(--olivedk);color:#fff}
-.btn.pri:hover{background:var(--olive)}
+.btn.pri{background:var(--g700);border-color:var(--g700);color:#fff;font-weight:500}
+.btn.pri:hover{background:var(--g600);border-color:var(--g600)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.btn:focus-visible{outline:2px solid var(--olive);outline-offset:2px}
+.btn:focus-visible,.hcard:focus-visible,input:focus-visible,select:focus-visible,
+textarea:focus-visible,#qLote:focus{outline:2px solid var(--g400);outline-offset:2px}
 .btn.sm{padding:4px 9px;font-size:12px}
 
 /* ---- inicio ---- */
-.franja{background:var(--panel);border:1px solid var(--line);border-radius:13px;
-  padding:15px 17px;margin-top:14px}
+.franja{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px 18px;margin-top:14px;box-shadow:0 1px 2px rgba(36,36,25,.03)}
 .frtit{font-size:13px;color:var(--ink2);margin-bottom:11px;display:flex;flex-wrap:wrap;gap:9px;align-items:baseline}
 .frtit b{font-family:'Geist Mono',monospace;font-size:19px;color:var(--ink);letter-spacing:-.02em}
 .frtit span{margin-left:auto;font-size:11.5px;color:var(--ink3)}
 .frbar{display:flex;height:11px;border-radius:6px;overflow:hidden;background:var(--sand)}
 .frbar i{display:block;height:100%}
-.fr-critico{background:#B0402B} .fr-atencion{background:#E0A62B} .fr-ok{background:#7FA860}
-.fr-neutro{background:#CFD8C0} .fr-sin{background:#E7E1D0}
+.fr-critico{background:var(--crit)} .fr-atencion{background:#D19B22} .fr-ok{background:var(--g500)}
+.fr-neutro{background:var(--g200)} .fr-sin{background:#E8E4D6}
 .frleg{display:flex;flex-wrap:wrap;gap:13px;margin-top:10px;font-size:11px;color:var(--ink2)}
 .frleg i{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:4px}
 .frleg b{font-family:'Geist Mono',monospace;color:var(--ink)}
@@ -74,9 +113,10 @@ header{background:var(--panel);border-bottom:1px solid var(--line);position:stic
 .saludo .cambiar:hover{color:var(--olivedk)}
 .home{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:22px 0}
 .hcard{display:flex;flex-direction:column;gap:5px;text-align:left;background:var(--panel);
-  border:1px solid var(--line);border-radius:14px;padding:22px 20px;font:inherit;cursor:pointer;
-  min-height:132px;transition:border-color .12s,transform .12s}
-.hcard:hover{border-color:var(--olive);background:var(--sand)}
+  border:1px solid var(--line);border-radius:var(--r-lg);padding:22px 21px;font:inherit;cursor:pointer;
+  min-height:132px;box-shadow:0 1px 2px rgba(36,36,25,.03);
+  transition:border-color .14s,box-shadow .14s,transform .1s}
+.hcard:hover{border-color:var(--g300);box-shadow:0 3px 12px rgba(36,36,25,.07)}
 .hcard.apagada{opacity:.42;background:var(--sand)}
 .hcard.apagada:hover{border-color:var(--line)}
 .hcard.apagada .hs{color:var(--warn)}
@@ -84,10 +124,10 @@ header{background:var(--panel);border-bottom:1px solid var(--line);position:stic
 .hcard:focus-visible{outline:2px solid var(--olive);outline-offset:2px}
 .hcard{position:relative;overflow:hidden}
 .hcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ac,transparent)}
-.hcard[data-go=monitoreo]{--ac:#6B7A4F}
-.hcard[data-go=siembra]{--ac:#4A6B85}
-.hcard[data-go=cosecha]{--ac:#8A5A2B}
-.hcard[data-go=resumen]{--ac:#48542F}
+.hcard[data-go=monitoreo]{--ac:var(--g400)}
+.hcard[data-go=siembra]{--ac:var(--g600)}
+.hcard[data-go=cosecha]{--ac:#B58A2E}
+.hcard[data-go=resumen]{--ac:var(--g800)}
 .hcard.apagada::before{opacity:.3}
 .hcard .hi{font-family:'Instrument Serif',serif;font-size:27px;line-height:1.05;letter-spacing:-.01em}
 .hcard .hd2{font-size:12.5px;color:var(--ink2);line-height:1.4}
@@ -111,7 +151,7 @@ header{background:var(--panel);border-bottom:1px solid var(--line);position:stic
 
 nav.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;margin-bottom:16px}
 nav.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:12px 14px;font:inherit;font-size:13px;color:var(--ink2);cursor:pointer;white-space:nowrap}
-nav.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--olivedk);font-weight:600}
+nav.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--g400);font-weight:600}
 
 .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
 .f{display:flex;flex-direction:column;gap:4px}
@@ -136,23 +176,29 @@ nav.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--o
 .cbox small{color:var(--ink2);font-size:11.5px}
 
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
-.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 15px;
+  box-shadow:0 1px 2px rgba(36,36,25,.03)}
 .kpi .lab{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2)}
 .kpi .val{font-family:'Geist Mono',monospace;font-size:25px;font-weight:500;margin-top:5px;letter-spacing:-.02em}
 .kpi .val small{font-size:12px;color:var(--ink2)}
 .kpi .hint{font-size:11px;color:var(--ink2);margin-top:3px}
 .kpi.crit .val{color:var(--crit)} .kpi.warn .val{color:var(--warn)}
 
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(36,36,25,.03)}
+.card h2+.cap{margin-top:-1px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:900px){.grid2{grid-template-columns:1fr}}
 
 .tw{overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:13px}
-th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);font-weight:500;padding:8px 9px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;position:sticky;top:0;background:var(--panel)}
+th{text-align:left;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);
+  font-weight:500;padding:9px 10px;border-bottom:1.5px solid var(--line);white-space:nowrap;
+  cursor:pointer;position:sticky;top:0;background:var(--panel);z-index:2}
 th:hover{color:var(--ink)}
-td{padding:7px 9px;border-bottom:1px solid var(--sand);white-space:nowrap}
-tbody tr:hover{background:var(--sand)}
+td{padding:8px 10px;border-bottom:1px solid var(--sand);white-space:nowrap}
+tbody tr:nth-child(even){background:rgba(239,237,227,.42)}
+tbody tr:hover{background:var(--g50)}
 td.num{font-family:'Geist Mono',monospace;text-align:right;font-variant-numeric:tabular-nums}
 td.wrap-td{white-space:normal;min-width:200px;max-width:400px}
 
@@ -177,14 +223,14 @@ td .lotecel{display:flex;flex-direction:column;line-height:1.25}
 td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacing:.03em}
 
 .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap}
-.pill.ok{background:#E4EEDC;color:#3E6B28}
-.pill.atencion{background:#F7EBCF;color:#8A6110}
-.pill.critico{background:#F5DED8;color:var(--crit)}
+.pill.ok{background:var(--g50);color:var(--g700)}
+.pill.atencion{background:var(--warnbg);color:#8A6110}
+.pill.critico{background:var(--critbg);color:var(--crit)}
 .pill.na{background:var(--sand);color:var(--ink3)}
-.pill.revisar{background:#E7E2F2;color:#5B4A82}
-.sq.revisar{background:#8B79B8}
+.pill.revisar{background:#EDEAF6;color:#5A4C86}
+.sq.revisar{background:#8272AD}
 .sq{display:inline-block;width:13px;height:13px;border-radius:3px;background:var(--sand);vertical-align:-2px}
-.sq.ok{background:#7FA860} .sq.atencion{background:#E0A62B} .sq.critico{background:var(--crit)}
+.sq.ok{background:var(--g500)} .sq.atencion{background:#D19B22} .sq.critico{background:var(--crit)}
 .sqs{display:flex;gap:3px}
 
 .mapa{width:100%;height:auto;display:block;max-height:520px;background:var(--bg);border-radius:9px}
@@ -195,9 +241,9 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .mapaleg i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
 .chips{display:flex;flex-wrap:wrap;gap:4px}
 .chip{font-family:'Geist Mono',monospace;font-size:11px;padding:3px 6px;border-radius:5px;border:1px solid transparent;cursor:pointer;background:#fff;border-color:var(--line);color:var(--ink3)}
-.chip.ok{background:#E4EEDC;color:#3E6B28;border-color:transparent}
-.chip.atencion{background:#F7EBCF;color:#8A6110;border-color:transparent}
-.chip.critico{background:#F5DED8;color:var(--crit);border-color:transparent}
+.chip.ok{background:var(--g50);color:var(--g700);border-color:transparent}
+.chip.atencion{background:var(--warnbg);color:#8A6110;border-color:transparent}
+.chip.critico{background:var(--critbg);color:var(--crit);border-color:transparent}
 .grp{margin-bottom:12px}
 .grp .gl{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);margin-bottom:5px}
 
@@ -216,14 +262,14 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .thumb button{position:absolute;top:2px;right:2px;width:19px;height:19px;border:0;border-radius:50%;background:rgba(0,0,0,.62);color:#fff;font-size:12px;line-height:19px;cursor:pointer;padding:0}
 .msg{padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px}
-.msg.ok{background:#E4EEDC;color:#3E6B28}
-.msg.err{background:#F5DED8;color:var(--crit)}
+.msg.ok{background:var(--g50);color:var(--g700)}
+.msg.err{background:var(--critbg);color:var(--crit)}
 
 /* ---- flujo de monitoreo en campo ---- */
 .loteseek{position:relative;max-width:460px}
 #qLote{width:100%;font:inherit;font-size:19px;padding:13px 15px;border:1px solid var(--line);
   border-radius:10px;font-family:'Geist Mono',monospace;text-transform:uppercase;background:var(--panel)}
-#qLote:focus{outline:2px solid var(--olive);outline-offset:1px}
+
 .qres{margin-top:8px;display:flex;flex-direction:column;gap:1px;max-height:330px;overflow-y:auto}
 .qres button{display:flex;align-items:baseline;gap:9px;text-align:left;background:var(--panel);
   border:1px solid var(--line);border-radius:8px;padding:10px 13px;font:inherit;font-size:14px;cursor:pointer}
@@ -245,7 +291,7 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .mods button{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 12px;
   font:inherit;font-size:13.5px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px}
 .mods button:hover{background:var(--sand)}
-.mods button[aria-pressed=true]{background:var(--olive-lt,#E3E8D6);border-color:var(--olive);font-weight:600}
+.mods button[aria-pressed=true]{background:var(--olive-lt,var(--g100));border-color:var(--olive);font-weight:600}
 .mods button small{font-size:10.5px;color:var(--ink2);font-weight:400}
 
 .modbox{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:16px}
@@ -267,9 +313,9 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .ufila{display:grid;grid-template-columns:1fr 128px 108px;gap:11px;align-items:center;
   padding:10px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
 .ufila+.ufila{margin-top:5px}
-.ufila.ok{border-color:#BCD3A8;background:#F4F8EF}
-.ufila.atencion{border-color:#E7CD93;background:#FDF7E9}
-.ufila.critico{border-color:#DFB0A4;background:#FCF0ED}
+.ufila.ok{border-color:var(--g200);background:var(--g50)}
+.ufila.atencion{border-color:var(--warnln);background:var(--warnbg)}
+.ufila.critico{border-color:var(--critln);background:var(--critbg)}
 .uinfo{display:flex;flex-direction:column;gap:1px;min-width:0}
 .uinfo b{font-size:14px}
 .uinfo i{font-size:11.5px;color:var(--ink2);font-style:italic}
@@ -310,7 +356,7 @@ details[open] summary::before{content:"▾ "}
 .festado:hover{background:var(--sand)}
 .festado b{font-family:'Geist Mono',monospace;font-size:14px}
 .festado span{font-size:11.5px;color:var(--ink2);line-height:1.3}
-.festado[aria-pressed=true]{background:#E3E8D6;border-color:var(--olive)}
+.festado[aria-pressed=true]{background:var(--g100);border-color:var(--olive)}
 .festado[aria-pressed=true] span{color:var(--olivedk)}
 /* fila de especie con miniatura del atlas */
 .esprow-foto{grid-template-columns:56px 1.4fr 1.2fr .7fr auto}
@@ -373,8 +419,9 @@ details[open] summary::before{content:"▾ "}
 
 /* ============ ficha de lote ============ */
 .ficha{margin-bottom:16px}
-.fhero{background:var(--panel);border:1px solid var(--line);border-radius:14px;
-  padding:20px 22px;margin-bottom:11px;display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start}
+.fhero{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:22px 24px;margin-bottom:11px;display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start;
+  box-shadow:0 1px 3px rgba(36,36,25,.04)}
 .fhero .fid{min-width:150px}
 .fhero .fnom{font-family:'Instrument Serif',serif;font-size:58px;line-height:.92;letter-spacing:-.025em}
 .fhero .fsub{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);margin-top:8px}
@@ -390,14 +437,14 @@ details[open] summary::before{content:"▾ "}
 .fsemb{border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-width:92px}
 .fsemb .fl{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)}
 .fsemb .fv{font-size:13px;font-weight:600;margin-top:4px}
-.fsemb.ok{background:#EEF4E7;border-color:#C4D6B0} .fsemb.ok .fv{color:#3E6B28}
-.fsemb.atencion{background:#FBF3E2;border-color:#E7D3A6} .fsemb.atencion .fv{color:#8A6110}
-.fsemb.critico{background:#FAEBE7;border-color:#E3BCB1} .fsemb.critico .fv{color:var(--crit)}
+.fsemb.ok{background:var(--g50);border-color:#C4D6B0} .fsemb.ok .fv{color:var(--g700)}
+.fsemb.atencion{background:var(--warnbg);border-color:var(--warnln)} .fsemb.atencion .fv{color:#8A6110}
+.fsemb.critico{background:var(--critbg);border-color:var(--critln)} .fsemb.critico .fv{color:var(--crit)}
 .fsemb.na .fv{color:var(--ink3);font-weight:400}
 
 .bento{display:grid;grid-template-columns:repeat(12,1fr);gap:11px;align-items:start}
-.bx{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 17px;
-  display:flex;flex-direction:column;min-width:0}
+.bx{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 17px;
+  display:flex;flex-direction:column;min-width:0;box-shadow:0 1px 2px rgba(36,36,25,.03)}
 .bx h3{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink2);
   margin:0 0 12px;font-weight:500}
 .bx .big{font-family:'Geist Mono',monospace;font-size:38px;line-height:1;letter-spacing:-.03em}
@@ -458,7 +505,7 @@ details[open] summary::before{content:"▾ "}
 .calicap+.calicap{border-top:1px solid rgba(255,255,255,.35)}
 .calicap b{font-family:'Geist Mono',monospace;font-size:14px;color:#fff;
   text-shadow:0 1px 3px rgba(0,0,0,.35)}
-.calicap.vacia{background:repeating-linear-gradient(45deg,var(--sand),var(--sand) 5px,#E4DECC 5px,#E4DECC 10px)}
+.calicap.vacia{background:repeating-linear-gradient(45deg,var(--sand),var(--sand) 5px,var(--line) 5px,var(--line) 10px)}
 .calicap.vacia b{color:var(--ink3);text-shadow:none;font-size:11px}
 .caliesc{display:flex;flex-direction:column;justify-content:space-between;
   font-family:'Geist Mono',monospace;font-size:10px;color:var(--ink3);padding:2px 0}
@@ -471,7 +518,7 @@ details[open] summary::before{content:"▾ "}
 .bhleg{display:flex;flex-wrap:wrap;gap:12px;font-size:10.5px;color:var(--ink2);margin-top:9px}
 .bhleg i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
 .bhleg i.ln{height:2px;background:var(--ink);border-radius:0;vertical-align:3px}
-.bhleg i.cir{border:2px solid #6B7A4F;border-radius:50%;background:none}
+.bhleg i.cir{border:2px solid var(--g500);border-radius:50%;background:none}
 .arco{display:flex;align-items:center;gap:14px;min-width:0}
 .arco svg{flex-shrink:0}
 .arcod{font-family:'Geist Mono',monospace;min-width:0}
@@ -521,13 +568,13 @@ details[open] summary::before{content:"▾ "}
 .mtz td.e{text-align:left;font-family:Geist,sans-serif;padding-left:2px;min-width:130px}
 .mtz td.e b{font-size:13.5px;display:block;font-weight:600}
 .mtz td.e span{font-size:10.5px;color:var(--ink3)}
-.mtz td.v{background:color-mix(in srgb, var(--olive) calc(var(--i)*72%), #F1EEE2);
+.mtz td.v{background:color-mix(in srgb, var(--olive) calc(var(--i)*72%), var(--sand));
   color:var(--ink);cursor:pointer;transition:transform .1s}
 .mtz td.v:hover{transform:scale(1.04);outline:1.5px solid var(--olivedk)}
-.mtz td.z{color:#C9C3B0}
+.mtz td.z{color:var(--line)}
 .mtz td.tot{font-weight:600;background:var(--sand)}
 .mtz td.pc{color:var(--ink2);font-weight:400}
-.mtz tfoot td{background:var(--olive-lt,#E3E8D6);font-weight:600}
+.mtz tfoot td{background:var(--olive-lt,var(--g100));font-weight:600}
 .mtz tfoot td.e{background:none}
 .mtznota{font-size:11px;color:var(--ink3);margin-top:10px}
 
@@ -539,7 +586,7 @@ details[open] summary::before{content:"▾ "}
 .bl span{font-size:10.5px;color:var(--ink3)}
 .bl i{font-style:normal;color:var(--crit)}
 .bb{background:var(--sand);border-radius:5px;height:16px;overflow:hidden}
-.bt{display:block;height:100%;background:#DCD6C4;border-radius:5px;position:relative}
+.bt{display:block;height:100%;background:var(--line);border-radius:5px;position:relative}
 .bt i{display:block;height:100%;background:var(--olive);border-radius:5px}
 .bn{text-align:right;font-family:'Geist Mono',monospace;font-size:14px;line-height:1.25}
 .bn span{font-size:10px;color:var(--ink3)}
@@ -583,7 +630,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v29 · 23-07 23:40";   // subí este número en cada cambio
+const BUILD = "v30 · 24-07 00:05";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1056,7 +1103,7 @@ const GEO={o:[-63.97699,-25.55846],e:100000,p:{"Iri01":[[30421,2021,30435,2049,3
 
 /* =========================== ficha de lote =========================== */
 // Rampa de suelo: del ocre seco al azul de saturación.
-const HUMCOL={1:"#B0765A",1.5:"#C9A063",2:"#8B9A5B",2.5:"#4E7A5E",3:"#3D6B7D"};
+const HUMCOL={1:"#B07753",1.5:"#CFA349",2:"#9BB544",2.5:"#5F8F3A",3:"#3E7A82"};
 const HUMTXT={1:"seco",1.5:"50 % CC",2:"75 % CC",2.5:"capacidad de campo",3:"saturado"};
 const humCol=v=>v==null?null:HUMCOL[[1,1.5,2,2.5,3].reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a)];
 
@@ -1203,11 +1250,11 @@ function bxHumedad(D){
       <div class="caliesc">${PR.map(p=>`<span>${p}</span>`).join("")}</div>
     </div>
     ${hay?`<div class="calileg">
-      <i style="background:#B0765A"></i>seco
-      <i style="background:#C9A063;margin-left:9px"></i>50 %
-      <i style="background:#8B9A5B;margin-left:9px"></i>75 %
-      <i style="background:#4E7A5E;margin-left:9px"></i>CC
-      <i style="background:#3D6B7D;margin-left:9px"></i>saturado</div>`:""}
+      <i style="background:#B07753"></i>seco
+      <i style="background:#CFA349;margin-left:9px"></i>50 %
+      <i style="background:#9BB544;margin-left:9px"></i>75 %
+      <i style="background:#5F8F3A;margin-left:9px"></i>CC
+      <i style="background:#3E7A82;margin-left:9px"></i>saturado</div>`:""}
     <div class="pie">${hay
       ? `Medido el ${fd(D.humFecha)}. Promedio del perfil ${nf(prom,2)}, cerca del <b>${cc} % de capacidad de campo</b>.`
       : `Sin lecturas de humedad. Se cargan desde Monitoreo.`}</div></div>`;
@@ -1247,33 +1294,33 @@ function bxBalance(D){
   return `<div class="bx b6"><h3>Balance hídrico · agua útil modelada</h3>
     <svg viewBox="0 0 ${W} ${H}" class="bhsvg" role="img"
          aria-label="Evolución del agua útil del suelo en milímetros">
-      <rect x="${PL}" y="${y(BH.cc)}" width="${W-PL-PR}" height="${y(u.v)-y(BH.cc)}" fill="#EEF4E7"/>
-      <rect x="${PL}" y="${y(u.v)}" width="${W-PL-PR}" height="${y(u.a)-y(u.v)}" fill="#FBF3E2"/>
-      <rect x="${PL}" y="${y(u.a)}" width="${W-PL-PR}" height="${y(0)-y(u.a)}" fill="#FAEBE7"/>
+      <rect x="${PL}" y="${y(BH.cc)}" width="${W-PL-PR}" height="${y(u.v)-y(BH.cc)}" fill="var(--g50)"/>
+      <rect x="${PL}" y="${y(u.v)}" width="${W-PL-PR}" height="${y(u.a)-y(u.v)}" fill="var(--warnbg)"/>
+      <rect x="${PL}" y="${y(u.a)}" width="${W-PL-PR}" height="${y(0)-y(u.a)}" fill="var(--critbg)"/>
       ${[0,u.a,u.v,BH.cc].map(v=>`<g>
-        <line x1="${PL}" x2="${W-PR}" y1="${y(v)}" y2="${y(v)}" stroke="#D8D2C0" stroke-width=".7"/>
+        <line x1="${PL}" x2="${W-PR}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width=".7"/>
         <text x="${PL-5}" y="${y(v)+3.5}" text-anchor="end" font-size="9"
-          font-family="Geist Mono,monospace" fill="#8E8974">${v}</text></g>`).join("")}
+          font-family="Geist Mono,monospace" fill="var(--ink3)">${v}</text></g>`).join("")}
       ${S1.map((p,i)=>{const h=Math.min(58,p.evap*1.5);
         return `<rect x="${(x(i)-bw/2).toFixed(1)}" y="${PT}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"
-          fill="#B0402B" opacity=".22"><title>Semana ${p.sem}: consumo ${nf(p.evap,1)} mm (Kc ${nf(p.kc,2)})</title></rect>`;}).join("")}
+          fill="var(--crit)" opacity=".22"><title>Semana ${p.sem}: consumo ${nf(p.evap,1)} mm (Kc ${nf(p.kc,2)})</title></rect>`;}).join("")}
       ${S1.map((p,i)=>p.rg>0?`<rect x="${(x(i)-bw/2).toFixed(1)}" y="${(H-PB-Math.min(58,p.rg*1.5)).toFixed(1)}"
-          width="${bw.toFixed(1)}" height="${Math.min(58,p.rg*1.5).toFixed(1)}" fill="#3D6B7D" opacity=".55"
+          width="${bw.toFixed(1)}" height="${Math.min(58,p.rg*1.5).toFixed(1)}" fill="#3E7A82" opacity=".55"
         ><title>Semana ${p.sem}: riego ${nf(p.rg,1)} mm</title></rect>`:"").join("")}
       <path d="${linea}" fill="none" stroke="var(--ink)" stroke-width="1.9" stroke-linejoin="round"/>
       ${idxHoy>=0?`<line x1="${x(idxHoy)}" x2="${x(idxHoy)}" y1="${PT}" y2="${H-PB}"
-        stroke="#B0402B" stroke-width="1.2" stroke-dasharray="3 3"/>
+        stroke="var(--crit)" stroke-width="1.2" stroke-dasharray="3 3"/>
         <circle cx="${x(idxHoy)}" cy="${y(act.mm)}" r="4" fill="var(--ink)"/>`:""}
       ${med.map(m=>{const i=S1.findIndex(p=>p.sem===m.sem);
-        return i<0?"":`<g><circle cx="${x(i)}" cy="${y(m.mm)}" r="5" fill="none" stroke="#6B7A4F" stroke-width="2"/>
+        return i<0?"":`<g><circle cx="${x(i)}" cy="${y(m.mm)}" r="5" fill="none" stroke="var(--g500)" stroke-width="2"/>
           <title>Medido ${fd(m.fecha)}: ${m.mm} mm</title></g>`;}).join("")}
       ${[0,Math.floor(S1.length/2),S1.length-1].map(i=>`<text x="${x(i)}" y="${H-6}"
         text-anchor="${i===0?"start":i===S1.length-1?"end":"middle"}" font-size="9"
-        font-family="Geist Mono,monospace" fill="#8E8974">sem ${S1[i].sem}</text>`).join("")}
+        font-family="Geist Mono,monospace" fill="var(--ink3)">sem ${S1[i].sem}</text>`).join("")}
     </svg>
     <div class="bhleg">
-      <span><i style="background:#3D6B7D;opacity:.55"></i>riego</span>
-      <span><i style="background:#B0402B;opacity:.22"></i>consumo del cultivo</span>
+      <span><i style="background:#3E7A82;opacity:.55"></i>riego</span>
+      <span><i style="background:var(--crit);opacity:.22"></i>consumo del cultivo</span>
       <span><i class="ln"></i>agua útil</span>
       ${med.length?`<span><i class="cir"></i>humedad medida</span>`:""}
     </div>
@@ -1308,7 +1355,7 @@ function bxStand(D){
   const st=D.st;
   const c=st?.coef, pc=c==null?null:Math.min(1.3,c);
   const R=34, C=2*Math.PI*R, frac=pc==null?0:Math.min(1,pc/1.3);
-  const col=c==null?"#C9C3B0":c<=0.8?"var(--crit)":c<=0.9?"var(--warn)":"var(--olive)";
+  const col=c==null?"var(--line)":c<=0.8?"var(--crit)":c<=0.9?"var(--warn)":"var(--olive)";
   return `<div class="bx b3 mitad"><h3>Stand de plantas</h3>
     <div class="arco">
       <svg width="82" height="82" viewBox="0 0 82 82" aria-hidden="true">
@@ -1616,11 +1663,11 @@ function mapa(){
     }}));
   const W=x1-x0, H=y1-y0, M=W*0.012;
 
-  const COLM={ok:"#7FA860",atencion:"#E0A62B",critico:"#B0402B",revisar:"#8B79B8"};
+  const COLM={ok:"var(--g500)",atencion:"#D19B22",critico:"var(--crit)",revisar:"#8B79B8"};
   const paths=lotes.map(l=>{
     const e=est[K(l)];
     const dentro = e && (!soloVisibles || R.some(r=>K(r.lote)===K(l)));
-    const fill = !e ? "#E7E1D0" : e.sem ? COLM[e.sem] : e.sin ? "#FFFFFF" : "#CFD8C0";
+    const fill = !e ? "#E8E4D6" : e.sem ? COLM[e.sem] : e.sin ? "#FFFFFF" : "var(--g200)";
     const op   = !e ? .45 : dentro ? .92 : .18;
     const d=GEO.p[l].map(r=>{
       let s2="";
@@ -1632,19 +1679,19 @@ function mapa(){
         (e.sin?"sin recorrer":`${e.sem||"sin umbral"} · última visita ${fd(e.fecha)} (${e.dias} d)`)+
         (e.al&&e.al.length?"\n"+e.al.join(", "):"")
       : `${l} · fuera de la campaña`;
-    return `<path d="${d}" fill="${fill}" fill-opacity="${op}" stroke="#8E8974" stroke-width="${(W*0.0006).toFixed(1)}"
+    return `<path d="${d}" fill="${fill}" fill-opacity="${op}" stroke="var(--ink3)" stroke-width="${(W*0.0006).toFixed(1)}"
       data-lote="${esc(l)}" class="mp${e?" act":""}"><title>${esc(t)}</title></path>`;
   }).join("");
 
   box.innerHTML=`<svg class="mapa" viewBox="${-M} ${-M} ${W+2*M} ${H+2*M}"
       role="img" aria-label="Mapa de los lotes de Finca Tolloche">${paths}</svg>
     <div class="mapaleg">
-      <span><i style="background:#7FA860"></i>ok</span>
-      <span><i style="background:#E0A62B"></i>atención</span>
-      <span><i style="background:#B0402B"></i>crítico</span>
-      <span><i style="background:#CFD8C0"></i>recorrido sin umbral</span>
-      <span><i style="background:#fff;border:1px solid #8E8974"></i>sin recorrer</span>
-      <span><i style="background:#E7E1D0"></i>fuera de la campaña</span>
+      <span><i style="background:var(--g500)"></i>ok</span>
+      <span><i style="background:#D19B22"></i>atención</span>
+      <span><i style="background:var(--crit)"></i>crítico</span>
+      <span><i style="background:var(--g200)"></i>recorrido sin umbral</span>
+      <span><i style="background:#fff;border:1px solid var(--ink3)"></i>sin recorrer</span>
+      <span><i style="background:#E8E4D6"></i>fuera de la campaña</span>
     </div>`;
   box.querySelectorAll("path.act").forEach(p=>p.onclick=()=>{
     el("fLote").value=p.dataset.lote; el("fLoteX").style.display="block"; render();});
@@ -1657,7 +1704,7 @@ function chart(id,cfg){
   cfg.options=Object.assign({responsive:true,maintainAspectRatio:false,animation:false},cfg.options||{});
   S.ch[id]=new Chart(c,cfg);
 }
-const COL={ok:"#7FA860",atencion:"#E0A62B",critico:"#B0402B"};
+const COL={ok:"var(--g500)",atencion:"#D19B22",critico:"var(--crit)"};
 
 function chartCat(){
   const R=resumenLotes(),cats=S.cats.filter(c=>R.some(r=>r.cats[c.id]));
@@ -1691,9 +1738,9 @@ function chartEvo(){
     const o=new Date(d);o.setDate(d.getDate()-((d.getDay()+6)%7));
     const k=o.toISOString().slice(0,10);(w[k]=w[k]||{})[v.categoria]=((w[k]||{})[v.categoria]||0)+1;});
   const ks=Object.keys(w).sort();
-  const pal=Object.fromEntries(S.cats.map(c=>[c.nombre,c.color||"#6B7A4F"]));
+  const pal=Object.fromEntries(S.cats.map(c=>[c.nombre,c.color||"var(--g500)"]));
   chart("chEvo",{type:"bar",data:{labels:ks.map(fd),datasets:cats.map(c=>({label:c,
-    backgroundColor:pal[c]||"#6B7A4F",borderRadius:3,data:ks.map(k=>w[k][c]||0)}))},
+    backgroundColor:pal[c]||"var(--g500)",borderRadius:3,data:ks.map(k=>w[k][c]||0)}))},
     options:{plugins:{legend:{position:"bottom",labels:{boxWidth:11,font:{size:10}}}},
       scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:"registros"}}},
       maintainAspectRatio:false}});
@@ -1804,8 +1851,8 @@ function stand(){
   const mx=Math.max(1,...pts.flatMap(o=>[o.real,o.obj]))/1e6;
   chart("chStand",{type:"scatter",data:{datasets:[
     {data:pts.map(o=>({x:o.obj/1e6,y:o.real/1e6,l:o.lote})),pointRadius:4,
-     backgroundColor:pts.map(o=>COL[o.sem]||"#8E8974")},
-    {type:"line",data:[{x:0,y:0},{x:mx,y:mx}],borderColor:"#C9C3B0",borderDash:[5,4],pointRadius:0,fill:false}]},
+     backgroundColor:pts.map(o=>COL[o.sem]||"var(--ink3)")},
+    {type:"line",data:[{x:0,y:0},{x:mx,y:mx}],borderColor:"var(--line)",borderDash:[5,4],pointRadius:0,fill:false}]},
     options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.l?
       `${c.raw.l}: ${c.raw.y.toFixed(2)}M real vs ${c.raw.x.toFixed(2)}M obj`:""}}},
       scales:{x:{title:{display:true,text:"objetivo M pl/ha"}},y:{title:{display:true,text:"real M pl/ha"}}},
