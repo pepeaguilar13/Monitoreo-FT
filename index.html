@@ -515,7 +515,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v24 · 23-07 21:50";   // subí este número en cada cambio
+const BUILD = "v26 · 23-07 22:30";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -797,7 +797,7 @@ const BUILD = "v24 · 23-07 21:50";   // subí este número en cada cambio
 <script>
 /* =========================== estado =========================== */
 const S={url:"",key:"",vals:[],mons:[],fotos:[],inds:[],occs:[],cats:[],
-         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],riegoSem:[],opers:[],ch:{},sort:{},fotosPend:[],gps:null};
+         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],riegoSem:[],opers:[],geo:[],ch:{},sort:{},fotosPend:[],gps:null};
 const el=id=>document.getElementById(id);
 const hoyISO=()=>{const d=new Date();
   return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);};
@@ -829,7 +829,7 @@ const soft=async p=>{try{return await api(p)}catch(e){console.warn(e.message);re
 async function cargar(){
   el("liveTxt").textContent="cargando…";
   const camp=encodeURIComponent(CAMPANIA);
-  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos,S.umbrales,S.atlas,S.sdet,S.riegoSem]=await Promise.all([
+  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos,S.umbrales,S.atlas,S.sdet,S.riegoSem,S.geo]=await Promise.all([
     api(`v_mon_valores?select=*&campania=eq.${camp}&order=fecha.desc&limit=30000`),
     api(`mon_monitoreos?select=*&campania=eq.${camp}&order=fecha.desc&limit=5000`),
     api("mon_indicadores?select=*&activo=is.true&order=categoria_id,nombre"),
@@ -842,7 +842,8 @@ async function cargar(){
     soft("mon_umbrales?select=*&activo=is.true&order=cultivo,plaga"),
     soft("v_mon_atlas?select=*&limit=2000"),
     soft(`v_mon_siembra_detalle?select=*&campania=eq.${camp}&limit=5000`),
-    soft("riegos?select=lote,wk,mm,cumpl&limit=20000")
+    soft("riegos?select=lote,wk,mm,cumpl&limit=20000"),
+    soft("mon_geo?select=*&limit=1000")
   ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
@@ -852,16 +853,25 @@ async function cargar(){
   if(vista==="home") pintarHome(); else ir(vista,subvista);
 }
 
+const K=l=>String(l||"").trim().toUpperCase();   // clave de lote, sin distinguir mayúsculas
 let _sbCache=null,_sbLen=-1;
 function idxSiembra(){
   if(_sbCache&&_sbLen===S.siembras.length)return _sbCache;
-  const o={}; S.siembras.forEach(r=>{const l=String(r.lote||"").trim(); if(l) o[l]=r;});
+  const o={}; S.siembras.forEach(r=>{const l=K(r.lote); if(l) o[l]=r;});
   _sbLen=S.siembras.length; return (_sbCache=o);
 }
-const secDe=l=>{const s=idxSiembra()[l]; return s?.seccion||seccion(l);};
+const sbDe=l=>idxSiembra()[K(l)]||null;
+let _geoC=null,_geoN=-1;
+function geoDe(l){
+  if(!_geoC||_geoN!==S.geo.length){
+    _geoC={}; S.geo.forEach(g=>_geoC[K(g.lote)]=g); _geoN=S.geo.length;
+  }
+  return _geoC[K(l)]||null;
+}
+const secDe=l=>{const s=sbDe(l); return s?.seccion||seccion(l);};
 function idxRiego(){
   const o={};
-  S.riegos.forEach(r=>{const l=String(r.lote||"").trim(); if(l) o[l]=r;});
+  S.riegos.forEach(r=>{const l=K(r.lote); if(l) o[l]=r;});
   return o;
 }
 
@@ -884,13 +894,13 @@ const F=()=>({cul:el("fCultivo").value,sec:el("fSeccion").value,
   lot:el("fLote").value.trim().toUpperCase(),sis:el("fSistema").value,
               cat:el("fCat").value,sem:el("fSem").value,d1:el("fD1").value,d2:el("fD2").value});
 function fVals(){const f=F(),sb=idxSiembra();return S.vals.filter(v=>
-  (!f.cul||v.cultivo===f.cul)&&(!f.sec||(sb[v.lote]?.seccion||seccion(v.lote))===f.sec)&&
-  (!f.sis||sb[v.lote]?.sistema===f.sis)&&(!f.lot||String(v.lote).toUpperCase()===f.lot)&&
+  (!f.cul||v.cultivo===f.cul)&&(!f.sec||(sb[K(v.lote)]?.seccion||seccion(v.lote))===f.sec)&&
+  (!f.sis||sb[K(v.lote)]?.sistema===f.sis)&&(!f.lot||K(v.lote)===f.lot)&&
   (!f.cat||v.categoria===f.cat)&&(!f.sem||v.semaforo===f.sem)&&
   (!f.d1||(v.fecha||"")>=f.d1)&&(!f.d2||(v.fecha||"")<=f.d2));}
 function fMons(){const f=F(),sb=idxSiembra();return S.mons.filter(m=>
-  (!f.cul||m.cultivo===f.cul)&&(!f.sec||(sb[m.lote]?.seccion||seccion(m.lote))===f.sec)&&
-  (!f.sis||sb[m.lote]?.sistema===f.sis)&&(!f.lot||String(m.lote).toUpperCase()===f.lot)&&
+  (!f.cul||m.cultivo===f.cul)&&(!f.sec||(sb[K(m.lote)]?.seccion||seccion(m.lote))===f.sec)&&
+  (!f.sis||sb[K(m.lote)]?.sistema===f.sis)&&(!f.lot||K(m.lote)===f.lot)&&
   (!f.d1||(m.fecha||"")>=f.d1)&&(!f.d2||(m.fecha||"")<=f.d2));}
 
 
@@ -903,6 +913,7 @@ const BH={
 };
 
 // Modelo del tablero de riego: suelo(t) = min(cc, max(0, suelo(t-1) + riego + lluvia - ETo*Kc))
+BH.lotU={}; for(const k in BH.lot) BH.lotU[String(k).toUpperCase()]=BH.lot[k];
 const isoWeek=d=>{const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
   const day=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day);
   const ys=new Date(Date.UTC(t.getUTCFullYear(),0,1));
@@ -937,12 +948,12 @@ function kcModelo(cultivo,variedad){
 // Prioriza el maestro de siembras, que está en vivo. Las constantes del
 // tablero de riego quedan solo de respaldo para lotes que no estén ahí.
 function ctxBalance(lote){
-  const sb=idxSiembra()[lote];
+  const sb=sbDe(lote);
   if(sb&&sb.fecha_siembra&&sb.cultivo){
     const m=kcModelo(sb.cultivo,sb.variedad);
     if(m&&BH.kc[m]) return {kc:m,f:sb.fecha_siembra,cult:sb.cultivo,semb:true,src:"siembras"};
   }
-  const L=BH.lot[lote];
+  const L=BH.lotU[K(lote)];
   return L?{...L,src:"tablero"}:null;
 }
 
@@ -977,11 +988,11 @@ const HUMTXT={1:"seco",1.5:"50 % CC",2:"75 % CC",2.5:"capacidad de campo",3:"sat
 const humCol=v=>v==null?null:HUMCOL[[1,1.5,2,2.5,3].reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a)];
 
 function datosLote(lote){
-  const sb=idxSiembra()[lote]||{}, rg=idxRiego()[lote]||{};
-  const mons=S.mons.filter(m=>String(m.lote).toUpperCase()===lote).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  const sb=sbDe(lote)||{}, rg=idxRiego()[K(lote)]||{};
+  const mons=S.mons.filter(m=>K(m.lote)===K(lote)).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
   const vals=S.vals.filter(v=>String(v.lote).toUpperCase()===lote);
   const feno=mons.find(m=>m.fenologia);
-  const st=standData().find(d=>String(d.lote).toUpperCase()===lote);
+  const st=standData().find(d=>K(d.lote)===K(lote));
 
   // humedad: la lectura más reciente de cada profundidad
   const hum={}; let humFecha=null;
@@ -1007,6 +1018,8 @@ function datosLote(lote){
 
 function fichaLote(lote){
   const D=datosLote(lote), sb=D.sb, rg=D.rg;
+  // se muestra el nombre tal como figura en el maestro, no como se tipeó
+  D.lote = sb.lote || S.mons.find(m=>K(m.lote)===K(lote))?.lote || lote;
   const ddSiembra=D.dias(sb.fecha_siembra);
   const ultima=D.mons[0];
 
@@ -1019,14 +1032,19 @@ function fichaLote(lote){
   el("ficha").innerHTML=`<div class="ficha">
     <div class="fhero">
       <div class="fid">
-        <div class="fnom">${esc(lote)}</div>
+        <div class="fnom">${esc(D.lote)}</div>
         <div class="fsub">${esc(sb.sistema||"sistema sin dato")}${sb.seccion?" · sección "+esc(sb.seccion):""}${rg.equipos?.length?" · "+esc(rg.equipos.join("/")):""}</div>
       </div>
       <div>
         <div class="fcul">${esc(sb.cultivo||ultima?.cultivo||"Sin cultivo")}</div>
         <div class="fvar">${varLinea(D)}</div>
         <dl>
-          <div><dt>Superficie</dt><dd>${nf(sb.ha,0)} <span>ha</span></dd></div>
+          <div><dt>Superficie</dt><dd>${nf(sb.ha,0)} <span>ha sembradas</span>${(()=>{
+            const g=geoDe(D.lote); if(!g||!sb.ha) return "";
+            const dif=Number(g.ha_gis)-Number(sb.ha);
+            return dif>Math.max(3,sb.ha*0.05)
+              ? `<br><span title="superficie del polígono según la planimetría">de ${nf(g.ha_gis,0)} del lote · ${nf(dif,0)} sin sembrar</span>`
+              : "";})()}</dd></div>
           <div><dt>Siembra</dt><dd>${fd(sb.fecha_siembra)} ${ddSiembra?`<span>${ddSiembra} d</span>`:""}</dd></div>
           <div><dt>Antecesor</dt><dd style="font-family:Geist,sans-serif;font-size:13px">${esc(sb.antecesor||"–")}</dd></div>
           ${sb.siembras>1?`<div><dt>Siembras</dt><dd>${sb.siembras} <span>variedades</span></dd></div>`:""}
@@ -1056,7 +1074,7 @@ function fichaLote(lote){
 
 // Una variedad se muestra sola; varias, cada una con su superficie.
 function varLinea(D){
-  const det=S.sdet.filter(x=>String(x.lote).toUpperCase()===D.lote)
+  const det=S.sdet.filter(x=>K(x.lote)===K(D.lote))
     .sort((a,b)=>(Number(b.ha)||0)-(Number(a.ha)||0));
   if(det.length>1) return det.map(x=>
     `<b>${esc(x.variedad||"sin variedad")}</b> <span>${nf(x.ha,0)} ha</span>`).join(" · ");
@@ -1064,7 +1082,7 @@ function varLinea(D){
 }
 
 function bxSiembras(D){
-  const det=S.sdet.filter(x=>String(x.lote).toUpperCase()===D.lote);
+  const det=S.sdet.filter(x=>K(x.lote)===K(D.lote));
   if(det.length<2) return "";
   const tot=det.reduce((a,x)=>a+(Number(x.ha)||0),0);
   return `<div class="bx b6"><h3>El lote se sembró en ${det.length} partes</h3>
@@ -1129,7 +1147,7 @@ function bxBalance(D){
 
   // mm efectivamente aplicados por semana: mm del programa × cumplimiento
   const rs={};
-  S.riegoSem.filter(r=>String(r.lote).toUpperCase()===D.lote).forEach(r=>{
+  S.riegoSem.filter(r=>K(r.lote)===K(D.lote)).forEach(r=>{
     const c=r.cumpl==null?0:(Number(r.cumpl)>1.5?Number(r.cumpl)/100:Number(r.cumpl));
     rs[r.wk]=(rs[r.wk]||0)+(Number(r.mm)||0)*c;
   });
@@ -1140,7 +1158,7 @@ function bxBalance(D){
 
   // lecturas de humedad medidas a campo, llevadas a mm para contrastar el modelo
   const med=[];
-  S.vals.filter(v=>String(v.lote).toUpperCase()===D.lote
+  S.vals.filter(v=>K(v.lote)===K(D.lote)
       &&v.indicador==="Humedad promedio del perfil"&&v.valor!=null)
     .forEach(v=>{const d=new Date(v.fecha+"T12:00:00");
       if(!isNaN(d)) med.push({sem:isoWeek(d),mm:humMm(Number(v.valor)),fecha:v.fecha});});
@@ -1406,7 +1424,7 @@ function resumenLotes(){
 
   return Object.values(out).filter(o=>
     (!f.cul||o.cultivo===f.cul)&&(!f.sec||o.seccion===f.sec)&&
-    (!f.lot||String(o.lote).toUpperCase()===f.lot)&&(!f.sis||o.sistema===f.sis));
+    (!f.lot||K(o.lote)===f.lot)&&(!f.sis||o.sistema===f.sis));
 }
 
 function render(){
@@ -1414,7 +1432,7 @@ function render(){
   el("fAviso").style.display=F_.some(i=>el(i).value)?"":"none";
   const lote=el("fLote").value.trim().toUpperCase();
   const hay=lote&&[...S.siembras.map(x=>x.lote),...S.mons.map(m=>m.lote)]
-    .some(l=>String(l).toUpperCase()===lote);
+    .some(l=>K(l)===K(lote));
   el("ficha").style.display=hay?"":"none";
   el("cardTabla").style.display=hay?"none":"";
   if(hay) fichaLote(lote);
@@ -1784,7 +1802,7 @@ function buscarLote(){
 
 function elegirLote(lote){
   M.lote=lote; M.mods={}; M.fotos=[];
-  const sb=idxSiembra()[lote]||{}, rg=idxRiego()[lote]||{};
+  const sb=sbDe(lote)||{}, rg=idxRiego()[K(lote)]||{};
   const prev=S.mons.filter(m=>m.lote===lote).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
   const feno=prev.find(m=>m.fenologia);
   const st=standData().find(d=>d.lote===lote);
@@ -2689,7 +2707,7 @@ function cBuscar(){
 
 function cElegir(lote){
   C.lote=lote; C.d={}; C.fotos=[];
-  const sb=idxSiembra()[lote]||{};
+  const sb=sbDe(lote)||{};
   C.ctx=sb;
   el("cCtx").innerHTML=`
     <div class="lot">${esc(lote)}<small>${esc(sb.sistema||"sistema sin dato")}${sb.seccion?" · sección "+esc(sb.seccion):""}</small></div>
