@@ -390,8 +390,19 @@ details[open] summary::before{content:"▾ "}
 .festado[aria-pressed=true]{background:var(--g100);border-color:var(--olive)}
 .festado[aria-pressed=true] span{color:var(--olivedk)}
 /* fila de especie con miniatura del atlas */
-.esprow-foto{grid-template-columns:56px 1.4fr 1.2fr .7fr auto}
-@media(max-width:760px){.esprow-foto{grid-template-columns:52px 1fr}}
+.esprow2{display:grid;gap:9px;align-items:end;padding:11px 0;border-bottom:1px solid var(--sand);
+  grid-template-columns:56px minmax(150px,1.5fr) 86px 86px minmax(120px,1fr) 78px auto}
+.esprow2:last-of-type{border-bottom:0}
+.esprow2 .fld.num input{text-align:right;font-family:'Geist Mono',monospace}
+.esprow2 .fld label i{font-style:normal;color:var(--ink3);font-size:9px}
+.esprow2 .acc{display:flex;gap:5px;align-items:flex-end;padding-bottom:1px}
+@media(max-width:900px){
+  .esprow2{grid-template-columns:52px 1fr 1fr;gap:8px}
+  .esprow2 .minia{grid-row:span 2}
+  .esprow2 .esp{grid-column:2/-1}
+  .esprow2 .otro{grid-column:2/-1}
+  .esprow2 .acc{grid-column:2/-1;justify-content:flex-end}
+}
 .minia{align-self:end;padding-bottom:2px}
 .minifoto{display:block;width:52px;height:52px;border-radius:8px;overflow:hidden;
   border:1px solid var(--line);background:var(--sand)}
@@ -723,7 +734,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v35 · 24-07 02:00";   // subí este número en cada cambio
+const BUILD = "v36 · 24-07 18:15";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -2530,37 +2541,54 @@ function cajaDe(m){
       </div>`;}
 
   case "malezas": case "enfermedades":{
-    const inds=S.inds.filter(i=>i.categoria_id===m.id);
+    const esMal=m.id==="malezas";
+    // Los dos indicadores que se cargan siempre juntos van como columnas fijas.
+    // Malezas: cobertura y altura. Enfermedades: incidencia y severidad.
+    const PAR = esMal
+      ? [["cob","Cobertura","%"],["alt","Altura","cm"]]
+      : [["inc","Incidencia","%"],["sev","Severidad","%"]];
+    const otros=S.inds.filter(i=>i.categoria_id===m.id
+      && !PAR.some(([,n])=>i.nombre===n));
     const occs=S.occs.filter(o=>o.categoria_id===m.id&&o.activo!==false);
     const filas=(d.filas=d.filas||[{}]);
-    const enm=m.id==="malezas"?`<div class="form" style="margin-bottom:10px"><div class="fld">
-        <label>Evaluación general</label>
+
+    const enm=esMal?`<div class="fld" style="max-width:250px;margin-bottom:12px">
+        <label>Evaluación general del lote</label>
         <select data-m="malezas" data-campo="enm">
           <option value="">–</option>
           <option value="1" ${d.enm==="1"?"selected":""}>Limpio</option>
           <option value="2" ${d.enm==="2"?"selected":""}>Partes para carpir</option>
           <option value="3" ${d.enm==="3"?"selected":""}>Sucio, aplicar</option>
-        </select></div></div>`:"";
-    const rows=enm+filas.map((f,i)=>`<div class="esprow esprow-foto">
+        </select></div>`:"";
+
+    const rows=filas.map((f,i)=>`<div class="esprow2">
       <div class="minia">${miniAtlas(m.id,f.occ)}</div>
-      <div class="fld"><label>${m.id==="malezas"?"Maleza":"Enfermedad"}</label>
-        <input data-m="${m.id}" data-fila="${i}" data-campo="occ" data-k="${m.id}-occ-${i}"
-               list="dl-${m.id}" value="${esc(f.occ||"")}" placeholder="buscar o escribir"></div>
-      <div class="fld"><label>Indicador</label>
+      <div class="fld esp"><label>${esMal?"Maleza":"Enfermedad"}</label>
+        <input data-m="${m.id}" data-fila="${i}" data-campo="occ" list="dl-${m.id}"
+               value="${esc(f.occ||"")}" placeholder="buscar o escribir"></div>
+      ${PAR.map(([k,n,u])=>`<div class="fld num">
+        <label>${n} <i>${u}</i></label>
+        <input type="number" step="any" inputmode="decimal"
+               data-m="${m.id}" data-fila="${i}" data-campo="${k}" value="${esc(f[k]??"")}"></div>`).join("")}
+      <div class="fld otro"><label>Otro indicador</label>
         <select data-m="${m.id}" data-fila="${i}" data-campo="ind"><option value="">–</option>
-          ${inds.map(x=>`<option value="${x.id}" ${String(f.ind)===String(x.id)?"selected":""}>${esc(x.nombre)}${x.unidad?" ("+esc(x.unidad)+")":""}</option>`).join("")}
+          ${otros.map(x=>`<option value="${x.id}" ${String(f.ind)===String(x.id)?"selected":""}>${esc(x.nombre)}${x.unidad?" ("+esc(x.unidad)+")":""}</option>`).join("")}
         </select></div>
-      <div class="fld"><label>Valor</label>
-        <input type="number" step="any" inputmode="decimal" data-m="${m.id}" data-fila="${i}"
-               data-campo="val" value="${esc(f.val||"")}"></div>
-      <div class="fld"><label>&nbsp;</label>
-        <button class="btn sm delesp" data-m="${m.id}" data-fila="${i}">✕</button></div>
+      <div class="fld num"><label>Valor</label>
+        <input type="number" step="any" inputmode="decimal"
+               data-m="${m.id}" data-fila="${i}" data-campo="val" value="${esc(f.val??"")}"></div>
+      <div class="acc">
+        <button class="btn sm fotoesp" data-m="${m.id}" data-fila="${i}" title="Foto de esta especie">📷${(f.fotos||[]).length?" "+f.fotos.length:""}</button>
+        <button class="btn sm delesp" data-m="${m.id}" data-fila="${i}" title="Quitar">✕</button>
+      </div>
     </div>`).join("");
+
     return `<div class="modbox" data-mod="${m.id}">${hd(m,`${occs.length} en el catálogo`)}
-      ${rows}
+      ${enm}${rows}
       <datalist id="dl-${m.id}">${occs.map(o=>`<option value="${esc(o.nombre)}">`).join("")}</datalist>
       <button class="btn sm addesp" data-m="${m.id}" style="margin-top:10px">+ Agregar otra</button>
-      <div class="leyenda">Si escribís una que no está en el catálogo, se agrega sola.</div></div>`;}
+      <div class="leyenda">Se cargan ${esMal?"cobertura y altura":"incidencia y severidad"} en la misma fila.
+        Si escribís una especie que no está en el catálogo, se agrega sola.</div></div>`;}
 
   case "stand":{
     const surco=parseFloat(d.surco)||parseFloat(M.ctx?.surco)||null;
@@ -2724,9 +2752,14 @@ function valoresDe(){
   }
   if(m.malezas?.enm) push("malezas","Enmalezamiento (1-3)",m.malezas.enm,"Evaluación general");
 
+  const PARES={malezas:[["cob","Cobertura"],["alt","Altura"]],
+               enfermedades:[["inc","Incidencia"],["sev","Severidad"]]};
   ["malezas","plagas","enfermedades"].forEach(c=>{
     (m[c]?.filas||[]).forEach(f=>{
-      if(f.ind&&f.val!=null&&f.val!=="") V.push({ind:Number(f.ind),val:Number(f.val),occ:(f.occ||"").trim()||null});
+      const occ=(f.occ||"").trim()||null;
+      (PARES[c]||[]).forEach(([k,nom])=>push(c,nom,f[k],occ));
+      if(f.ind&&f.val!=null&&f.val!=="")
+        V.push({ind:Number(f.ind),val:Number(f.val),occ});
     });
   });
   return V;
