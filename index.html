@@ -50,6 +50,11 @@ header{background:var(--panel);border-bottom:1px solid var(--line);position:stic
 .btn.sm{padding:4px 9px;font-size:12px}
 
 /* ---- inicio ---- */
+.saludo{font-size:13px;color:var(--ink2);padding:18px 2px 0}
+.saludo b{color:var(--ink);font-size:14px}
+.saludo .cambiar{background:none;border:0;color:var(--olive);font:inherit;font-size:12.5px;
+  text-decoration:underline;cursor:pointer;padding:0;margin-left:9px}
+.saludo .cambiar:hover{color:var(--olivedk)}
 .home{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:22px 0}
 .hcard{display:flex;flex-direction:column;gap:5px;text-align:left;background:var(--panel);
   border:1px solid var(--line);border-radius:14px;padding:22px 20px;font:inherit;cursor:pointer;
@@ -327,6 +332,11 @@ details[open] summary::before{content:"▾ "}
 .quienlista .ini{width:32px;height:32px;border-radius:50%;background:var(--olivedk);color:#fff;
   display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
 #btnQuien{font-weight:600}
+#btnQuien.yo{display:flex;align-items:center;gap:7px;padding:4px 11px 4px 4px}
+#btnQuien .yoini{width:23px;height:23px;border-radius:50%;background:var(--olivedk);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600}
+#btnQuien .yonom{font-size:12.5px;font-weight:500}
+@media(max-width:620px){#btnQuien .yonom{display:none}#btnQuien.yo{padding:4px}}
 .cfg p{font-size:13px;color:var(--ink2);margin:0 0 16px;line-height:1.5}
 .cfg input{width:100%;font:inherit;font-size:13px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-family:'Geist Mono',monospace}
 .cfg label{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);margin:12px 0 4px}
@@ -505,7 +515,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v23 · 23-07 21:30";   // subí este número en cada cambio
+const BUILD = "v24 · 23-07 21:50";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -558,6 +568,7 @@ const BUILD = "v23 · 23-07 21:30";   // subí este número en cada cambio
 </div>
 <!-- ===== INICIO ===== -->
 <section id="s-home">
+  <div class="saludo" id="saludo"></div>
   <div class="home">
     <button class="hcard" data-go="monitoreo">
       <span class="hi">Monitoreo</span>
@@ -835,8 +846,9 @@ async function cargar(){
   ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
-  await cargarOperadores();
+  const ident=await cargarOperadores();
   poblar();
+  if(!ident){ pedirQuien(); return; }
   if(vista==="home") pintarHome(); else ir(vista,subvista);
 }
 
@@ -2489,8 +2501,12 @@ async function cargarOperadores(){
 function pintarYo(){
   const b=el("btnQuien");
   if(!b) return;
-  b.textContent = YO ? (YO.iniciales||YO.nombre.slice(0,2).toUpperCase()) : "¿Quién sos?";
-  b.title = YO ? `${YO.nombre} · tocá para cambiar` : "Elegir quién carga";
+  const ini=YO?(YO.iniciales||YO.nombre.slice(0,2).toUpperCase()):"";
+  b.innerHTML = YO
+    ? `<span class="yoini">${esc(ini)}</span><span class="yonom">${esc(YO.nombre)}</span>`
+    : "¿Quién sos?";
+  b.title = YO ? `${YO.nombre} · tocá para cambiar de persona` : "Elegir quién carga";
+  b.classList.toggle("yo",!!YO);
 }
 function pedirQuien(){
   el("quienCancel").style.display = YO ? "" : "none";
@@ -2521,7 +2537,9 @@ function pedirQuien(){
 function confirmarQuien(){
   YO=quienElegido; guardar_("mon_operador_id",String(YO.id));
   el("quienScreen").style.display="none"; el("app").style.display="";
-  pintarYo(); ir(vista==="home"?"home":vista);
+  pintarYo();
+  // vuelve al menú: cada persona tiene habilitadas distintas secciones
+  ir("home");
 }
 
 /* =========================== navegación =========================== */
@@ -2535,20 +2553,27 @@ const SECC={
 const SUB=["resumen","registros","stand","notas"];
 let vista="home", subvista="resumen";
 
-// El rol de cada persona define qué puede cargar. Se cambia en mon_operadores.
+// Cada persona tiene la lista de secciones donde puede cargar.
+// Resumen es libre para todos. Se configura en mon_operadores.secciones.
+const secsDe=o=>String(o?.secciones??"").split(",").map(x=>x.trim()).filter(Boolean);
 const puedeCargar=v=>{
-  if(!YO||YO.rol==="invitado") return false;
-  if(YO.rol==="ambos") return true;
-  return YO.rol===v;
+  if(v==="resumen") return true;
+  if(!YO) return false;
+  const S_=secsDe(YO);
+  // respaldo para operadores cargados antes de la columna 'secciones'
+  if(!YO.secciones&&YO.rol&&YO.rol!=="invitado")
+    return YO.rol==="ambos"||YO.rol===v;
+  return S_.includes(v);
 };
 
 function ir(v,sv){
-  if(v==="monitoreo"||v==="cosecha"){
+  if(v==="monitoreo"||v==="cosecha"||v==="siembra"){
     if(!YO){ pedirQuien(); return; }
     if(!puedeCargar(v)){
-      alert(YO.rol==="invitado"
-        ? "Entraste como Invitado, que es solo de consulta.\n\nPara cargar datos tocá el botón de arriba a la derecha y elegí tu nombre."
-        : `${YO.nombre} tiene el rol "${YO.rol}", así que no carga ${v}.\n\nSi corresponde que lo haga, cambiale el rol a "ambos" en la tabla de operadores.`);
+      const otras=secsDe(YO);
+      alert(otras.length
+        ? `${YO.nombre} no tiene habilitada la sección ${v}.\n\nPodés cargar: ${otras.join(", ")}.`
+        : `${YO.nombre} entra solo para consultar.\n\nPodés ver el Resumen con todos los lotes de la campaña.`);
       return;
     }
   }
@@ -2572,8 +2597,15 @@ function ir(v,sv){
 }
 
 function pintarHome(){
-  document.querySelectorAll('.hcard[data-go="monitoreo"],.hcard[data-go="cosecha"]')
-    .forEach(b=>b.classList.toggle("apagada",!puedeCargar(b.dataset.go)));
+  if(YO){
+    const p=["monitoreo","siembra","cosecha"].filter(puedeCargar);
+    el("saludo").innerHTML=`<b>${esc(YO.nombre)}</b> · ${p.length
+      ? "podés cargar "+p.join(", ") : "solo consulta"}
+      <button class="cambiar" id="btnCambiar">cambiar de persona</button>`;
+    const c=el("btnCambiar"); if(c) c.onclick=()=>pedirQuien();
+  }
+  document.querySelectorAll(".hcard").forEach(b=>
+    b.classList.toggle("apagada",!puedeCargar(b.dataset.go)));
   const R=resumenLotes();
   const crit=R.filter(r=>r._peor==="critico").length;
   const sin=R.filter(r=>r.sinMonitoreo).length;
@@ -2583,10 +2615,8 @@ function pintarHome(){
   const cos=controlesCosecha();
   el("hsCos").innerHTML=cos.length?`${cos.length} controles en la campaña`:"sin controles todavía";
   el("hsRes").innerHTML=`${R.length} lotes · ${crit?`<b>${crit} en crítico</b>`:"nada en crítico"} · ${sin} sin recorrer`;
-  if(!puedeCargar("monitoreo")) el("hsMon").textContent =
-    YO?.rol==="invitado" ? "solo consulta" : "no habilitado para tu rol";
-  if(!puedeCargar("cosecha")) el("hsCos").textContent =
-    YO?.rol==="invitado" ? "solo consulta" : "no habilitado para tu rol";
+  [["monitoreo","hsMon"],["siembra","hsSie"],["cosecha","hsCos"]].forEach(([v,id])=>{
+    if(!puedeCargar(v)) el(id).textContent="no habilitado";});
 }
 
 /* =========================== siembra =========================== */
