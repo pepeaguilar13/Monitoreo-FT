@@ -490,11 +490,14 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 <body>
 
 <!-- ============ CONFIGURACIÓN ============ -->
+<!-- La clave vive en config.js, que se sube una sola vez al repo.
+     Así cada index nuevo funciona sin volver a pegarla. -->
+<script src="config.js" onerror="window.__sinConfig=true"></script>
 <script>
-const SUPABASE_URL = "https://bnaurkovjdnclxtzvdsf.supabase.co";
-const SUPABASE_ANON_KEY = "";   // <-- pegá acá la anon key
+const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
+const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v20 · 23-07 20:30";   // subí este número en cada cambio
+const BUILD = "v21 · 23-07 20:50";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -2858,10 +2861,21 @@ function arrancar(u,k){
     el("cfgErr").innerHTML=`<div class="msg err">No pude leer los datos. ${esc(e.message)}<br>
       Revisá que hayas corrido los scripts SQL y que la anon key sea la del proyecto.</div>`;});
 }
-el("cfgGo").onclick=()=>arrancar(el("cfgUrl").value.trim(),el("cfgKey").value.trim());
+el("cfgGo").onclick=()=>{
+  const k=el("cfgKey").value.trim();
+  try{ localStorage.setItem("mon_key",k); localStorage.setItem("mon_url",el("cfgUrl").value.trim()); }catch{ }
+  arrancar(el("cfgUrl").value.trim(),k);
+};
 el("cfgUrl").value=SUPABASE_URL;
-if(SUPABASE_ANON_KEY) arrancar(SUPABASE_URL,SUPABASE_ANON_KEY);
-else el("cfgScreen").style.display="";
+let _k=SUPABASE_ANON_KEY, _u=SUPABASE_URL;
+if(!_k){ try{ _k=localStorage.getItem("mon_key")||""; _u=localStorage.getItem("mon_url")||_u; }catch{ } }
+if(_k) arrancar(_u,_k);
+else {
+  el("cfgScreen").style.display="";
+  if(window.__sinConfig) el("cfgErr").innerHTML=
+    '<div class="msg err">Falta el archivo <span class="mono">config.js</span> en el repositorio. '+
+    'Subilo una sola vez y no hace falta volver a pegar la clave.</div>';
+}
 setInterval(()=>{if(S.key&&vista!=="monitoreo"&&vista!=="cosecha")cargar().catch(()=>{});},180000);
 </script>
 </body>
