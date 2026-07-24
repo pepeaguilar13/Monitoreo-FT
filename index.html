@@ -551,6 +551,23 @@ details[open] summary::before{content:"▾ "}
 .bhleg i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
 .bhleg i.ln{height:2px;background:var(--ink);border-radius:0;vertical-align:3px}
 .bhleg i.cir{border:2px solid var(--g500);border-radius:50%;background:none}
+.stpts{margin-top:13px;padding-top:12px;border-top:1px solid var(--sand)}
+.stpts.pend{background:var(--warnbg);margin:13px -17px -4px;padding:12px 17px;border-top:1px solid var(--warnln)}
+.stphd{font-size:11.5px;color:var(--ink2);margin-bottom:8px}
+.stphd b{color:#8A6110;margin-left:6px}
+.stphd span{color:var(--ink3);margin-left:6px}
+.stplist{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+.stp{display:flex;flex-direction:column;align-items:flex-start;gap:0;background:var(--panel);
+  border:1px solid var(--line);border-radius:9px;padding:7px 11px;font:inherit;cursor:pointer;min-width:74px}
+.stp:hover:not(:disabled){border-color:var(--g400);background:var(--g50)}
+.stp:disabled{cursor:default;opacity:.75}
+.stp b{font-family:'Geist Mono',monospace;font-size:16px;line-height:1.1}
+.stp span{font-size:9.5px;color:var(--ink3)}
+.stp em{font-family:'Geist Mono',monospace;font-size:10px;color:var(--ink2);font-style:normal;margin-top:2px}
+.stp.elegido{background:var(--g100);border-color:var(--g500);box-shadow:inset 0 0 0 1px var(--g500)}
+.stpacc{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.stprango{font-size:10.5px;color:var(--ink3);font-family:'Geist Mono',monospace;margin-left:auto}
+.stpnota{font-size:11px;color:var(--ink2);margin-top:9px;line-height:1.45}
 .arco{display:flex;align-items:center;gap:14px;min-width:0}
 .arco svg{flex-shrink:0}
 .arcod{font-family:'Geist Mono',monospace;min-width:0}
@@ -706,7 +723,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v34 · 24-07 01:25";   // subí este número en cada cambio
+const BUILD = "v35 · 24-07 02:00";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1035,7 +1052,7 @@ const BUILD = "v34 · 24-07 01:25";   // subí este número en cada cambio
 <script>
 /* =========================== estado =========================== */
 const S={url:"",key:"",vals:[],mons:[],fotos:[],inds:[],occs:[],cats:[],
-         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],riegoSem:[],opers:[],geo:[],ch:{},sort:{},fotosPend:[],gps:null};
+         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],riegoSem:[],opers:[],geo:[],stdec:[],ch:{},sort:{},fotosPend:[],gps:null};
 const el=id=>document.getElementById(id);
 const hoyISO=()=>{const d=new Date();
   return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);};
@@ -1067,7 +1084,7 @@ const soft=async p=>{try{return await api(p)}catch(e){console.warn(e.message);re
 async function cargar(){
   el("liveTxt").textContent="cargando…";
   const camp=encodeURIComponent(CAMPANIA);
-  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos,S.umbrales,S.atlas,S.sdet,S.riegoSem,S.geo]=await Promise.all([
+  [S.vals,S.mons,S.inds,S.occs,S.cats,S.fotos,S.lotes,S.siembras,S.riegos,S.umbrales,S.atlas,S.sdet,S.riegoSem,S.geo,S.stdec]=await Promise.all([
     api(`v_mon_valores?select=*&campania=eq.${camp}&order=fecha.desc&limit=30000`),
     api(`mon_monitoreos?select=*&campania=eq.${camp}&order=fecha.desc&limit=5000`),
     api("mon_indicadores?select=*&activo=is.true&order=categoria_id,nombre"),
@@ -1081,7 +1098,8 @@ async function cargar(){
     soft("v_mon_atlas?select=*&limit=2000"),
     soft(`v_mon_siembra_detalle?select=*&campania=eq.${camp}&limit=5000`),
     soft("riegos?select=lote,wk,mm,cumpl&limit=20000"),
-    soft("mon_geo?select=*&limit=1000")
+    soft("mon_geo?select=*&limit=1000"),
+    soft(`mon_stand_decision?select=*&campania=eq.${camp}&limit=3000`)
   ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
@@ -1313,6 +1331,11 @@ function fichaLote(lote){
       ${bxNotas(D)}
     </div>
   </div>`;
+
+  el("ficha").querySelectorAll(".stcrit").forEach(b=>b.onclick=()=>
+    decidirStand(D.st.lote,D.st.fecha,b.dataset.c,null));
+  el("ficha").querySelectorAll(".stp").forEach(b=>b.onclick=()=>
+    decidirStand(D.st.lote,D.st.fecha,"punto",b.dataset.id));
 }
 
 // Una variedad se muestra sola; varias, cada una con su superficie.
@@ -1478,8 +1501,33 @@ function bxStand(D){
   const st=D.st;
   const c=st?.coef, pc=c==null?null:Math.min(1.3,c);
   const R=34, C=2*Math.PI*R, frac=pc==null?0:Math.min(1,pc/1.3);
-  const col=c==null?"var(--line)":c<=0.8?"var(--crit)":c<=0.9?"var(--warn)":"var(--olive)";
-  return `<div class="bx b3 mitad"><h3>Stand de plantas</h3>
+  const col=c==null?"var(--line)":st.pendiente?"var(--warn)"
+           :c<=0.8?"var(--crit)":c<=0.9?"var(--warn)":"var(--g500)";
+
+  let extra="";
+  if(st&&st.nPuntos>1){
+    const P=[...st.puntos].sort((a,b)=>(b.real||0)-(a.real||0));
+    const CRIT=[["promedio","Promedio"],["maximo","El más alto"],["minimo","El más bajo"]];
+    extra=`<div class="stpts ${st.pendiente?"pend":""}">
+      <div class="stphd">${st.nPuntos} puntos medidos el ${fd(st.fecha)}
+        ${st.pendiente?'<b>falta definir cuál vale</b>'
+          :`<span>se usa ${st.criterio==="punto"?"un punto elegido":CRIT.find(x=>x[0]===st.criterio)?.[1].toLowerCase()||st.criterio}</span>`}</div>
+      <div class="stplist">${P.map(x=>`
+        <button class="stp ${st.criterio==="punto"&&st.decision?.monitoreo_id===x.id?"elegido":""}"
+                data-id="${x.id}" ${puedeCargar("monitoreo")?"":"disabled"}
+                title="${x.nota?esc(x.nota):"tomar solo este punto"}">
+          <b>${nf(x.pl_m,1)}</b><span>pl/m</span>
+          <em>${nf(x.real/1000,0)}k pl/ha</em></button>`).join("")}</div>
+      ${puedeCargar("monitoreo")?`<div class="stpacc">
+        ${CRIT.map(([k,t])=>`<button class="btn sm stcrit ${st.criterio===k?"pri":""}" data-c="${k}">${t}</button>`).join("")}
+        <span class="stprango">rango ${nf(st.min/1000,0)}k a ${nf(st.max/1000,0)}k pl/ha</span>
+      </div>`:`<div class="stprango">rango ${nf(st.min/1000,0)}k a ${nf(st.max/1000,0)}k pl/ha</div>`}
+      ${st.pendiente?`<div class="stpnota">Si se midió temprano y después siguió naciendo,
+        el promedio subestima. Elegí el criterio que corresponda a este lote.</div>`:""}
+    </div>`;
+  }
+
+  return `<div class="bx b6"><h3>Stand de plantas</h3>
     <div class="arco">
       <svg width="82" height="82" viewBox="0 0 82 82" aria-hidden="true">
         <circle cx="41" cy="41" r="${R}" fill="none" stroke="var(--sand)" stroke-width="9"/>
@@ -1492,13 +1540,25 @@ function bxStand(D){
       <div class="arcod">
         ${st?.real!=null?`<div class="l1">${nf(st.real/1000,0)}k<span>pl/ha</span></div>`:""}
         ${st?.obj!=null?`<div class="l2">${nf(st.obj/1000,0)}k objetivo</div>`:""}
-        ${st?.pl_m!=null?`<div class="l3">${nf(st.pl_m,1)} pl/m</div>`:""}
+        ${st?.pl_m!=null?`<div class="l3">${nf(st.pl_m,1)} pl/m${st.nPuntos>1?" promedio":""}</div>`:""}
       </div>
     </div>
+    ${extra}
     <div class="pie">${st
-      ? (st.dudoso?`<b style="color:#5B4A82">Revisar:</b> ${esc(st.dudoso)}.`
+      ? (st.dudoso?`<b style="color:#5A4C86">Revisar:</b> ${esc(st.dudoso)}.`
+        :st.pendiente?`Valor provisorio con el promedio de los ${st.nPuntos} puntos.`
         :`Medido el ${fd(st.fecha)}${st.obj_src==="sb"?", objetivo del maestro de siembras":""}.`)
       : "Sin medición de stand en este lote."}</div></div>`;
+}
+
+async function decidirStand(lote,fecha,criterio,monitoreo_id){
+  try{
+    await api("mon_stand_decision",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",
+      body:JSON.stringify([{lote,campania:CAMPANIA,fecha,criterio,monitoreo_id:monitoreo_id||null,
+        operador_id:YO?.id??null, decidido_por:YO?.nombre||null}])});
+    await cargar();
+    ir("resumen","resumen");
+  }catch(e){ alert("No se pudo guardar el criterio. "+e.message); }
 }
 
 function bxSanidad(D){
@@ -1892,74 +1952,81 @@ function tablaMon(){
 
 /* =========================== stand =========================== */
 function standData(){
-  const sb=idxSiembra(),b={};
-  // Cropwise a veces guarda dos bloques por lote: uno en ceros y otro con los
-  // valores reales. Se toma siempre el mayor valor no nulo de cada indicador.
+  const sb=idxSiembra(), pts={};
   const may=(a,v)=>(v==null||isNaN(v))?a:(a==null?Number(v):Math.max(a,Number(v)));
 
+  // un punto de medición por monitoreo: no se mezclan entre sí
   fVals().filter(v=>v.categoria_id==="stand").forEach(v=>{
-    const k=v.lote+"|"+v.fecha;
-    const o=b[k]=b[k]||{lote:v.lote,fecha:v.fecha,cultivo:v.cultivo,
-      superficie_ha:v.superficie_ha,scouter:v.scouter,n:v.n_muestras};
+    const o=pts[v.monitoreo_id]=pts[v.monitoreo_id]||{id:v.monitoreo_id,lote:v.lote,fecha:v.fecha,
+      cultivo:v.cultivo,superficie_ha:v.superficie_ha,scouter:v.scouter,n:v.n_muestras,nota:v.nota};
     switch(v.indicador){
-      case "Densidad real":                o.real_cw=may(o.real_cw,v.valor); break;
-      case "Densidad objetivo":            o.obj_cw =may(o.obj_cw, v.valor); break;
-      case "Coeficiente de logro":         o.coef_cw=may(o.coef_cw,v.valor); break;
-      case "Espaciamiento entre surcos":   o.surco  =may(o.surco,  v.valor); break;
-      case "Plantas por metro lineal":     o.pl_m   =may(o.pl_m,   v.valor); break;
-      case "Plantas por metro cuadrado":   o.pl_m2  =may(o.pl_m2,  v.valor); break;
+      case "Densidad real":              o.real_cw=may(o.real_cw,v.valor); break;
+      case "Densidad objetivo":          o.obj_cw =may(o.obj_cw, v.valor); break;
+      case "Coeficiente de logro":       o.coef_cw=may(o.coef_cw,v.valor); break;
+      case "Espaciamiento entre surcos": o.surco  =may(o.surco,  v.valor); break;
+      case "Plantas por metro lineal":   o.pl_m   =may(o.pl_m,   v.valor); break;
+      case "Plantas por metro cuadrado": o.pl_m2  =may(o.pl_m2,  v.valor); break;
     }
   });
 
-  // Las densidades vienen en pl/m² (trigo, cebada) o en pl/ha (cártamo, garbanzo).
-  // Se normaliza todo a pl/ha y se descarta lo que no es plausible.
-  const aHa=v=>{
-    v=Number(v);
-    if(v==null||!isFinite(v)||v<=0) return null;
-    if(v<5000) v*=10000;                      // venía en pl/m²
-    return (v<20000||v>8e6) ? null : v;       // fuera de rango agronómico: no sirve
-  };
+  const aHa=v=>{v=Number(v); if(v==null||!isFinite(v)||v<=0)return null;
+    if(v<5000) v*=10000; return (v<20000||v>8e6)?null:v;};
 
-  const L=Object.values(b);
-  L.forEach(o=>{
-    const si=sb[o.lote]||{};
-    o.seccion=si.seccion||seccion(o.lote);
-    o.sistema=si.sistema||null;
-    o.cultivo=o.cultivo||si.cultivo||null;
-    o.variedad=si.variedad||null;
-    o.superficie_ha=o.superficie_ha||(si.ha!=null?Number(si.ha):null);
+  Object.values(pts).forEach(o=>{
+    o.real=(o.real_cw>0?o.real_cw:null)
+        ?? (o.pl_m2>0 ? o.pl_m2*10000 : null)
+        ?? ((o.pl_m>0&&o.surco>0) ? (o.pl_m/(o.surco/100))*10000 : null);
+    o.calc=(o.real_cw>0)?null:(o.real!=null?"calculada":null);
+    o.pl_m2=o.pl_m2>0?o.pl_m2:(o.real!=null?o.real/10000:null);
+  });
 
-    // densidad real: la de Cropwise si existe; si no, se calcula
-    o.real = (o.real_cw>0?o.real_cw:null)
-          ?? (o.pl_m2>0 ? o.pl_m2*10000 : null)
-          ?? ((o.pl_m>0&&o.surco>0) ? (o.pl_m/(o.surco/100))*10000 : null);
-    o.calc = (o.real_cw>0) ? null : (o.real!=null ? "calculada" : null);
+  // se agrupa por lote y fecha: ahí es donde puede haber varios puntos
+  const grupos={};
+  Object.values(pts).forEach(o=>{
+    if(o.real==null&&o.coef_cw==null) return;
+    (grupos[o.lote+"|"+o.fecha]=grupos[o.lote+"|"+o.fecha]||[]).push(o);
+  });
 
-    // plantas por m²: para mostrar y para el cálculo inverso
-    o.pl_m2 = o.pl_m2>0 ? o.pl_m2 : (o.real!=null ? o.real/10000 : null);
+  const dec={}; S.stdec.forEach(d=>dec[K(d.lote)+"|"+d.fecha]=d);
 
-    // objetivo: manda el maestro de siembras, que es el plan agronómico cargado
-    // por lote y variedad. Cropwise queda de respaldo y solo si es plausible.
-    const objMaestro=aHa(si.densidad_obj), objCw=aHa(o.obj_cw);
-    o.obj     = objMaestro ?? objCw;
-    o.obj_src = objMaestro!=null ? "sb" : (objCw!=null ? "cw" : null);
+  const L=Object.entries(grupos).map(([k,P])=>{
+    const [lote,fecha]=[P[0].lote,P[0].fecha];
+    const si=sb[K(lote)]||{};
+    const d=dec[K(lote)+"|"+fecha]||null;
+    const reales=P.map(x=>x.real).filter(v=>v!=null);
 
-    o.coef = (o.coef_cw>0&&o.coef_cw<3?o.coef_cw:null) ??
-             ((o.real&&o.obj) ? o.real/o.obj : null);
+    let real=null, crit=d?.criterio||null;
+    if(P.length===1) real=P[0].real;
+    else if(crit==="promedio") real=reales.reduce((a,b)=>a+b,0)/reales.length;
+    else if(crit==="maximo")   real=Math.max(...reales);
+    else if(crit==="minimo")   real=Math.min(...reales);
+    else if(crit==="punto"&&d?.monitoreo_id) real=(P.find(x=>x.id===d.monitoreo_id)||{}).real??null;
+    // sin decisión se usa el promedio como provisorio, pero queda señalado
+    if(real==null&&reales.length) real=reales.reduce((a,b)=>a+b,0)/reales.length;
 
-    // control de plausibilidad: un logro fuera de rango es un error de carga,
-    // no un lote excepcional. Se marca para revisar en vez de pintarlo de verde.
-    o.dudoso = (o.coef!=null&&(o.coef>1.6||o.coef<0.2)) ? "logro fuera de rango"
-             : (o.pl_m>200) ? "plantas por metro lineal improbable"
-             : (o.real!=null&&(o.real<20000||o.real>8e6)) ? "densidad fuera de rango"
-             : null;
-    o.sem = o.dudoso ? "revisar"
-          : o.coef==null ? null
-          : o.coef<=0.80 ? "critico" : o.coef<=0.90 ? "atencion" : "ok";
+    const o={lote,fecha,puntos:P,nPuntos:P.length,decision:d,criterio:crit,
+      pendiente:P.length>1&&!crit,
+      cultivo:P[0].cultivo||si.cultivo||null, variedad:si.variedad||null,
+      scouter:P[0].scouter, seccion:si.seccion||seccion(lote), sistema:si.sistema||null,
+      superficie_ha:P[0].superficie_ha||(si.ha!=null?Number(si.ha):null),
+      real, min:reales.length?Math.min(...reales):null, max:reales.length?Math.max(...reales):null,
+      pl_m:P.map(x=>x.pl_m).filter(v=>v!=null).reduce((a,b,_,arr)=>a+b/arr.length,0)||null,
+      surco:P[0].surco, pl_m2:real!=null?real/10000:null,
+      calc:P.some(x=>x.calc)?"calculada":null};
+
+    const objM=aHa(si.densidad_obj), objC=aHa(P[0].obj_cw);
+    o.obj=objM??objC; o.obj_src=objM!=null?"sb":(objC!=null?"cw":null);
+    o.coef=(P.length===1&&P[0].coef_cw>0&&P[0].coef_cw<3)?P[0].coef_cw
+          :((o.real&&o.obj)?o.real/o.obj:null);
+    o.dudoso=(o.coef!=null&&(o.coef>1.6||o.coef<0.2))?"logro fuera de rango"
+            :(o.pl_m>200)?"plantas por metro lineal improbable"
+            :(o.real!=null&&(o.real<20000||o.real>8e6))?"densidad fuera de rango":null;
+    o.sem=o.dudoso?"revisar":o.coef==null?null:o.coef<=0.80?"critico":o.coef<=0.90?"atencion":"ok";
+    return o;
   });
 
   const u={};
-  L.sort((a,c)=>String(c.fecha).localeCompare(String(a.fecha))).forEach(o=>{if(!u[o.lote])u[o.lote]=o;});
+  L.sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).forEach(o=>{if(!u[K(o.lote)])u[K(o.lote)]=o;});
   return Object.values(u);
 }
 
@@ -1974,7 +2041,9 @@ function stand(){
     ["Bajo 90 %",nf(con.filter(o=>o.coef<=0.90).length),"por debajo del umbral",con.filter(o=>o.coef<=0.90).length?"warn":""],
     ["Bajo 80 %",nf(con.filter(o=>o.sem==="critico").length),"resiembra a evaluar",con.filter(o=>o.sem==="critico").length?"crit":""],
     ["Sin objetivo",nf(D.filter(o=>o.obj==null).length),"falta densidad en el maestro",D.filter(o=>o.obj==null).length?"warn":""],
-    ["A revisar",nf(D.filter(o=>o.dudoso).length),"valores fuera de rango",D.filter(o=>o.dudoso).length?"warn":""]
+    ["A revisar",nf(D.filter(o=>o.dudoso).length),"valores fuera de rango",D.filter(o=>o.dudoso).length?"warn":""],
+    ["Con varios puntos",nf(D.filter(o=>o.nPuntos>1).length),
+      `${D.filter(o=>o.pendiente).length} sin criterio definido`,D.filter(o=>o.pendiente).length?"warn":""]
   ].map(([l,v,h,c])=>`<div class="kpi ${c}"><div class="lab">${l}</div><div class="val">${v}</div><div class="hint">${h}</div></div>`).join("");
 
   const pts=D.filter(o=>o.real&&o.obj&&!o.dudoso);
@@ -2010,8 +2079,10 @@ function stand(){
     <td class="num">${nf(o.real,0)}${o.calc?' <span style="color:var(--ink3);font-size:10px" title="calculada a partir de pl/m² o pl/m lineal">calc</span>':''}</td>
     <td class="num">${o.obj==null?'<span style="color:var(--ink3)">–</span>'
       :nf(o.obj,0)+` <span style="color:var(--ink3);font-size:10px" title="${o.obj_src==="sb"?"del maestro de siembras":"de Cropwise"}">${o.obj_src}</span>`}</td>
-    <td class="num">${o.coef==null?"–":nf(o.coef*100,1)+" %"}</td>
-    <td>${o.sem?`<span class="pill ${o.sem}" ${o.dudoso?`title="${esc(o.dudoso)}"`:""}>${o.sem}</span>`
+    <td class="num">${o.coef==null?"–":nf(o.coef*100,1)+" %"}${o.nPuntos>1
+        ? ` <span style="color:var(--ink3);font-size:10px" title="${o.nPuntos} puntos: ${nf(o.min/1000,0)}k a ${nf(o.max/1000,0)}k pl/ha">${o.nPuntos} pts</span>`:""}</td>
+    <td>${o.pendiente?'<span class="pill atencion" title="hay varios puntos y falta definir el criterio">definir</span>'
+      :o.sem?`<span class="pill ${o.sem}" ${o.dudoso?`title="${esc(o.dudoso)}"`:""}>${o.sem}</span>`
       :'<span class="pill na">sin objetivo</span>'}</td>
     <td>${esc(o.scouter||"–")}</td></tr>`).join("")
     :`<tr><td colspan="15"><div class="empty"><b>Sin mediciones de stand</b>Cargá una desde la pestaña Monitoreo.</div></td></tr>`;
