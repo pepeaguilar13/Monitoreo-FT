@@ -706,7 +706,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v32 · 24-07 00:45";   // subí este número en cada cambio
+const BUILD = "v33 · 24-07 01:05";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1612,10 +1612,11 @@ function resumenLotes(){
       fecha:null,fenologia:null,scouter:null,cats:{},sinMonitoreo:true};
   });
 
-  // los monitoreos suman lo que sepan, y crean el lote si no estaba sembrado en el maestro
+  // Los monitoreos completan los lotes sembrados. Si aparece uno que no está
+  // en el maestro, es de otra campaña o tiene el nombre mal: se marca aparte.
   fMons().forEach(m=>{
     const o=out[m.lote]=out[m.lote]||{lote:m.lote,sistema:null,seccion:seccion(m.lote),
-      cultivo:null,variedad:null,f_siembra:null,superficie_ha:null,
+      cultivo:null,variedad:null,f_siembra:null,superficie_ha:null,huerfano:true,
       fecha:null,fenologia:null,scouter:null,cats:{},sinMonitoreo:true};
     o.sinMonitoreo=false;
     if(!o.fecha||m.fecha>o.fecha){o.fecha=m.fecha;o.scouter=m.scouter;}
@@ -1732,8 +1733,10 @@ function tablaRes(){
   if(f.sem)R=R.filter(r=>r._peor===f.sem);
   S.sort.res=S.sort.res||{k:"_peor",dir:1};
   R=sortBy("_peor",R,"res");
-  const sinN=R.filter(r=>r.sinMonitoreo).length;
-  el("capRes").textContent=`${R.length} lotes sembrados · ${R.length-sinN} con recorrida · ${sinN} sin recorrer. Tocá el encabezado para ordenar.`;
+  const sinN=R.filter(r=>r.sinMonitoreo).length, hu=R.filter(r=>r.huerfano).length;
+  el("capRes").innerHTML=`${R.length-hu} lotes sembrados · ${R.length-sinN} con recorrida · ${sinN} sin recorrer.`+
+    (hu?` <b style="color:var(--warn)">${hu} con monitoreos pero sin siembra cargada.</b>`:"")+
+    ` Tocá el encabezado para ordenar.`;
   el("tRes").querySelector("tbody").innerHTML=R.length?R.map(r=>`<tr>
     <td><div class="lotecel"><b class="mono">${esc(r.lote)}</b>
         <small>${esc(r.sistema||"–")}${r.equipo?" · "+esc(r.equipo):""}</small></div></td>
@@ -1769,6 +1772,7 @@ function mapa(){
     ha:r.superficie_ha,al:r._alertas,fecha:r.fecha,dias:r._dias});
 
   const f=F(), soloVisibles=!!(f.cul||f.sis||f.sec||f.sem);
+  const sb=idxSiembra();
   const lotes=Object.keys(GEO.p);
   const kLat=Math.cos(-25.44*Math.PI/180);   // corrección de longitud a esta latitud
 
@@ -1782,7 +1786,9 @@ function mapa(){
 
   const COLM={ok:"var(--g500)",atencion:"#D19B22",critico:"var(--crit)",revisar:"#8B79B8"};
   const paths=lotes.map(l=>{
-    const e=est[K(l)];
+    // un lote solo cuenta como de la campaña si figura en el maestro de siembras
+    const enCampania = !!sb[K(l)];
+    const e = enCampania ? est[K(l)] : null;
     const dentro = e && (!soloVisibles || R.some(r=>K(r.lote)===K(l)));
     const fill = !e ? "#E8E4D6" : e.sem ? COLM[e.sem] : e.sin ? "#FFFFFF" : "var(--g200)";
     const op   = !e ? .45 : dentro ? .92 : .18;
@@ -1795,7 +1801,7 @@ function mapa(){
       ? `${l} · ${e.cul||"sin cultivo"}${e.ha?" · "+nf(e.ha,0)+" ha":""}\n`+
         (e.sin?"sin recorrer":`${e.sem||"sin umbral"} · última visita ${fd(e.fecha)} (${e.dias} d)`)+
         (e.al&&e.al.length?"\n"+e.al.join(", "):"")
-      : `${l} · fuera de la campaña`;
+      : `${l} · sin siembra en la campaña 26/27`;
     return `<path d="${d}" fill="${fill}" fill-opacity="${op}" stroke="var(--ink3)" stroke-width="${(W*0.0006).toFixed(1)}"
       data-lote="${esc(l)}" class="mp${e?" act":""}"><title>${esc(t)}</title></path>`;
   }).join("");
