@@ -511,6 +511,44 @@ details[open] summary::before{content:"▾ "}
 .tlitxt span{display:block;font-size:11.5px;color:var(--ink2);margin-top:1px}
 .tlitxt em{display:block;font-size:11.5px;color:var(--ink3);font-style:normal;margin-top:2px}
 .tli.siembra .tlitxt b{color:var(--olivedk)}
+/* matriz cultivo x sistema */
+.mtz{border-collapse:separate;border-spacing:2px;width:100%;font-size:13px}
+.mtz th{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);
+  font-weight:500;padding:6px 9px;text-align:right;cursor:default;background:none;border:0;position:static}
+.mtz th.e{text-align:left}
+.mtz td{padding:9px 10px;text-align:right;font-family:'Geist Mono',monospace;
+  font-variant-numeric:tabular-nums;border:0;border-radius:6px;white-space:nowrap}
+.mtz td.e{text-align:left;font-family:Geist,sans-serif;padding-left:2px;min-width:130px}
+.mtz td.e b{font-size:13.5px;display:block;font-weight:600}
+.mtz td.e span{font-size:10.5px;color:var(--ink3)}
+.mtz td.v{background:color-mix(in srgb, var(--olive) calc(var(--i)*72%), #F1EEE2);
+  color:var(--ink);cursor:pointer;transition:transform .1s}
+.mtz td.v:hover{transform:scale(1.04);outline:1.5px solid var(--olivedk)}
+.mtz td.z{color:#C9C3B0}
+.mtz td.tot{font-weight:600;background:var(--sand)}
+.mtz td.pc{color:var(--ink2);font-weight:400}
+.mtz tfoot td{background:var(--olive-lt,#E3E8D6);font-weight:600}
+.mtz tfoot td.e{background:none}
+.mtznota{font-size:11px;color:var(--ink3);margin-top:10px}
+
+/* barras de reparto */
+.brow{display:grid;grid-template-columns:150px 1fr 92px;gap:12px;align-items:center;
+  padding:9px 0;border-bottom:1px solid var(--sand)}
+.brow:last-child{border-bottom:0}
+.bl b{font-size:13.5px;display:block}
+.bl span{font-size:10.5px;color:var(--ink3)}
+.bl i{font-style:normal;color:var(--crit)}
+.bb{background:var(--sand);border-radius:5px;height:16px;overflow:hidden}
+.bt{display:block;height:100%;background:#DCD6C4;border-radius:5px;position:relative}
+.bt i{display:block;height:100%;background:var(--olive);border-radius:5px}
+.bn{text-align:right;font-family:'Geist Mono',monospace;font-size:14px;line-height:1.25}
+.bn span{font-size:10px;color:var(--ink3)}
+.bn small{font-size:9.5px;color:var(--ink3);font-family:Geist,sans-serif}
+@media(max-width:620px){
+  .brow{grid-template-columns:1fr 74px;gap:8px}
+  .bb{grid-column:1/-1;order:3}
+  .mtz{font-size:12px} .mtz td{padding:7px 6px} .mtz td.e{min-width:104px}
+}
 .tsiem{width:100%;border-collapse:collapse;font-size:12.5px}
 .tsiem td{padding:6px 0;border-bottom:1px solid var(--sand);vertical-align:middle}
 .tsiem tr:last-child td{border-bottom:0}
@@ -545,7 +583,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v28 · 23-07 23:20";   // subí este número en cada cambio
+const BUILD = "v29 · 23-07 23:40";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -626,6 +664,7 @@ const BUILD = "v28 · 23-07 23:20";   // subí este número en cada cambio
 
 <nav class="tabs" id="subtabs" role="tablist" style="display:none">
   <button role="tab" aria-selected="true"  data-t="resumen">Resumen</button>
+  <button role="tab" aria-selected="false" data-t="campania">Campaña</button>
   <button role="tab" aria-selected="false" data-t="registros">Registros</button>
   <button role="tab" aria-selected="false" data-t="stand">Stand</button>
   <button role="tab" aria-selected="false" data-t="notas">Notas y fotos</button>
@@ -1462,6 +1501,7 @@ function resumenLotes(){
 }
 
 function render(){
+  if(subvista==="campania") campania();
   const F_=["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"];
   el("fAviso").style.display=F_.some(i=>el(i).value)?"":"none";
   const lote=el("fLote").value.trim().toUpperCase();
@@ -2640,7 +2680,7 @@ const SECC={
   cosecha:  {tit:"Cosecha",   sub:false, filtros:false},
   resumen:  {tit:"Resumen",   sub:true,  filtros:true},
 };
-const SUB=["resumen","registros","stand","notas"];
+const SUB=["resumen","campania","registros","stand","notas"];
 let vista="home", subvista="resumen";
 
 // Cada persona tiene la lista de secciones donde puede cargar.
@@ -2681,6 +2721,7 @@ function ir(v,sv){
     b.setAttribute("aria-selected", b.dataset.t===subvista));
   if(v==="home") pintarHome();
   if(v==="siembra") tablaSiembra();
+  if(v==="resumen"&&subvista==="campania") requestAnimationFrame(campania);
   if(v==="cosecha") tablaCosecha();
   if(v==="resumen") requestAnimationFrame(render);
   window.scrollTo({top:0,behavior:"instant"});
@@ -2732,6 +2773,65 @@ function pintarFranja(){
       `<i class="fr-${c}" style="width:${(v/tot*100).toFixed(2)}%"></i>`).join("")}</div>
     <div class="frleg">${seg.map(([c,t,v])=>
       `<span><i class="fr-${c}"></i>${t} <b>${nf(v,0)}</b> ha</span>`).join("")}</div>`;
+}
+
+/* =========================== campaña =========================== */
+function campania(){
+  const R=resumenLotes();
+  const ha=L=>L.reduce((a,r)=>a+(Number(r.superficie_ha)||0),0);
+  const SIS=[...new Set(R.map(r=>r.sistema).filter(Boolean))].sort();
+  const CUL=[...new Set(R.map(r=>r.cultivo).filter(Boolean))]
+    .sort((a,b)=>ha(R.filter(r=>r.cultivo===b))-ha(R.filter(r=>r.cultivo===a)));
+  const total=ha(R)||1;
+  const cel=(c,si)=>ha(R.filter(r=>r.cultivo===c&&(si?r.sistema===si:true)));
+  const max=Math.max(1,...CUL.flatMap(c=>SIS.map(si=>cel(c,si))));
+
+  el("matriz").innerHTML=`<table class="mtz"><thead><tr>
+      <th class="e">Cultivo</th>
+      ${SIS.map(si=>`<th>${esc(si)}</th>`).join("")}
+      <th class="tot">Total</th><th class="tot">%</th></tr></thead>
+    <tbody>
+      ${CUL.map(c=>{
+        const t=cel(c,null);
+        return `<tr>
+          <td class="e"><b>${esc(c)}</b><span>${R.filter(r=>r.cultivo===c).length} lotes</span></td>
+          ${SIS.map(si=>{
+            const v=cel(c,si);
+            return v>0
+              ? `<td class="v" style="--i:${(v/max).toFixed(3)}" data-c="${esc(c)}" data-s="${esc(si)}"
+                   title="${esc(c)} en ${esc(si)}: ${nf(v,0)} ha">${nf(v,0)}</td>`
+              : `<td class="z">·</td>`;}).join("")}
+          <td class="tot">${nf(t,0)}</td>
+          <td class="tot pc">${nf(t/total*100,1)}</td></tr>`;}).join("")}
+    </tbody>
+    <tfoot><tr><td class="e">Total</td>
+      ${SIS.map(si=>`<td class="tot">${nf(ha(R.filter(r=>r.sistema===si)),0)}</td>`).join("")}
+      <td class="tot">${nf(total,0)}</td><td class="tot">100</td></tr></tfoot>
+    </table>
+    <div class="mtznota">Hectáreas sembradas según las evoluciones de labores.</div>`;
+
+  el("matriz").querySelectorAll("td.v").forEach(td=>td.onclick=()=>{
+    el("fCultivo").value=td.dataset.c; el("fSistema").value=td.dataset.s;
+    ir("resumen","resumen"); render();});
+
+  const barras=(cont,grupos,etq)=>{
+    const tot=ha(R)||1;
+    el(cont).innerHTML=grupos.map(g=>{
+      const L=R.filter(g.f), h=ha(L);
+      if(!h) return "";
+      const rec=L.filter(r=>!r.sinMonitoreo), hr=ha(rec);
+      const cr=L.filter(r=>r._peor==="critico").length;
+      return `<div class="brow">
+        <div class="bl"><b>${esc(g.n)}</b><span>${L.length} lotes${cr?` · <i>${cr} crítico${cr>1?"s":""}</i>`:""}</span></div>
+        <div class="bb"><span class="bt" style="width:${(h/tot*100).toFixed(2)}%">
+          <i style="width:${h?(hr/h*100).toFixed(1):0}%"></i></span></div>
+        <div class="bn">${nf(h,0)}<span> ha</span><br><small>${nf(h?hr/h*100:0,0)} % recorrido</small></div>
+      </div>`;}).join("")||'<div class="vacio">Sin datos.</div>';
+  };
+  barras("porCultivo",CUL.map(c=>({n:c,f:r=>r.cultivo===c})));
+  const SEC=[...new Set(R.map(r=>r.seccion).filter(Boolean))]
+    .sort((a,b)=>ha(R.filter(r=>r.seccion===b))-ha(R.filter(r=>r.seccion===a)));
+  barras("porSeccion",SEC.map(x=>({n:"Sección "+x,f:r=>r.seccion===x})));
 }
 
 /* =========================== siembra =========================== */
