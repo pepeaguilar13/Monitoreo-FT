@@ -48,6 +48,9 @@ header{background:var(--panel);border-bottom:1px solid var(--line);position:stic
   border:1px solid var(--line);border-radius:14px;padding:22px 20px;font:inherit;cursor:pointer;
   min-height:132px;transition:border-color .12s,transform .12s}
 .hcard:hover{border-color:var(--olive);background:var(--sand)}
+.hcard.apagada{opacity:.42;background:var(--sand)}
+.hcard.apagada:hover{border-color:var(--line)}
+.hcard.apagada .hs{color:var(--warn)}
 .hcard:active{transform:scale(.99)}
 .hcard:focus-visible{outline:2px solid var(--olive);outline-offset:2px}
 .hcard .hi{font-family:'Instrument Serif',serif;font-size:27px;line-height:1.05;letter-spacing:-.01em}
@@ -305,6 +308,17 @@ details[open] summary::before{content:"▾ "}
 
 .cfg{max-width:520px;margin:60px auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px}
 .cfg h2{font-size:24px}
+.quien{max-width:460px}
+.quienlista{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+@media(max-width:480px){.quienlista{grid-template-columns:1fr}}
+.quienlista button{display:flex;align-items:center;gap:10px;text-align:left;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;padding:12px 13px;font:inherit;font-size:14px;cursor:pointer}
+.quienlista button:hover{background:var(--sand);border-color:var(--olive)}
+.quienlista button.inv{border-style:dashed}
+.quienlista button.inv .ini{background:var(--ink3)}
+.quienlista .ini{width:32px;height:32px;border-radius:50%;background:var(--olivedk);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+#btnQuien{font-weight:600}
 .cfg p{font-size:13px;color:var(--ink2);margin:0 0 16px;line-height:1.5}
 .cfg input{width:100%;font:inherit;font-size:13px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-family:'Geist Mono',monospace}
 .cfg label{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);margin:12px 0 4px}
@@ -480,7 +494,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = "";   // <-- pegá acá la anon key
 const CAMPANIA = "26/27";
-const BUILD = "v18 · 23-07 19:55";   // subí este número en cada cambio
+const BUILD = "v20 · 23-07 20:30";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -488,6 +502,7 @@ const BUILD = "v18 · 23-07 19:55";   // subí este número en cada cambio
   <span class="build" id="hdBuild"></span>
   <div class="right">
     <span class="mono" style="font-size:12px;color:var(--ink2)"><span class="dot" id="dot"></span> <span id="liveTxt">sin conectar</span></span>
+    <button class="btn sm" id="btnQuien" title="Cambiar de persona"></button>
     <button class="btn sm" id="btnRefresh">Actualizar</button>
   </div>
 </div></header>
@@ -499,6 +514,23 @@ const BUILD = "v18 · 23-07 19:55";   // subí este número en cada cambio
   <label>URL del proyecto</label><input id="cfgUrl">
   <label>Anon key</label><input id="cfgKey" placeholder="eyJhbGciOi...">
   <div style="margin-top:18px"><button class="btn pri" id="cfgGo">Conectar</button></div>
+</div></div>
+
+<div id="quienScreen" style="display:none"><div class="cfg quien">
+  <h2>¿Quién sos?</h2>
+  <p>Se guarda en este teléfono para que no tengas que elegirlo cada vez.
+     Queda firmado en cada monitoreo y en cada control de cosecha.</p>
+  <div id="quienErr"></div>
+  <div class="quienlista" id="quienLista"></div>
+  <div id="quienPin" style="display:none">
+    <label>PIN de <b id="quienNom"></b></label>
+    <input id="quienPinIn" type="tel" inputmode="numeric" maxlength="4" placeholder="····"
+           autocomplete="off" style="letter-spacing:.5em;text-align:center;font-size:22px">
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <button class="btn pri" id="quienGo">Entrar</button>
+      <button class="btn" id="quienVolver">Elegir otro</button>
+    </div>
+  </div>
 </div></div>
 
 <div class="wrap" id="app" style="display:none">
@@ -685,7 +717,7 @@ const BUILD = "v18 · 23-07 19:55";   // subí este número en cada cambio
     <p class="cap" id="cCap"></p>
     <div class="tw"><table id="tCosecha"><thead><tr>
       <th>Fecha</th><th>Lote</th><th>Cultivo</th><th>Granos</th><th>P1000</th>
-      <th>Rinde</th><th>Pérdida</th><th>%</th><th>Verde</th><th>Partido</th><th>Estado</th>
+      <th>Rinde</th><th>Pérdida</th><th>%</th><th>Verde</th><th>Partido</th><th>Estado</th><th>Controló</th>
     </tr></thead><tbody></tbody></table></div>
   </div>
 </section>
@@ -736,7 +768,7 @@ const BUILD = "v18 · 23-07 19:55";   // subí este número en cada cambio
 <script>
 /* =========================== estado =========================== */
 const S={url:"",key:"",vals:[],mons:[],fotos:[],inds:[],occs:[],cats:[],
-         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],riegoSem:[],ch:{},sort:{},fotosPend:[],gps:null};
+         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],riegoSem:[],opers:[],ch:{},sort:{},fotosPend:[],gps:null};
 const el=id=>document.getElementById(id);
 const hoyISO=()=>{const d=new Date();
   return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);};
@@ -785,6 +817,7 @@ async function cargar(){
   ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+  await cargarOperadores();
   poblar();
   if(vista==="home") pintarHome(); else ir(vista,subvista);
 }
@@ -2313,7 +2346,7 @@ async function guardar(){
       fecha:hoyISO(), lote:M.lote, campania:CAMPANIA,
       cultivo:sb.cultivo||null, variedad:sb.variedad||null, fenologia:feno,
       superficie_ha:sb.ha!=null?Number(sb.ha):null,
-      scouter:localStorage_get("scouter")||null, nota:nota||null,
+      scouter:YO?.nombre||null, operador_id:YO?.id??null, nota:nota||null,
       lat:S.gps?.lat??null, lon:S.gps?.lon??null,
       origen:"app", ext_id:"app-"+uuid()}])}))[0];
     monId=mon.id;
@@ -2414,13 +2447,60 @@ async function guardar(){
   }
   finally{ el("btnGuardar").disabled=false; }
 }
-function localStorage_get(){return null;}   // sin almacenamiento local por ahora
-
 function reiniciarCarga(){
   M.lote=null;M.ctx=null;M.mods={};M.fotos=[];
   el("nNota").value="";pintarThumbs();
   el("paso2").style.display="none";el("paso1").style.display="";
   el("qLote").value="";buscarLote();el("qLote").focus();
+}
+
+/* =========================== quién carga =========================== */
+// Se recuerda en el teléfono. No es seguridad: es para que cada registro
+// quede firmado y se sepa quién recorrió qué.
+const guardar_=(k,v)=>{try{localStorage.setItem(k,v)}catch{ }};
+const leer_=k=>{try{return localStorage.getItem(k)}catch{return null}};
+let YO=null, quienElegido=null;
+
+async function cargarOperadores(){
+  S.opers=await soft("mon_operadores?select=*&activo=is.true&order=orden,nombre");
+  const id=leer_("mon_operador_id");
+  YO=S.opers.find(o=>String(o.id)===String(id))||null;
+  pintarYo();
+  return !!YO;
+}
+function pintarYo(){
+  const b=el("btnQuien");
+  if(!b) return;
+  b.textContent = YO ? (YO.iniciales||YO.nombre.slice(0,2).toUpperCase()) : "¿Quién sos?";
+  b.title = YO ? `${YO.nombre} · tocá para cambiar` : "Elegir quién carga";
+}
+function pedirQuien(){
+  el("app").style.display="none";
+  el("quienScreen").style.display="";
+  el("quienPin").style.display="none";
+  el("quienErr").innerHTML="";
+  el("quienLista").style.display="";
+  el("quienLista").innerHTML=(S.opers||[]).map(o=>`
+    <button data-id="${o.id}" class="${o.rol==="invitado"?"inv":""}">
+      <span class="ini">${esc(o.iniciales||o.nombre.slice(0,2).toUpperCase())}</span>
+      <span>${esc(o.nombre)}<br><small style="color:var(--ink2);font-size:11px">${
+        o.rol==="invitado"?"solo consulta, sin PIN":esc(o.rol||"")}</small></span>
+    </button>`).join("")
+    ||'<div class="vacio">No hay operadores cargados. Corré el script 13.</div>';
+  el("quienLista").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    quienElegido=S.opers.find(o=>String(o.id)===b.dataset.id);
+    if(!quienElegido) return;
+    if(!quienElegido.pin||quienElegido.rol==="invitado"){ confirmarQuien(); return; }
+    el("quienLista").style.display="none";
+    el("quienPin").style.display="";
+    el("quienNom").textContent=quienElegido.nombre;
+    el("quienPinIn").value=""; el("quienPinIn").focus();
+  });
+}
+function confirmarQuien(){
+  YO=quienElegido; guardar_("mon_operador_id",String(YO.id));
+  el("quienScreen").style.display="none"; el("app").style.display="";
+  pintarYo(); ir(vista==="home"?"home":vista);
 }
 
 /* =========================== navegación =========================== */
@@ -2434,7 +2514,18 @@ const SECC={
 const SUB=["resumen","registros","stand","notas"];
 let vista="home", subvista="resumen";
 
+const puedeCargar=()=>!!YO&&YO.rol!=="invitado";
+
 function ir(v,sv){
+  // para cargar hace falta estar identificado y no ser invitado
+  if(v==="monitoreo"||v==="cosecha"){
+    if(!YO){ pedirQuien(); return; }
+    if(YO.rol==="invitado"){
+      alert("Estás entrando como Invitado, que es solo de consulta.\n\n"+
+            "Para cargar datos tocá tus iniciales arriba a la derecha y elegí tu nombre.");
+      return;
+    }
+  }
   vista=v; if(sv) subvista=sv;
   const cfg=SECC[v]||SECC.home;
   ["home","monitoreo","siembra","cosecha"].forEach(x=>{
@@ -2455,6 +2546,9 @@ function ir(v,sv){
 }
 
 function pintarHome(){
+  const inv=YO&&YO.rol==="invitado";
+  document.querySelectorAll('.hcard[data-go="monitoreo"],.hcard[data-go="cosecha"]')
+    .forEach(b=>b.classList.toggle("apagada",inv));
   const R=resumenLotes();
   const crit=R.filter(r=>r._peor==="critico").length;
   const sin=R.filter(r=>r.sinMonitoreo).length;
@@ -2464,6 +2558,7 @@ function pintarHome(){
   const cos=controlesCosecha();
   el("hsCos").innerHTML=cos.length?`${cos.length} controles en la campaña`:"sin controles todavía";
   el("hsRes").innerHTML=`${R.length} lotes · ${crit?`<b>${crit} en crítico</b>`:"nada en crítico"} · ${sin} sin recorrer`;
+  if(inv){ el("hsMon").textContent="solo consulta"; el("hsCos").textContent="solo consulta"; }
 }
 
 /* =========================== siembra =========================== */
@@ -2514,8 +2609,9 @@ function tablaCosecha(){
     <td class="num">${o.pct==null?"–":nf(o.pct,2)}</td>
     <td class="num">${nf(o.verde,1)}</td><td class="num">${nf(o.partido,1)}</td>
     <td>${o.sem?`<span class="pill ${o.sem}">${o.sem}</span>`:'<span class="pill na">–</span>'}</td>
+    <td>${esc(o.scouter||"–")}</td>
   </tr>`).join("")
-  :`<tr><td colspan="11"><div class="empty"><b>Sin controles</b>Elegí un lote arriba para cargar el primero.</div></td></tr>`;
+  :`<tr><td colspan="12"><div class="empty"><b>Sin controles</b>Elegí un lote arriba para cargar el primero.</div></td></tr>`;
 }
 
 function cBuscar(){
@@ -2596,7 +2692,8 @@ async function cGuardar(){
       fecha:hoyISO(), lote:C.lote, campania:CAMPANIA,
       cultivo:C.ctx?.cultivo||null, variedad:C.ctx?.variedad||null,
       superficie_ha:C.ctx?.ha!=null?Number(C.ctx.ha):null,
-      scouter:null, nota:[nota,extra].filter(Boolean).join(" · ")||null,
+      scouter:YO?.nombre||null, operador_id:YO?.id??null,
+      nota:[nota,extra].filter(Boolean).join(" · ")||null,
       lat:S.gps?.lat??null, lon:S.gps?.lon??null,
       origen:"app", ext_id:"cos-"+uuid()}])}))[0];
     cId=mon.id; cpaso="guardar las mediciones";
@@ -2644,6 +2741,13 @@ function cReiniciar(){
 
 /* =========================== eventos =========================== */
 document.querySelectorAll(".hcard").forEach(b=>b.onclick=()=>ir(b.dataset.go));
+el("btnQuien").onclick=()=>pedirQuien();
+el("quienVolver").onclick=()=>pedirQuien();
+el("quienGo").onclick=()=>{
+  if(el("quienPinIn").value.trim()===String(quienElegido.pin)) confirmarQuien();
+  else el("quienErr").innerHTML='<div class="msg err">PIN incorrecto.</div>';
+};
+el("quienPinIn").addEventListener("keydown",e=>{if(e.key==="Enter")el("quienGo").click();});
 el("btnHome").onclick=()=>ir("home");
 document.querySelectorAll("#subtabs button").forEach(b=>b.onclick=()=>ir("resumen",b.dataset.t));
 
