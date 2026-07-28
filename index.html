@@ -264,6 +264,12 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .sq.ok{background:var(--g500)} .sq.atencion{background:#D19B22} .sq.critico{background:var(--crit)}
 .sqs{display:flex;gap:3px}
 
+.capas{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:11px}
+.capas button{border:1px solid var(--line);background:var(--panel);border-radius:20px;
+  padding:6px 13px;font:inherit;font-size:12.5px;color:var(--ink2);cursor:pointer;transition:all .12s}
+.capas button:hover{background:var(--sand);color:var(--ink)}
+.capas button.on{background:var(--g700);border-color:var(--g700);color:#fff;font-weight:500}
+@media(max-width:620px){.capas{gap:4px}.capas button{padding:6px 11px;font-size:12px}}
 .mapa{width:100%;height:auto;display:block;max-height:520px;background:var(--bg);border-radius:9px}
 .mapa .mp{transition:fill-opacity .12s}
 .mapa .mp.act{cursor:pointer}
@@ -734,7 +740,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v36 · 24-07 18:15";   // subí este número en cada cambio
+const BUILD = "v37 · 28-07 14:10";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1843,59 +1849,116 @@ function tablaRes(){
   </tr>`).join(""):`<tr><td colspan="14"><div class="empty"><b>Sin datos con estos filtros</b>Probá limpiarlos.</div></td></tr>`;
 }
 
+function humLote(l){
+  const v=S.vals.filter(x=>K(x.lote)===K(l)&&x.indicador==="Humedad promedio del perfil"&&x.valor!=null)
+    .sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)))[0];
+  return v?Number(v.valor):null;
+}
+let capaMapa="estado";
 function mapa(){
   const box=el("mapaLotes");
-  const R=resumenLotes(), est={};
-  R.forEach(r=>est[K(r.lote)]={sem:r._peor,sin:r.sinMonitoreo,cul:r.cultivo,
-    ha:r.superficie_ha,al:r._alertas,fecha:r.fecha,dias:r._dias});
+  const R=resumenLotes(), est={}; R.forEach(r=>est[K(r.lote)]=r);
+  const std={}; standData().forEach(d=>std[K(d.lote)]=d);
+  const sb=idxSiembra(), rg=idxRiego();
 
   const f=F(), soloVisibles=!!(f.cul||f.sis||f.sec||f.sem);
-  const sb=idxSiembra();
   const lotes=Object.keys(GEO.p);
-  const kLat=Math.cos(-25.44*Math.PI/180);   // corrección de longitud a esta latitud
-
+  const kLat=Math.cos(-25.44*Math.PI/180);
   let x0=1e18,y0=1e18,x1=-1e18,y1=-1e18;
   lotes.forEach(l=>GEO.p[l].forEach(r=>{
-    for(let i=0;i<r.length;i+=2){
-      const x=r[i]*kLat, y=-r[i+1];
-      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
-    }}));
-  const W=x1-x0, H=y1-y0, M=W*0.012;
+    for(let i=0;i<r.length;i+=2){const x=r[i]*kLat,y=-r[i+1];
+      if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}));
+  const W=x1-x0,H=y1-y0,M=W*0.012;
 
-  const COLM={ok:"var(--g500)",atencion:"#D19B22",critico:"var(--crit)",revisar:"#8B79B8"};
+  const SEMC={ok:"var(--g500)",atencion:"#D19B22",critico:"var(--crit)",revisar:"#8272AD"};
+
+  // paletas de cultivo, tonos de la familia + apoyos
+  const CULC={};
+  [...new Set(R.map(r=>r.cultivo).filter(Boolean))].forEach((c,i)=>{
+    const P=["#7DAB2A","#3E7A82","#B58A2E","#8272AD","#B0402B","#4B681E","#C9A349","#5F8F3A","#9C6B3E"];
+    CULC[c]=P[i%P.length];});
+
+  // devuelve {fill, txt, activo} para el lote según la capa
+  function pinta(l){
+    const e=sb[K(l)]?est[K(l)]:null;
+    if(!e) return {fill:"#E8E4D6",op:.4,txt:`${l} · sin siembra en 26/27`,act:false};
+    const base=`${l} · ${e.cultivo||"sin cultivo"}${e.superficie_ha?" · "+nf(e.superficie_ha,0)+" ha":""}`;
+    const dentro=!soloVisibles||R.some(r=>K(r.lote)===K(l));
+    const op=dentro?.94:.16;
+
+    if(capaMapa==="cultivo"){
+      const c=e.cultivo;
+      return {fill:c?CULC[c]:"#E8E4D6",op:c?op:.4,txt:`${base}`,act:true};
+    }
+    if(capaMapa==="riego"){
+      const r=rg[K(l)]; const pct=r?.cumplimiento_pct;
+      if(pct==null) return {fill:"#EDEAE0",op:.5,txt:`${base}\nsin plan de riego`,act:true};
+      const rc=pct<70?"var(--crit)":pct<90?"#D19B22":"var(--g500)";
+      return {fill:rc,op,txt:`${base}\nriego ${nf(r.mm_aplicado,0)} mm · ${nf(pct,0)} % del plan`,act:true};
+    }
+    if(capaMapa==="stand"){
+      const d=std[K(l)];
+      if(!d||d.coef==null) return {fill:"#EDEAE0",op:.5,txt:`${base}\nsin stand`,act:true};
+      if(d.pendiente) return {fill:"#8272AD",op,txt:`${base}\nstand a definir (${d.nPuntos} puntos)`,act:true};
+      const col=d.dudoso?"#8272AD":d.coef<=0.80?"var(--crit)":d.coef<=0.90?"#D19B22":"var(--g500)";
+      return {fill:col,op,txt:`${base}\nlogro ${nf(d.coef*100,0)} %${d.dudoso?" · "+d.dudoso:""}`,act:true};
+    }
+    if(capaMapa==="humedad"){
+      const h=humLote(l);
+      if(h==null) return {fill:"#EDEAE0",op:.5,txt:`${base}\nsin lectura de humedad`,act:true};
+      const hc=h<1.25?"#B07753":h<1.75?"#CFA349":h<2.25?"#9BB544":h<2.75?"#5F8F3A":"#3E7A82";
+      return {fill:hc,op,txt:`${base}\nperfil ${nf(h,2)} · ${h<1.5?"seco":h<2?"50 % CC":h<2.5?"75 % CC":h<2.9?"capacidad de campo":"saturado"}`,act:true};
+    }
+    // capas de categoría sanitaria y estado general -> semáforo
+    if(capaMapa==="estado"){
+      if(e.sinMonitoreo) return {fill:"#FFFFFF",op,txt:`${base}\nsin recorrer`,act:true};
+      return {fill:e._peor?SEMC[e._peor]:"var(--g200)",op,
+        txt:`${base}\n${e._peor||"sin umbral"} · última visita ${fd(e.fecha)} (${e._dias} d)`,act:true};
+    }
+    // malezas / plagas / enfermedades: semáforo de esa categoría
+    const cat=e.cats?.[capaMapa];
+    if(!cat) return {fill:e.sinMonitoreo?"#FFFFFF":"#EDEAE0",op:e.sinMonitoreo?op:.5,
+      txt:`${base}\n${e.sinMonitoreo?"sin recorrer":"sin dato de "+capaMapa}`,act:true};
+    return {fill:SEMC[cat.sem]||"var(--g200)",op,
+      txt:`${base}\n${capaMapa}: ${cat.sem||"sin umbral"}${cat.top?.length?" · "+cat.top.slice(0,2).join(", "):""}`,act:true};
+  }
+
   const paths=lotes.map(l=>{
-    // un lote solo cuenta como de la campaña si figura en el maestro de siembras
-    const enCampania = !!sb[K(l)];
-    const e = enCampania ? est[K(l)] : null;
-    const dentro = e && (!soloVisibles || R.some(r=>K(r.lote)===K(l)));
-    const fill = !e ? "#E8E4D6" : e.sem ? COLM[e.sem] : e.sin ? "#FFFFFF" : "var(--g200)";
-    const op   = !e ? .45 : dentro ? .92 : .18;
-    const d=GEO.p[l].map(r=>{
-      let s2="";
+    const P=pinta(l);
+    const d=GEO.p[l].map(r=>{let s2="";
       for(let i=0;i<r.length;i+=2)
         s2+=(i?"L":"M")+((r[i]*kLat-x0).toFixed(0))+","+((-r[i+1]-y0).toFixed(0));
       return s2+"Z";}).join("");
-    const t=e
-      ? `${l} · ${e.cul||"sin cultivo"}${e.ha?" · "+nf(e.ha,0)+" ha":""}\n`+
-        (e.sin?"sin recorrer":`${e.sem||"sin umbral"} · última visita ${fd(e.fecha)} (${e.dias} d)`)+
-        (e.al&&e.al.length?"\n"+e.al.join(", "):"")
-      : `${l} · sin siembra en la campaña 26/27`;
-    return `<path d="${d}" fill="${fill}" fill-opacity="${op}" stroke="var(--ink3)" stroke-width="${(W*0.0006).toFixed(1)}"
-      data-lote="${esc(l)}" class="mp${e?" act":""}"><title>${esc(t)}</title></path>`;
+    return `<path d="${d}" fill="${P.fill}" fill-opacity="${P.op}" stroke="var(--ink3)"
+      stroke-width="${(W*0.0006).toFixed(1)}" data-lote="${esc(l)}"
+      class="mp${P.act?" act":""}"><title>${esc(P.txt)}</title></path>`;
   }).join("");
 
+  const LEG={
+    estado:[["var(--g500)","ok"],["#D19B22","atención"],["var(--crit)","crítico"],
+            ["var(--g200)","sin umbral"],["#fff","sin recorrer"],["#E8E4D6","fuera"]],
+    malezas:[["var(--g500)","ok"],["#D19B22","atención"],["var(--crit)","crítico"],["#EDEAE0","sin dato"]],
+    plagas:[["var(--g500)","ok"],["#D19B22","atención"],["var(--crit)","crítico"],["#EDEAE0","sin dato"]],
+    enfermedades:[["var(--g500)","ok"],["#D19B22","atención"],["var(--crit)","crítico"],["#EDEAE0","sin dato"]],
+    stand:[["#B0402B","bajo"],["#D19B22","medio"],["var(--g500)","logrado"],
+           ["#8272AD","revisar"],["#EDEAE0","sin dato"]],
+    humedad:[["#B07753","seco"],["#CFA349","50 %"],["#9BB544","75 %"],["#5F8F3A","CC"],["#3E7A82","saturado"],["#EDEAE0","sin dato"]],
+    riego:[["#B0402B","atrasado"],["#D19B22","parcial"],["var(--g500)","al día"],["#EDEAE0","sin plan"]],
+    cultivo:Object.entries(CULC).map(([c,col])=>[col,c]),
+  };
   box.innerHTML=`<svg class="mapa" viewBox="${-M} ${-M} ${W+2*M} ${H+2*M}"
-      role="img" aria-label="Mapa de los lotes de Finca Tolloche">${paths}</svg>
-    <div class="mapaleg">
-      <span><i style="background:var(--g500)"></i>ok</span>
-      <span><i style="background:#D19B22"></i>atención</span>
-      <span><i style="background:var(--crit)"></i>crítico</span>
-      <span><i style="background:var(--g200)"></i>recorrido sin umbral</span>
-      <span><i style="background:#fff;border:1px solid var(--ink3)"></i>sin recorrer</span>
-      <span><i style="background:#E8E4D6"></i>fuera de la campaña</span>
-    </div>`;
+      role="img" aria-label="Mapa de Finca Tolloche por ${capaMapa}">${paths}</svg>
+    <div class="mapaleg">${(LEG[capaMapa]||[]).map(([c,t])=>
+      `<span><i style="background:${c}${c==="#fff"?";border:1px solid var(--ink3)":""}"></i>${esc(t)}</span>`).join("")}</div>`;
   box.querySelectorAll("path.act").forEach(p=>p.onclick=()=>{
     el("fLote").value=p.dataset.lote; el("fLoteX").style.display="block"; render();});
+  const cp=el("capas");
+  if(cp&&!cp.dataset.on){ cp.dataset.on="1";
+    cp.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+      capaMapa=b.dataset.capa;
+      cp.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+      mapa();});
+  }
 }
 
 function chart(id,cfg){
