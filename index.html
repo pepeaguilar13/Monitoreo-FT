@@ -323,7 +323,11 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .qres .mas{color:var(--ink3);font-size:12px;padding:6px 2px}
 
 .ctx{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start;padding:15px 16px}
-.ctx .lot{font-family:'Instrument Serif',serif;font-size:34px;line-height:1;letter-spacing:-.01em}
+.ctx .edofr,.ednota{font-size:12.5px;padding:10px 13px;border-radius:9px;margin-bottom:12px}
+.edofr{background:var(--g50);border:1px solid var(--g200);color:var(--ink2)}
+.ednota{background:var(--warnbg);border:1px solid var(--warnln);color:#7a5a12}
+.edofr .btn,.ednota .btn{margin-left:6px}
+.lot{font-family:'Instrument Serif',serif;font-size:34px;line-height:1;letter-spacing:-.01em}
 .ctx .lot small{display:block;font-family:Geist,sans-serif;font-size:11px;letter-spacing:.08em;
   text-transform:uppercase;color:var(--ink2);margin-top:5px}
 .ctx dl{display:flex;flex-wrap:wrap;gap:18px;margin:0}
@@ -753,7 +757,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v40 · 28-07 18:05";   // subí este número en cada cambio
+const BUILD = "v41 · 28-07 18:40";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1063,6 +1067,7 @@ const BUILD = "v40 · 28-07 18:05";   // subí este número en cada cambio
 
   <!-- paso 2: contexto + módulos -->
   <div id="paso2" style="display:none">
+    <div id="editarBar"></div>
     <div class="card ctx" id="ctxCard"></div>
     <div id="formMsg"></div>
 
@@ -2288,8 +2293,8 @@ function buscarLote(){
   box.querySelectorAll("button").forEach(b=>b.onclick=()=>elegirLote(b.dataset.lote));
 }
 
-function elegirLote(lote){
-  M.lote=lote; M.mods={}; M.fotos=[];
+function elegirLote(lote, editarId){
+  M.lote=lote; M.mods={}; M.fotos=[]; M.editar=editarId||null;
   const sb=sbDe(lote)||{}, rg=idxRiego()[K(lote)]||{};
   const prev=S.mons.filter(m=>m.lote===lote).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
   const feno=prev.find(m=>m.fenologia);
@@ -2308,6 +2313,21 @@ function elegirLote(lote){
       <div><dt>Stand</dt><dd class="mono">${st&&st.coef!=null?nf(st.coef*100,0)+" %":"–"}</dd></div>
       <div><dt>Última visita</dt><dd class="mono">${prev[0]?fd(prev[0].fecha)+` <span style="color:var(--ink3);font-size:11px">${prev[0].scouter||""}</span>`:"–"}</dd></div>
     </dl>`;
+
+  // recorridas del lote que se pueden completar (mismas, sin importar quién las cargó)
+  const hoyMons=prev.filter(m=>m.fecha===hoyISO());
+  const bar=el("editarBar");
+  if(bar){
+    bar.innerHTML = M.editar
+      ? `<div class="ednota">Estás <b>completando</b> la recorrida del ${fd(prev.find(m=>m.id===M.editar)?.fecha)}.
+           Lo que cargues se suma a esa recorrida. <button class="btn sm" id="edCancel">Empezar una nueva</button></div>`
+      : (hoyMons.length
+        ? `<div class="edofr">Ya hay ${hoyMons.length} recorrida${hoyMons.length>1?"s":""} de hoy en este lote.
+           ¿Faltó algo? <button class="btn sm" id="edUlt">Completar la última</button></div>`
+        : "");
+    const b1=el("edCancel"); if(b1) b1.onclick=()=>elegirLote(lote,null);
+    const b2=el("edUlt");    if(b2) b2.onclick=()=>elegirLote(lote,hoyMons[0].id);
+  }
 
   el("paso1").style.display="none";
   el("paso2").style.display="";
@@ -2899,14 +2919,32 @@ async function guardar(){
   let paso="preparar los datos", monId=null;
   try{
     const sb=M.ctx||{};
-    paso="crear el monitoreo";
-    const mon=(await api("mon_monitoreos",{method:"POST",body:JSON.stringify([{
-      fecha:hoyISO(), lote:M.lote, campania:CAMPANIA,
-      cultivo:sb.cultivo||null, variedad:sb.variedad||null, fenologia:feno,
-      superficie_ha:sb.ha!=null?Number(sb.ha):null,
-      scouter:YO?.nombre||null, operador_id:YO?.id??null, nota:nota||null,
-      lat:S.gps?.lat??null, lon:S.gps?.lon??null,
-      origen:"app", ext_id:"app-"+uuid()}])}))[0];
+    let mon;
+    if(M.editar){
+      // completar una recorrida existente: se agregan datos, no se duplica
+      paso="actualizar la recorrida";
+      const patch={};
+      if(feno) patch.fenologia=feno;
+      if(nota){ const ant=S.mons.find(m=>m.id===M.editar)?.nota;
+        patch.nota=ant?ant+" · "+nota:nota; }
+      // deja constancia de quién completó, sin pisar al que la abrió
+      const orig=S.mons.find(m=>m.id===M.editar);
+      if(YO&&orig&&orig.scouter&&orig.scouter!==YO.nombre)
+        patch.nota=(patch.nota||orig.nota||"")+` · completado por ${YO.nombre}`;
+      if(Object.keys(patch).length)
+        await api(`mon_monitoreos?id=eq.${M.editar}`,{method:"PATCH",
+          body:JSON.stringify(patch),prefer:"return=minimal"});
+      mon={id:M.editar};
+    } else {
+      paso="crear el monitoreo";
+      mon=(await api("mon_monitoreos",{method:"POST",body:JSON.stringify([{
+        fecha:hoyISO(), lote:M.lote, campania:CAMPANIA,
+        cultivo:sb.cultivo||null, variedad:sb.variedad||null, fenologia:feno,
+        superficie_ha:sb.ha!=null?Number(sb.ha):null,
+        scouter:YO?.nombre||null, operador_id:YO?.id??null, nota:nota||null,
+        lat:S.gps?.lat??null, lon:S.gps?.lon??null,
+        origen:"app", ext_id:"app-"+uuid()}])}))[0];
+    }
     monId=mon.id;
 
     if(V.length){
@@ -2995,7 +3033,7 @@ async function guardar(){
     if(errFoto&&okFotos<nF)
       fmsg(`Se guardó ${lote}${det?" con "+det:""}, pero ${nF-okFotos} foto(s) no subieron: ${errFoto}`,"err");
     else
-      fmsg(`Guardado ${lote}${det?": "+det:""}. Elegí el próximo lote.`,"ok");
+      fmsg(`${M.editar?"Recorrida completada en":"Guardado"} ${lote}${det?": "+det:""}. Elegí el próximo lote.`,"ok");
   }catch(e){
     console.error("guardar ·",paso,e);
     const salvado = monId
@@ -3006,7 +3044,7 @@ async function guardar(){
   finally{ el("btnGuardar").disabled=false; }
 }
 function reiniciarCarga(){
-  M.lote=null;M.ctx=null;M.mods={};M.fotos=[];
+  M.lote=null;M.ctx=null;M.mods={};M.fotos=[];M.editar=null;
   el("nNota").value="";pintarThumbs();
   el("paso2").style.display="none";el("paso1").style.display="";
   el("qLote").value="";buscarLote();el("qLote").focus();
