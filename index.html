@@ -310,6 +310,34 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .msg.err{background:var(--critbg);color:var(--crit)}
 
 /* ---- flujo de monitoreo en campo ---- */
+.pendhd{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pendhd h2{margin:0}
+.pendclave{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 13px}
+.pendclave .chip{border:1px solid var(--line);background:var(--panel);border-radius:20px;
+  padding:6px 13px;font:inherit;font-size:12.5px;color:var(--ink2);cursor:pointer}
+.pendclave .chip.on{background:var(--g600);border-color:var(--g600);color:#fff;font-weight:500}
+.pendfiltros{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px}
+.pendfiltros .f{flex:0 1 160px}
+.pendtabla{display:flex;flex-direction:column;gap:5px}
+.pendrow{display:grid;grid-template-columns:minmax(120px,1.2fr) minmax(120px,1.3fr) 2fr auto;
+  gap:12px;align-items:center;text-align:left;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:11px 14px;font:inherit;cursor:pointer;transition:all .12s}
+.pendrow:hover{border-color:var(--g400);background:var(--g50)}
+.pendrow .pl b{font-family:'Geist Mono',monospace;font-size:14px}
+.pendrow .pl span{display:block;font-size:10.5px;color:var(--ink3)}
+.pendrow .pf{font-family:'Geist Mono',monospace;font-size:12.5px;color:var(--ink2)}
+.pendrow .pf span{display:block;font-size:10.5px;color:var(--ink3);font-family:Geist,sans-serif}
+.pendrow .pfalta{display:flex;flex-wrap:wrap;gap:5px}
+.pendrow .pfalta i{font-style:normal;font-size:10.5px;background:var(--warnbg);color:#8a6110;
+  border:1px solid var(--warnln);border-radius:5px;padding:2px 7px}
+.pendrow .pgo{font-size:11.5px;color:var(--g600);white-space:nowrap}
+#pendTog[data-n]:not([data-n="0"])::after{content:attr(data-n);margin-left:6px;
+  background:var(--warn);color:#fff;border-radius:9px;padding:1px 6px;font-size:10px}
+@media(max-width:720px){
+  .pendrow{grid-template-columns:1fr auto;gap:6px 10px}
+  .pendrow .pfalta{grid-column:1/-1}
+  .pendrow .pgo{grid-column:2;grid-row:1}
+}
 .loteseek{position:relative;max-width:460px}
 #qLote{width:100%;font:inherit;font-size:19px;padding:13px 15px;border:1px solid var(--line);
   border-radius:10px;font-family:'Geist Mono',monospace;text-transform:uppercase;background:var(--panel)}
@@ -757,7 +785,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v41 · 28-07 18:40";   // subí este número en cada cambio
+const BUILD = "v42 · 28-07 19:15";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1065,6 +1093,23 @@ const BUILD = "v41 · 28-07 18:40";   // subí este número en cada cambio
     </div>
   </div>
 
+  <!-- recorridas a las que les falta algo -->
+  <div class="card" id="pendCard">
+    <div class="pendhd">
+      <h2>Recorridas para completar</h2>
+      <button class="btn sm" id="pendTog">Ocultar</button>
+    </div>
+    <p class="cap">Marcá qué considerás clave. Se listan las recorridas que ya se hicieron
+      pero no tienen alguno de esos datos. Tocá una para agregarle lo que falta.</p>
+    <div class="pendclave" id="pendClave"></div>
+    <div class="pendfiltros">
+      <div class="f"><label>Sección</label><select id="pendSec"></select></div>
+      <div class="f"><label>Desde</label><input type="date" id="pendD1"></div>
+      <div class="f"><label>Hasta</label><input type="date" id="pendD2"></div>
+    </div>
+    <div id="pendLista"></div>
+  </div>
+
   <!-- paso 2: contexto + módulos -->
   <div id="paso2" style="display:none">
     <div id="editarBar"></div>
@@ -1192,7 +1237,7 @@ function poblar(){
   set("fCat",S.cats.map(c=>c.nombre),"Todas");
   el("hdCamp").textContent=CAMPANIA;
   el("hdBuild").textContent=BUILD;
-  if(el("qRes")&&!el("qRes").children.length) buscarLote();
+  if(el("qRes")&&!el("qRes").children.length){ buscarLote(); panelPendientes(); }
   if(el("cQRes")&&!el("cQRes").children.length) cBuscar();
 }
 const F=()=>({cul:el("fCultivo").value,sec:el("fSeccion").value,
@@ -2274,6 +2319,83 @@ function notas(){
 const M={lote:null,ctx:null,mods:{},fotos:[]};
 
 /* ---- paso 1: buscar el lote ---- */
+// qué categorías puede esperar el operador en una recorrida
+const CLAVE_CATS=[["fenologia","Fenología"],["humedad","Humedad"],["stand","Stand"],
+  ["malezas","Malezas"],["plagas","Plagas"],["enfermedades","Enfermedades"]];
+let PEND_CLAVE=null;   // set de categorías que el operador marcó
+function claveSel(){
+  if(PEND_CLAVE) return PEND_CLAVE;
+  try{const g=JSON.parse(leer_("mon_clave")||"null"); if(g&&g.length) return PEND_CLAVE=new Set(g);}catch{ }
+  return PEND_CLAVE=new Set(["fenologia","humedad","stand"]);   // por defecto
+}
+// qué categorías tiene cargada cada monitoreo (por id)
+function catsDeMon(){
+  const indCat={}; S.inds.forEach(i=>indCat[i.id]=i.categoria_id);
+  const porMon={};
+  S.vals.forEach(v=>{
+    const c=indCat[v.indicador_id]||v.categoria_id;
+    (porMon[v.monitoreo_id]=porMon[v.monitoreo_id]||new Set()).add(c);
+  });
+  return porMon;
+}
+
+function panelPendientes(){
+  const card=el("pendCard"); if(!card) return;
+  // filtros de sección
+  const secs=[...new Set(Object.values(idxSiembra()).map(x=>x.seccion).filter(Boolean))].sort();
+  const selSec=el("pendSec");
+  if(selSec && !selSec.options.length){
+    selSec.innerHTML='<option value="">Todas</option>'+secs.map(x=>`<option>${esc(x)}</option>`).join("");
+    ["pendSec","pendD1","pendD2"].forEach(i=>el(i).onchange=panelPendientes);
+  }
+  // chips de clave
+  const sel=claveSel();
+  el("pendClave").innerHTML=CLAVE_CATS.map(([k,n])=>
+    `<button class="chip ${sel.has(k)?"on":""}" data-k="${k}">${n}</button>`).join("");
+  el("pendClave").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    sel.has(b.dataset.k)?sel.delete(b.dataset.k):sel.add(b.dataset.k);
+    guardar_("mon_clave",JSON.stringify([...sel])); panelPendientes();
+  });
+
+  const catMon=catsDeMon();
+  const fSec=el("pendSec").value, d1=el("pendD1").value, d2=el("pendD2").value;
+  const sb=idxSiembra();
+
+  // una fila por recorrida que le falte alguna categoría clave
+  const filas=S.mons.filter(m=>{
+    if(m.campania&&m.campania!==CAMPANIA) return false;
+    if(d1&&m.fecha<d1) return false;
+    if(d2&&m.fecha>d2) return false;
+    if(fSec){ const se=sb[K(m.lote)]?.seccion||seccion(m.lote); if(se!==fSec) return false; }
+    const tiene=catMon[m.id]||new Set();
+    const falta=[...sel].filter(c=>{
+      if(c==="fenologia") return !m.fenologia && !tiene.has("fenologia");
+      return !tiene.has(c);
+    });
+    m._falta=falta; return falta.length>0;
+  }).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+
+  const nom=k=>CLAVE_CATS.find(x=>x[0]===k)?.[1]||k;
+  el("pendLista").innerHTML = !sel.size
+    ? '<div class="vacio">Marcá arriba al menos un dato clave.</div>'
+    : filas.length
+    ? `<div class="pendtabla">${filas.slice(0,60).map(m=>{
+        const se=sb[K(m.lote)]?.seccion||seccion(m.lote);
+        return `<button class="pendrow" data-lote="${esc(m.lote)}" data-id="${esc(m.id)}">
+          <div class="pl"><b>${esc(m.lote)}</b><span>${se?"secc. "+esc(se):""}</span></div>
+          <div class="pf">${fd(m.fecha)}<span>${esc(m.scouter||"")}</span></div>
+          <div class="pfalta">${m._falta.map(k=>`<i>${nom(k)}</i>`).join("")}</div>
+          <div class="pgo">completar →</div></button>`;}).join("")}
+        ${filas.length>60?`<div class="mas">y ${filas.length-60} más — afiná los filtros</div>`:""}</div>`
+    : '<div class="vacio">Ninguna recorrida con esos filtros necesita completarse. Todo al día.</div>';
+
+  el("pendLista").querySelectorAll(".pendrow").forEach(b=>b.onclick=()=>
+    elegirLote(b.dataset.lote,b.dataset.id));
+
+  const badge=filas.length;
+  el("pendTog").dataset.n=badge;
+}
+
 function buscarLote(){
   const q=el("qLote").value.trim().toUpperCase();
   const sb=idxSiembra(), box=el("qRes");
@@ -3534,6 +3656,13 @@ el("quienGo").onclick=()=>{
 el("quienPinIn").addEventListener("keydown",e=>{if(e.key==="Enter")el("quienGo").click();});
 el("btnHome").onclick=()=>ir("home");
 el("btnImprimir").onclick=()=>window.print();
+el("pendTog")?.addEventListener("click",()=>{
+  const b=el("pendLista").style.display==="none";
+  el("pendLista").style.display=b?"":"none";
+  el("pendClave").style.display=b?"":"none";
+  document.querySelector(".pendfiltros").style.display=b?"":"none";
+  el("pendTog").textContent=b?"Ocultar":"Mostrar";
+});
 document.querySelectorAll("#subtabs button").forEach(b=>b.onclick=()=>ir("resumen",b.dataset.t));
 
 ["fCultivo","fSistema","fSeccion","fCat","fSem","fD1","fD2"].forEach(i=>el(i).onchange=render);
