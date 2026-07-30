@@ -684,7 +684,13 @@ details[open] summary::before{content:"▾ "}
 .tsiem .h{font-family:'Geist Mono',monospace;text-align:right;white-space:nowrap}
 @media(max-width:620px){.tsiem .c{display:none}.tsiem .b{width:26%}}
 .fgal{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px}
-.fgal a{display:block;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.fgrupos{display:flex;flex-direction:column;gap:13px}
+.fgh{font-size:11.5px;color:var(--ink2);margin-bottom:6px;display:flex;align-items:baseline;gap:7px}
+.fgh span{color:var(--ink3);font-size:10.5px;margin-left:auto}
+.fgal a{display:block;position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.fcap{position:absolute;left:0;right:0;bottom:0;font-size:9px;line-height:1.2;padding:6px 5px 3px;
+  color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.62));
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fgal img{width:100%;height:100%;object-fit:cover;display:block}
 .fnota{font-size:12.5px;line-height:1.5;padding:8px 0;border-bottom:1px solid var(--sand)}
 .fnota:last-child{border-bottom:0}
@@ -747,7 +753,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v39 · 28-07 17:35";   // subí este número en cada cambio
+const BUILD = "v40 · 28-07 18:05";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1683,14 +1689,31 @@ function bxCrono(D){
 }
 
 function bxFotos(D){
-  const F=D.fotos.slice(0,8);
+  const F=D.fotos;
+  if(!F.length)
+    return `<div class="bx b6"><h3>Fotos del lote</h3>
+      <div class="vacio">Sin fotos. Se sacan desde Monitoreo.</div></div>`;
+
+  // se agrupan por recorrida, para saber a qué monitoreo pertenece cada foto
+  const porMon={};
+  F.forEach(f=>{ (porMon[f.monitoreo_id]=porMon[f.monitoreo_id]||[]).push(f); });
+  const grupos=Object.entries(porMon).map(([mid,fs])=>{
+    const m=D.mons.find(x=>x.id===mid)||{};
+    return {fecha:m.fecha||null, scouter:m.scouter||null, fs};
+  }).sort((a,b)=>String(b.fecha||"").localeCompare(String(a.fecha||"")));
+
   return `<div class="bx b6"><h3>Fotos del lote</h3>
-    ${F.length?`<div class="fgal">${F.map(f=>{
-      const u=`${S.url}/storage/v1/object/public/monitoreo/${f.path}`;
-      const m=D.mons.find(x=>x.id===f.monitoreo_id)||{};
-      return `<a href="${u}" target="_blank" rel="noopener" title="${fd(m.fecha)}${f.epigrafe?" · "+esc(f.epigrafe):""}">
-        <img src="${u}" alt="${esc(f.epigrafe||"foto del lote")}" loading="lazy"></a>`;}).join("")}</div>`
-    :'<div class="vacio">Sin fotos. Se sacan desde Monitoreo.</div>'}</div>`;
+    <div class="fgrupos">${grupos.map(g=>`
+      <div class="fgrupo">
+        <div class="fgh">${g.fecha?fd(g.fecha):"sin fecha"}${g.scouter?` · ${esc(g.scouter)}`:""}
+          <span>${g.fs.length} foto${g.fs.length>1?"s":""}</span></div>
+        <div class="fgal">${g.fs.map(f=>{
+          const u=`${S.url}/storage/v1/object/public/monitoreo/${f.path}`;
+          const cap=f.epigrafe?esc(f.epigrafe):"general";
+          return `<a href="${u}" target="_blank" rel="noopener" title="${cap}">
+            <img src="${u}" alt="${cap}" loading="lazy">
+            <span class="fcap">${cap}</span></a>`;}).join("")}</div>
+      </div>`).join("")}</div></div>`;
 }
 
 function bxNotas(D){
