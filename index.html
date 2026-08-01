@@ -785,7 +785,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v44 · 28-07 20:10";   // subí este número en cada cambio
+const BUILD = "v45 · 28-07 20:45";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1211,6 +1211,7 @@ function idxSiembra(){
   _sbLen=S.siembras.length; return (_sbCache=o);
 }
 const sbDe=l=>idxSiembra()[K(l)]||null;
+const esBarbecho=l=>!sbDe(l) && !!geoDe(l);
 let _geoC=null,_geoN=-1;
 function geoDe(l){
   if(!_geoC||_geoN!==S.geo.length){
@@ -1991,7 +1992,17 @@ function mapa(){
   // devuelve {fill, txt, activo} para el lote según la capa
   function pinta(l){
     const e=sb[K(l)]?est[K(l)]:null;
-    if(!e) return {fill:"#E8E4D6",op:.4,txt:`${l} · sin siembra en 26/27`,act:false};
+    if(!e){
+      // barbecho: buscar el último estado de barbecho cargado
+      const bv=S.vals.filter(v=>K(v.lote)===K(l)&&v.indicador==="Estado de barbecho"&&v.valor!=null)
+        .sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)))[0];
+      if(bv){
+        const suc=Number(bv.valor)>=2;
+        return {fill:suc?"var(--crit)":"var(--g500)",op:.9,act:true,
+          txt:`${l} · barbecho ${suc?"sucio":"limpio"} · ${fd(bv.fecha)}`};
+      }
+      return {fill:"#E8E4D6",op:.42,act:!!geoDe(l),txt:`${l} · barbecho, sin monitorear`};
+    }
     const base=`${l} · ${e.cultivo||"sin cultivo"}${e.superficie_ha?" · "+nf(e.superficie_ha,0)+" ha":""}`;
     const dentro=!soloVisibles||R.some(r=>K(r.lote)===K(l));
     const op=dentro?.94:.16;
@@ -2047,8 +2058,8 @@ function mapa(){
   }).join("");
 
   const LEG={
-    estado:[["var(--g500)","ok"],["#D19B22","atención"],["var(--crit)","crítico"],
-            ["var(--g200)","sin umbral"],["#fff","sin recorrer"],["#E8E4D6","fuera"]],
+    estado:[["var(--g500)","ok / barbecho limpio"],["#D19B22","atención"],["var(--crit)","crítico / barbecho sucio"],
+            ["var(--g200)","sin umbral"],["#fff","sin recorrer"],["#E8E4D6","barbecho"]],
     malezas:[["var(--g500)","ok"],["#D19B22","atención"],["var(--crit)","crítico"],["#EDEAE0","sin dato"]],
     plagas:[["var(--g500)","ok"],["#D19B22","atención"],["var(--crit)","crítico"],["#EDEAE0","sin dato"]],
     enfermedades:[["var(--g500)","ok"],["#D19B22","atención"],["var(--crit)","crítico"],["#EDEAE0","sin dato"]],
@@ -2063,7 +2074,10 @@ function mapa(){
     <div class="mapaleg">${(LEG[capaMapa]||[]).map(([c,t])=>
       `<span><i style="background:${c}${c==="#fff"?";border:1px solid var(--ink3)":""}"></i>${esc(t)}</span>`).join("")}</div>`;
   box.querySelectorAll("path.act").forEach(p=>p.onclick=()=>{
-    el("fLote").value=p.dataset.lote; el("fLoteX").style.display="block"; render();});
+    const lote=p.dataset.lote;
+    // un barbecho no está en el resumen: se abre directo en Monitoreo para cargarlo
+    if(esBarbecho(lote)&&puedeCargar("monitoreo")){ ir("monitoreo"); setTimeout(()=>elegirLote(lote),60); return; }
+    el("fLote").value=lote; el("fLoteX").style.display="block"; render();});
   const cp=el("capas");
   if(cp&&!cp.dataset.on){ cp.dataset.on="1";
     cp.querySelectorAll("button").forEach(b=>b.onclick=()=>{
@@ -2409,6 +2423,9 @@ function buscarLote(){
   const sb=idxSiembra(), box=el("qRes");
   let L=Object.values(sb);
   if(!L.length) L=[...new Set(S.mons.map(m=>m.lote))].map(l=>({lote:l}));
+  // sumar los barbechos: están en la planimetría pero no sembrados esta campaña
+  const yaEsta=new Set(L.map(x=>K(x.lote)));
+  S.geo.forEach(g=>{ if(!yaEsta.has(K(g.lote))) L.push({lote:g.lote,barbecho:true}); });
   if(q) L=L.filter(x=>String(x.lote).toUpperCase().includes(q));
   L.sort((a,b)=>{
     const A=String(a.lote).toUpperCase(),B=String(b.lote).toUpperCase();
@@ -2417,7 +2434,7 @@ function buscarLote(){
   const top=L.slice(0,12);
   box.innerHTML = top.length
     ? top.map(x=>`<button data-lote="${esc(x.lote)}"><b>${esc(x.lote)}</b>
-        <small>${esc(x.cultivo||"sin cultivo")}${x.variedad?" · "+esc(x.variedad):""}${x.ha?" · "+nf(x.ha,0)+" ha":""}</small></button>`).join("")
+        <small>${x.barbecho?'<span style="color:var(--warn)">barbecho</span>':esc(x.cultivo||"sin cultivo")+(x.variedad?" · "+esc(x.variedad):"")+(x.ha?" · "+nf(x.ha,0)+" ha":"")}</small></button>`).join("")
       + (L.length>top.length?`<div class="mas">y ${L.length-top.length} lotes más — seguí escribiendo</div>`:"")
     : `<div class="mas">Ningún lote coincide con “${esc(q)}”. Podés cargarlo igual escribiendo el nombre completo y tocando Enter.</div>`;
   box.querySelectorAll("button").forEach(b=>b.onclick=()=>elegirLote(b.dataset.lote));
@@ -2429,8 +2446,21 @@ function elegirLote(lote, editarId){
   const prev=S.mons.filter(m=>m.lote===lote).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
   const feno=prev.find(m=>m.fenologia);
   const st=standData().find(d=>d.lote===lote);
-  M.ctx={...sb,riego:rg,ultimo:prev[0]||null,feno:feno||null,stand:st||null};
+  const barb=esBarbecho(lote);
+  const geo=geoDe(lote)||{};
+  M.ctx={...sb,riego:rg,ultimo:prev[0]||null,feno:feno||null,stand:st||null,barbecho:barb};
 
+  if(barb){
+    el("ctxCard").innerHTML=`
+      <div class="lot">${esc(lote)}<small style="color:var(--warn)">barbecho${geo.seccion?" · sección "+esc(geo.seccion):""}</small></div>
+      <dl>
+        <div><dt>Estado</dt><dd>Sin cultivo esta campaña</dd></div>
+        <div><dt>Superficie</dt><dd class="mono">${geo.ha_gis!=null?nf(geo.ha_gis,0)+" ha":"–"}</dd></div>
+        <div><dt>Verano 25/26</dt><dd>${esc(geo.verano_2526||"–")}</dd></div>
+        <div><dt>Última visita</dt><dd class="mono">${prev[0]?fd(prev[0].fecha)+` <span style="color:var(--ink3);font-size:11px">${prev[0].scouter||""}</span>`:"–"}</dd></div>
+      </dl>
+      <div class="leyenda" style="margin-top:10px">En barbecho se cargan malezas y el estado del lote. Vigilar el barbecho evita que la maleza semille antes de la siembra.</div>`;
+  } else
   el("ctxCard").innerHTML=`
     <div class="lot">${esc(lote)}<small>${esc(sb.sistema||"sistema sin dato")}${sb.seccion?" · sección "+esc(sb.seccion):""}</small></div>
     <dl>
@@ -2600,7 +2630,12 @@ const MODS=[
   {id:"general",   t:"Estado general",   d:"del lote, 1 a 4"},
 ];
 function pintarMods(){
-  el("mods").innerHTML=MODS.map(m=>
+  const barb=M.ctx?.barbecho;
+  const disp = barb
+    ? [{id:"barbecho",t:"Estado de barbecho",d:"limpio o sucio"},
+       {id:"malezas",t:"Malezas",d:"cobertura y altura"}]
+    : MODS;
+  el("mods").innerHTML=disp.map(m=>
     `<button data-m="${m.id}" aria-pressed="${!!M.mods[m.id]}">${m.t}<small>${m.d}</small></button>`).join("");
   el("mods").querySelectorAll("button").forEach(b=>b.onclick=()=>{
     const id=b.dataset.m;
@@ -2635,6 +2670,9 @@ function pintarBoxes(){
     M.mods.humedad[p]=(M.mods.humedad[p]===b.dataset.v)?null:b.dataset.v; pintarBoxes();});
   box.querySelectorAll(".esc.gen button").forEach(b=>b.onclick=()=>{
     M.mods.general.valor=(String(M.mods.general.valor)===b.dataset.v)?null:b.dataset.v; pintarBoxes();});
+  box.querySelectorAll(".barbop").forEach(b=>b.onclick=()=>{
+    M.mods.barbecho=M.mods.barbecho||{};
+    M.mods.barbecho.estado=(String(M.mods.barbecho.estado)===b.dataset.v)?null:b.dataset.v; pintarBoxes();});
   // filas de especies
   box.querySelectorAll(".addesp").forEach(b=>b.onclick=()=>{
     (M.mods[b.dataset.m].filas=M.mods[b.dataset.m].filas||[]).push({});
@@ -2923,6 +2961,17 @@ function cajaDe(m){
       <button class="btn sm" id="cambiarMarco" style="margin-top:10px">Cambiar a ${mc.id==="aro"?"bandeja":"aro"}</button>
       </div>`;}
 
+  case "barbecho":
+    return `<div class="modbox" data-mod="${m.id}">${hd(m,"estado del barbecho")}
+      <div class="barbsel">
+        <button class="barbop limpio ${String(d.estado)==="1"?"on":""}" data-m="barbecho" data-campo="estado" data-v="1">
+          <b>Limpio</b><span>sin maleza que controlar</span></button>
+        <button class="barbop sucio ${String(d.estado)==="2"?"on":""}" data-m="barbecho" data-campo="estado" data-v="2">
+          <b>Sucio</b><span>hay que controlar</span></button>
+      </div>
+      <div class="leyenda">El barbecho limpio sale verde en el mapa; el sucio, rojo.
+        Si querés, cargá también las malezas para dejar registro de qué especie.</div></div>`;
+
   case "general":
     return `<div class="modbox" data-mod="${m.id}">${hd(m,"impresión general del lote")}
       <div class="prof" data-p="g" style="max-width:330px;border:0;padding:0">
@@ -2978,6 +3027,8 @@ function valoresDe(){
     }
   }
   if(m.general&&m.general.valor) push("general","Estado general (1-4)",m.general.valor,"Estado general del lote");
+  if(m.barbecho&&m.barbecho.estado) push("barbecho","Estado de barbecho",m.barbecho.estado,
+    m.barbecho.estado==="1"?"Barbecho limpio":"Barbecho sucio");
 
   if(m.stand){
     const plm=parseFloat(m.stand.pl_m), su=parseFloat(m.stand.surco);
