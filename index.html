@@ -279,6 +279,8 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .capas button.on{background:var(--g700);border-color:var(--g700);color:#fff;font-weight:500}
 @media(max-width:620px){.capas{gap:4px}.capas button{padding:6px 11px;font-size:12px}}
 .mapawrap{position:relative}
+.mapanota{margin-top:10px;padding:9px 13px;background:var(--warnbg);border:1px solid var(--warnln);
+  border-radius:8px;font-size:12px;color:#7a5a12}
 .mapafull{position:absolute;top:9px;right:9px;z-index:5;width:34px;height:34px;border-radius:8px;
   border:1px solid var(--line);background:var(--panel);color:var(--ink2);font-size:17px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(36,36,25,.1)}
@@ -840,7 +842,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v51 · 01-08 13:00";   // subí este número en cada cambio
+const BUILD = "v52 · 01-08 13:30";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -990,6 +992,7 @@ const BUILD = "v51 · 01-08 13:00";   // subí este número en cada cambio
           <button data-capa="humedad">Humedad</button>
           <button data-capa="riego">Riego</button>
           <button data-capa="cultivo">Cultivo</button>
+          <button data-capa="variedad">Variedad</button>
         </div>
         <div id="mapaLotes"></div></div>
     <div class="card"><h2>Presión por categoría</h2><p class="cap">Lotes en cada estado, según la última medición.</p><div class="chartbox"><canvas id="chCat"></canvas></div></div>
@@ -1846,7 +1849,7 @@ function resumenLotes(){
   // base: todos los lotes sembrados de la campaña
   Object.values(sb).forEach(s=>{
     out[s.lote]={lote:s.lote,sistema:s.sistema||null,seccion:s.seccion||seccion(s.lote),
-      cultivo:s.cultivo||null,variedad:s.variedad||null,f_siembra:s.fecha_siembra||null,
+      cultivo:s.cultivo||null,actividad:s.actividad||s.cultivo||null,variedad:s.variedad||null,f_siembra:s.fecha_siembra||null,
       superficie_ha:s.ha!=null?Number(s.ha):null,densidad_obj:s.densidad_obj,antecesor:s.antecesor,
       siembras:s.siembras||1, antecesor:s.antecesor||null,
       fecha:null,fenologia:null,scouter:null,cats:{},sinMonitoreo:true};
@@ -2050,14 +2053,21 @@ function humLote(l){
   return v?Number(v.valor):null;
 }
 let capaMapa="estado";
+mapa._vmap=null;
 // clasifica un lote en su referencia (etiqueta, color y si es barbecho)
 function refKey(l,P){
   const barb=esBarbecho(l);
   const e=(sbDe(l)||barb) ? resumenLotes().find(r=>K(r.lote)===K(l)) : null;
 
   if(capaMapa==="cultivo"){
-    const c=e?.cultivo; if(!c) return null;
-    return {k:"cul:"+c,t:c,c:P.fill,barb:c==="Barbecho"};
+    const a=e?.actividad||e?.cultivo; if(!a) return null;
+    return {k:"act:"+a,t:a,c:P.fill,barb:a==="Barbecho"};
+  }
+  if(capaMapa==="variedad"){
+    const cf=F().cul||null;
+    if(cf&&e?.cultivo!==cf) return null;   // no entra en la referencia
+    const v=e?.variedad; if(!v) return null;
+    return {k:"var:"+v,t:v,c:P.fill};
   }
 
   // barbecho: su referencia es limpio/sucio, aparte de los cultivos
@@ -2116,7 +2126,7 @@ function cuadroRef(cultList,haCult,barbList,haBarb){
 
 // modal de mapa a pantalla completa, con selector de capa propio
 const CAPAS_MF=[["estado","Estado general"],["malezas","Malezas"],["plagas","Plagas"],
-  ["enfermedades","Enfermedades"],["stand","Stand"],["humedad","Humedad"],["riego","Riego"],["cultivo","Cultivo"]];
+  ["enfermedades","Enfermedades"],["stand","Stand"],["humedad","Humedad"],["riego","Riego"],["cultivo","Cultivo"],["variedad","Variedad"]];
 
 function pintarMapaFull(){
   // reusa la función del mapa chico para regenerar SVG y cuadro en la capa activa
@@ -2170,6 +2180,7 @@ function abrirMapaFull(capa){
   pintarMapaFull();
 }
 function mapa(){
+  mapa._vmap=null;
   const box=el("mapaLotes");
   const R=resumenLotes(), est={}; R.forEach(r=>est[K(r.lote)]=r);
   const std={}; standData().forEach(d=>std[K(d.lote)]=d);
@@ -2186,11 +2197,35 @@ function mapa(){
 
   const SEMC={ok:"var(--g500)",atencion:"#D19B22",critico:"var(--crit)",revisar:"#8272AD"};
 
-  // paletas de cultivo, tonos de la familia + apoyos
+  // color por ACTIVIDAD, con familias de color por cultivo:
+  //   garbanzo morados · trigos amarillo-naranja · camelina roja
+  //   cártamo marrón · colza azul · girasol verde · cobertura verde grisáceo
+  function colorActividad(a){
+    const x=(a||"").toLowerCase();
+    if(x.includes("garbanzo")) return x.includes("dds") ? "#7E5AA8" : "#B79AD4";   // morados
+    if(x.includes("candeal"))  return x.includes("cobertura") ? "#E8A93A" : "#D98B1E"; // naranjas
+    if(x.includes("trigo pan")||x==="trigo"||x.includes("pan cobertura")) return "#F2C94C"; // amarillo
+    if(x.includes("cebada"))   return "#C98A2E";     // ámbar
+    if(x.includes("camelina")) return "#C0392B";     // roja
+    if(x.includes("cártamo")||x.includes("cartamo")) return "#8A5A2B"; // marrón
+    if(x.includes("colza"))    return "#3E6B9E";     // azul
+    if(x.includes("girasol"))  return "#5F9E3A";     // verde
+    if(x.includes("cobertura")) return x.includes("centeno")?"#9AA678":"#6E8B6B"; // verde grisáceo
+    return "#9C9385";
+  }
   const CULC={};
-  [...new Set(R.map(r=>r.cultivo).filter(Boolean))].forEach((c,i)=>{
-    const P=["#7DAB2A","#3E7A82","#B58A2E","#8272AD","#B0402B","#4B681E","#C9A349","#5F8F3A","#9C6B3E"];
-    CULC[c]=P[i%P.length];});
+  [...new Set(R.map(r=>r.actividad||r.cultivo).filter(Boolean))].forEach(a=>{ CULC[a]=colorActividad(a); });
+
+  // color por VARIEDAD dentro de un cultivo: matices de la familia del cultivo
+  function coloresVariedad(cultFiltro){
+    const vs=[...new Set(R.filter(r=>!cultFiltro||r.cultivo===cultFiltro)
+      .map(r=>r.variedad).filter(Boolean))].sort();
+    const base=colorActividad(cultFiltro||"");
+    const paleta=["#7E5AA8","#B79AD4","#D98B1E","#F2C94C","#C0392B","#3E6B9E","#5F9E3A","#8A5A2B",
+                  "#4B7BA8","#C98A2E","#9B59B6","#E8A93A","#6E8B6B","#D4756B"];
+    const map={}; vs.forEach((v,i)=>map[v]=paleta[i%paleta.length]);
+    return map;
+  }
 
   // devuelve {fill, txt, activo} para el lote según la capa
   function pinta(l){
@@ -2211,8 +2246,17 @@ function mapa(){
     const op=dentro?.94:.16;
 
     if(capaMapa==="cultivo"){
-      const c=e.cultivo;
-      return {fill:c?CULC[c]:"#E8E4D6",op:c?op:.4,txt:`${base}`,act:true};
+      const a=e.actividad||e.cultivo;
+      return {fill:a?CULC[a]:"#E8E4D6",op:a?op:.4,txt:`${base}${e.actividad&&e.actividad!==e.cultivo?"\n"+e.actividad:""}`,act:true};
+    }
+    if(capaMapa==="variedad"){
+      const cf=F().cul||null;
+      // sin cultivo elegido, o el lote no es de ese cultivo -> gris
+      if(cf&&e.cultivo!==cf) return {fill:"#EDEAE0",op:.35,txt:`${base}`,act:true};
+      const vmap=(mapa._vmap=mapa._vmap||coloresVariedad(cf));
+      const v=e.variedad;
+      return {fill:v?vmap[v]:"#E8E4D6",op:v?op:.4,
+        txt:`${base}${v?"\nvariedad "+v:"\nsin variedad"}`,act:true};
     }
     if(capaMapa==="riego"){
       const r=rg[K(l)]; const pct=r?.cumplimiento_pct;
@@ -2297,6 +2341,12 @@ function mapa(){
       role="img" aria-label="Mapa de Finca Tolloche por ${capaMapa}">${paths}</svg></div>
     ${cuadroRef(cultList,haCult,barbList,haBarb)}`;
 
+  if(capaMapa==="variedad"&&!F().cul){
+    const nota=document.createElement("div");
+    nota.className="mapanota";
+    nota.innerHTML="Elegí un cultivo en el filtro de arriba para ver sus variedades. Sin filtro se muestran todas mezcladas.";
+    el("mapaLotes").appendChild(nota);
+  }
   el("mapaFull")?.addEventListener("click",()=>abrirMapaFull(capaMapa));
   box.querySelectorAll("path.act").forEach(p=>p.onclick=()=>{
     const lote=p.dataset.lote;
