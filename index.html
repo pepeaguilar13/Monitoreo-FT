@@ -842,7 +842,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v52 · 01-08 13:30";   // subí este número en cada cambio
+const BUILD = "v53 · 01-08 14:00";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -966,22 +966,8 @@ const BUILD = "v52 · 01-08 13:30";   // subí este número en cada cambio
     <button class="btn" id="btnImprimir">Imprimir o guardar en PDF</button>
   </div>
 
-  <div class="card" id="cardTabla">
-    <h2>Estado por lote</h2>
-    <p class="cap" id="capRes"></p>
-    <div class="tw" style="max-height:640px;overflow-y:auto"><table id="tRes"><thead><tr>
-      <th data-k="lote">Lote</th><th data-k="superficie_ha">ha</th>
-      <th data-k="cultivo">Cultivo</th><th data-k="variedad">Variedad</th>
-      <th data-k="f_siembra">Siembra</th><th data-k="fenologia">Fenología</th>
-      <th data-k="riego_mm" class="gsep">Riego mm</th><th data-k="riego_pend">Pend.</th>
-      <th data-k="_dias">Últ. visita</th>
-      <th>Mal.</th><th>Plag.</th><th>Enf.</th>
-      <th data-k="pl_coef">Stand</th>
-      <th data-k="_peor">Alerta</th>
-    </tr></thead><tbody></tbody></table></div>
-  </div>
-  <div class="grid2">
-    <div class="card"><h2>Finca Tolloche</h2>
+  <div class="card" id="cardMapa">
+    <h2>Finca Tolloche</h2>
         <p class="cap">Cada lote en su lugar. Elegí qué mostrar. Tocá un lote para abrir su ficha.</p>
         <div class="capas" id="capas">
           <button data-capa="estado" class="on">Estado general</button>
@@ -995,7 +981,21 @@ const BUILD = "v52 · 01-08 13:30";   // subí este número en cada cambio
           <button data-capa="variedad">Variedad</button>
         </div>
         <div id="mapaLotes"></div></div>
-    <div class="card"><h2>Presión por categoría</h2><p class="cap">Lotes en cada estado, según la última medición.</p><div class="chartbox"><canvas id="chCat"></canvas></div></div>
+  <div class="card"><h2>Presión por categoría</h2><p class="cap">Lotes en cada estado, según la última medición.</p><div class="chartbox"><canvas id="chCat"></canvas></div></div>
+
+  <div class="card" id="cardTabla">
+    <h2>Estado por lote</h2>
+    <p class="cap" id="capRes"></p>
+    <div class="tw" style="max-height:560px;overflow-y:auto"><table id="tRes"><thead><tr>
+      <th data-k="lote">Lote</th><th data-k="superficie_ha">ha</th>
+      <th data-k="cultivo">Cultivo</th><th data-k="variedad">Variedad</th>
+      <th data-k="f_siembra">Siembra</th><th data-k="fenologia">Fenología</th>
+      <th data-k="riego_mm" class="gsep">Riego mm</th><th data-k="riego_pend">Pend.</th>
+      <th data-k="_dias">Últ. visita</th>
+      <th>Mal.</th><th>Plag.</th><th>Enf.</th>
+      <th data-k="pl_coef">Stand</th>
+      <th data-k="_peor">Alerta</th>
+    </tr></thead><tbody></tbody></table></div>
   </div>
 </section>
 
@@ -1260,7 +1260,7 @@ async function cargar(){
   el("cargando").style.display="none";
   if(!ident){ pedirQuien(); return; }
   el("app").style.display="";
-  if(vista==="home") pintarHome(); else ir(vista,subvista);
+  ir(vista, subvista);   // aplica la config de la vista: oculta filtros en home, etc.
 }
 
 const K=l=>String(l||"").trim().toUpperCase();   // clave de lote, sin distinguir mayúsculas
@@ -3609,7 +3609,7 @@ function ir(v,sv){
   el("volver").style.display = v==="home"?"none":"flex";
   el("donde").textContent = cfg.tit;
   el("subtabs").style.display = cfg.sub?"flex":"none";
-  el("filters").style.display = cfg.filtros?"flex":"none";
+  el("filters").style.display = (cfg.filtros && v==="resumen" && subvista!=="campania")?"flex":"none";
   document.querySelectorAll("#subtabs button").forEach(b=>
     b.setAttribute("aria-selected", b.dataset.t===subvista));
   if(v==="home") pintarHome();
