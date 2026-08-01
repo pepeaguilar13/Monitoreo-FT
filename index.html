@@ -785,7 +785,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v43 · 28-07 19:35";   // subí este número en cada cambio
+const BUILD = "v44 · 28-07 20:10";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1830,8 +1830,14 @@ function resumenLotes(){
     o.cumpl=r.cumplimiento_pct!=null?Number(r.cumplimiento_pct):null;
     o.ult_wk=r.ult_wk_regada??null;
     o.equipo=(r.equipos&&r.equipos.length)?r.equipos.join("/"):null;
-    o._peor=Object.values(o.cats).reduce((a,c)=>peor(a,c.sem),null);
-    o._alertas=[...new Set(Object.values(o.cats).flatMap(c=>c.top))].slice(0,3);
+    // peor semáforo entre las categorías sanitarias (para las capas del mapa y la columna Alerta)
+    o._peor=Object.entries(o.cats)
+      .filter(([k])=>k!=="general")
+      .reduce((a,[,c])=>peor(a,c.sem),null);
+    // estado general: lo que cargó el monitoreador a mano. Si no cargó, cae al peor sanitario.
+    o._general=o.cats.general?.sem ?? o._peor;
+    o._alertas=[...new Set(Object.entries(o.cats).filter(([k])=>k!=="general")
+      .flatMap(([,c])=>c.top))].slice(0,3);
     o._dias=o.fecha?Math.round((Date.now()-new Date(o.fecha+"T12:00:00"))/864e5):null;
   });
 
@@ -2013,11 +2019,13 @@ function mapa(){
       const hc=h<1.25?"#B07753":h<1.75?"#CFA349":h<2.25?"#9BB544":h<2.75?"#5F8F3A":"#3E7A82";
       return {fill:hc,op,txt:`${base}\nperfil ${nf(h,2)} · ${h<1.5?"seco":h<2?"50 % CC":h<2.5?"75 % CC":h<2.9?"capacidad de campo":"saturado"}`,act:true};
     }
-    // capas de categoría sanitaria y estado general -> semáforo
+    // capa "estado general": respeta lo que el monitoreador cargó a mano
     if(capaMapa==="estado"){
       if(e.sinMonitoreo) return {fill:"#FFFFFF",op,txt:`${base}\nsin recorrer`,act:true};
-      return {fill:e._peor?SEMC[e._peor]:"var(--g200)",op,
-        txt:`${base}\n${e._peor||"sin umbral"} · última visita ${fd(e.fecha)} (${e._dias} d)`,act:true};
+      const g=e._general;
+      const cargado=e.cats?.general?.sem!=null;
+      return {fill:g?SEMC[g]:"var(--g200)",op,
+        txt:`${base}\nestado ${g||"sin evaluar"}${cargado?" (cargado)":" (según sanidad)"} · ${fd(e.fecha)} (${e._dias} d)`,act:true};
     }
     // malezas / plagas / enfermedades: semáforo de esa categoría
     const cat=e.cats?.[capaMapa];
