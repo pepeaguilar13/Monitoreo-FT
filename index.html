@@ -305,9 +305,14 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
   max-width:1400px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)}
 .mfhead{display:flex;align-items:baseline;gap:11px;
   padding:15px 20px;background:var(--panel);border-bottom:1px solid var(--line)}
-.mfhead b{font-size:17px}
+.mfhead b{font-size:17px;flex-shrink:0}
 .mfhead small{color:var(--ink2);font-size:13px}
-.mfhead button{margin-left:auto;width:34px;height:34px;border-radius:8px;border:1px solid var(--line);
+.mfcapas{display:flex;flex-wrap:wrap;gap:4px;margin-left:16px;flex:1}
+.mfcapa{border:1px solid var(--line);background:var(--panel);border-radius:18px;
+  padding:5px 12px;font:inherit;font-size:12px;color:var(--ink2);cursor:pointer;transition:all .1s}
+.mfcapa:hover{background:var(--sand);color:var(--ink)}
+.mfcapa.on{background:var(--g700);border-color:var(--g700);color:#fff;font-weight:500}
+.mfhead #mfClose{margin-left:auto;width:34px;height:34px;border-radius:8px;border:1px solid var(--line);
   background:var(--panel);font-size:16px;cursor:pointer;align-self:center}
 .mfhead button:hover{background:var(--sand)}
 .mfmain{flex:1;display:flex;min-height:0}
@@ -320,8 +325,10 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 @media(max-width:820px){
   #mapaOverlay{padding:0}
   .mfpanel{border-radius:0}
+  .mfhead{flex-wrap:wrap}
+  .mfcapas{margin-left:0;order:3;width:100%}
   .mfmain{flex-direction:column}
-  .mfref{width:auto;border-left:0;border-top:1px solid var(--line);max-height:36vh;padding:12px 16px}
+  .mfref{width:auto;border-left:0;border-top:1px solid var(--line);max-height:34vh;padding:12px 16px}
   .mfmap{padding:12px}
 }
 .mapa{width:100%;height:auto;display:block;max-height:520px;background:var(--bg);border-radius:9px}
@@ -833,7 +840,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v50 · 01-08 12:35";   // subí este número en cada cambio
+const BUILD = "v51 · 01-08 13:00";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -2107,37 +2114,60 @@ function cuadroRef(cultList,haCult,barbList,haBarb){
   return h;
 }
 
-// modal de mapa a pantalla completa
-function abrirMapaFull(capa){
-  const svg=el("mapaLotes").querySelector("svg.mapa"); if(!svg) return;
+// modal de mapa a pantalla completa, con selector de capa propio
+const CAPAS_MF=[["estado","Estado general"],["malezas","Malezas"],["plagas","Plagas"],
+  ["enfermedades","Enfermedades"],["stand","Stand"],["humedad","Humedad"],["riego","Riego"],["cultivo","Cultivo"]];
+
+function pintarMapaFull(){
+  // reusa la función del mapa chico para regenerar SVG y cuadro en la capa activa
+  mapa();
+  const svg=el("mapaLotes").querySelector("svg.mapa");
   const tabla=el("mapaLotes").querySelector(".mapatabla")?.outerHTML||"";
-  let ov=el("mapaOverlay");
-  if(!ov){ ov=document.createElement("div"); ov.id="mapaOverlay"; document.body.appendChild(ov); }
-  const titulo={estado:"Estado general",malezas:"Malezas",plagas:"Plagas",
-    enfermedades:"Enfermedades",stand:"Stand",humedad:"Humedad",riego:"Riego",cultivo:"Cultivo"}[capa]||capa;
-  ov.innerHTML=`<div class="mfpanel">
-    <div class="mfhead">
-      <b>Finca Tolloche</b><small>${esc(titulo)}</small>
-      <button id="mfClose" aria-label="Cerrar">✕</button>
-    </div>
-    <div class="mfmain">
-      <div class="mfmap">${svg.outerHTML}</div>
-      <aside class="mfref">${tabla}</aside>
-    </div>
-  </div>`;
-  ov.style.display="flex";
-  document.body.style.overflow="hidden";
-  const cerrar=()=>{ ov.style.display="none"; document.body.style.overflow=""; };
-  el("mfClose").onclick=cerrar;
-  ov.onclick=e=>{ if(e.target===ov) cerrar(); };
-  // los lotes del modal también abren su ficha
-  ov.querySelectorAll("path.act").forEach(p=>p.onclick=()=>{
-    cerrar();
+  const ov=el("mapaOverlay"); if(!ov||!svg) return;
+  ov.querySelector(".mfmap").innerHTML=svg.outerHTML;
+  ov.querySelector(".mfref").innerHTML=tabla;
+  ov.querySelectorAll(".mfcapa").forEach(b=>b.classList.toggle("on",b.dataset.capa===capaMapa));
+  // los lotes del modal abren su ficha
+  ov.querySelectorAll(".mfmap path.act").forEach(p=>p.onclick=()=>{
+    cerrarMapaFull();
     const lote=p.dataset.lote;
     if(esBarbecho(lote)&&puedeCargar("monitoreo")){ ir("monitoreo"); setTimeout(()=>elegirLote(lote),60); return; }
     el("fLote").value=lote; el("fLoteX").style.display="block"; render();
   });
-  document.addEventListener("keydown",function esc(e){ if(e.key==="Escape"){cerrar();document.removeEventListener("keydown",esc);} });
+}
+function cerrarMapaFull(){
+  const ov=el("mapaOverlay"); if(ov) ov.style.display="none";
+  document.body.style.overflow="";
+}
+function abrirMapaFull(capa){
+  if(el("mapaLotes").querySelector("svg.mapa")==null) return;
+  let ov=el("mapaOverlay");
+  if(!ov){ ov=document.createElement("div"); ov.id="mapaOverlay"; document.body.appendChild(ov); }
+  ov.innerHTML=`<div class="mfpanel">
+    <div class="mfhead">
+      <b>Finca Tolloche</b>
+      <div class="mfcapas">${CAPAS_MF.map(([k,t])=>
+        `<button class="mfcapa ${k===capa?"on":""}" data-capa="${k}">${esc(t)}</button>`).join("")}</div>
+      <button id="mfClose" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="mfmain">
+      <div class="mfmap"></div>
+      <aside class="mfref"></aside>
+    </div>
+  </div>`;
+  ov.style.display="flex";
+  document.body.style.overflow="hidden";
+  el("mfClose").onclick=cerrarMapaFull;
+  ov.onclick=e=>{ if(e.target===ov) cerrarMapaFull(); };
+  ov.querySelectorAll(".mfcapa").forEach(b=>b.onclick=()=>{
+    capaMapa=b.dataset.capa;
+    // sincroniza también el mapa chico de atrás
+    el("capas")?.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x.dataset.capa===capaMapa));
+    pintarMapaFull();
+  });
+  document.addEventListener("keydown",function esc(e){ if(e.key==="Escape"){cerrarMapaFull();document.removeEventListener("keydown",esc);} });
+  capaMapa=capa;
+  pintarMapaFull();
 }
 function mapa(){
   const box=el("mapaLotes");
