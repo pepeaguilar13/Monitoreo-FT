@@ -292,6 +292,9 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .mref .mrt{color:var(--ink2)}
 .mref .mrh{font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:var(--ink);text-align:right;min-width:72px}
 .mref .mrp{font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;color:var(--ink3);text-align:right;min-width:52px}
+.mrsec{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);
+  padding:9px 12px 5px;background:var(--panel);font-weight:600}
+.mrsec.barb{border-top:1px solid var(--line);color:var(--warn)}
 .mref.tot{background:var(--g100);font-weight:600}
 .mref.tot i{background:transparent}
 .mref.tot .mrt,.mref.tot .mrh,.mref.tot .mrp{color:var(--ink)}
@@ -818,7 +821,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v48 · 01-08 11:40";   // subí este número en cada cambio
+const BUILD = "v49 · 01-08 12:10";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -2028,25 +2031,67 @@ function humLote(l){
   return v?Number(v.valor):null;
 }
 let capaMapa="estado";
-// clasifica un lote en su referencia (etiqueta + color) según la capa activa
+// clasifica un lote en su referencia (etiqueta, color y si es barbecho)
 function refKey(l,P){
-  const f=P.fill;
-  const C={ok:"var(--g500)",atencion:"#D19B22",critico:"var(--crit)",revisar:"#8272AD",g200:"var(--g200)"};
+  const barb=esBarbecho(l);
+  const e=(sbDe(l)||barb) ? resumenLotes().find(r=>K(r.lote)===K(l)) : null;
+
   if(capaMapa==="cultivo"){
-    const e=(resumenLotes().find(r=>K(r.lote)===K(l)));
     const c=e?.cultivo; if(!c) return null;
-    return {k:c,t:c,c:f};
+    return {k:"cul:"+c,t:c,c:P.fill,barb:c==="Barbecho"};
   }
+
+  // barbecho: su referencia es limpio/sucio, aparte de los cultivos
+  if(barb){
+    const st=e?.cats?.barbecho?.sem;
+    if(st==="critico") return {k:"barb:sucio",t:"Barbecho sucio",c:"var(--crit)",barb:true};
+    if(st==="ok")      return {k:"barb:limpio",t:"Barbecho limpio",c:"var(--g500)",barb:true};
+    return {k:"barb:sin",t:"Barbecho sin recorrer",c:"#E8E4D6",barb:true};
+  }
+
+  if(capaMapa==="estado"){
+    if(e?.sinMonitoreo) return {k:"sinrec",t:"Sin recorrer",c:"#FFFFFF"};
+    const g=e?._general;
+    if(g==="ok")       return {k:"ok",t:"Bueno",c:"var(--g500)"};
+    if(g==="atencion") return {k:"aten",t:"Atención",c:"#D19B22"};
+    if(g==="critico")  return {k:"crit",t:"Malo",c:"var(--crit)"};
+    if(g==="revisar")  return {k:"rev",t:"A revisar",c:"#8272AD"};
+    return {k:"sinu",t:"Sin evaluar",c:"var(--g200)"};
+  }
+
+  // resto de capas: clasificar por color de relleno
   const nom={
-    "var(--g500)":capaMapa==="estado"?"Bueno / barbecho limpio":capaMapa==="stand"?"Logrado":capaMapa==="humedad"?"Húmedo / CC":capaMapa==="riego"?"Al día":"OK",
+    "var(--g500)":capaMapa==="stand"?"Logrado":capaMapa==="humedad"?"Capacidad de campo":capaMapa==="riego"?"Al día":"OK",
     "#7DAB2A":"OK","#D19B22":capaMapa==="riego"?"Parcial":capaMapa==="stand"?"Medio":"Atención",
-    "var(--crit)":capaMapa==="estado"?"Malo / barbecho sucio":capaMapa==="stand"?"Bajo":capaMapa==="riego"?"Atrasado":"Crítico",
+    "var(--crit)":capaMapa==="stand"?"Bajo":capaMapa==="riego"?"Atrasado":"Crítico",
     "#8272AD":"A revisar","var(--g200)":"Sin umbral",
-    "#FFFFFF":"Sin recorrer","#fff":"Sin recorrer",
-    "#EDEAE0":"Sin dato","#E8E4D6":"Barbecho",
+    "#FFFFFF":"Sin recorrer","#fff":"Sin recorrer","#EDEAE0":"Sin dato",
     "#B07753":"Seco","#CFA349":"50 % CC","#9BB544":"75 % CC","#5F8F3A":"Capacidad de campo","#3E7A82":"Saturado",
-  }[f]||"Otros";
-  return {k:f,t:nom,c:f};
+  }[P.fill]||"Otros";
+  return {k:P.fill,t:nom,c:P.fill};
+}
+
+
+// cuadro de referencias: cultivos y, aparte, barbecho
+function cuadroRef(cultList,haCult,barbList,haBarb){
+  const fila=(r,base)=>`<div class="mref">
+    <i style="background:${r.c}${r.c==="#fff"||r.c==="#E8E4D6"?";border:1px solid var(--ink3)":""}"></i>
+    <span class="mrt">${esc(r.t)}</span>
+    <span class="mrh">${nf(r.ha,0)} ha</span>
+    <span class="mrp">${nf(base?r.ha/base*100:0,1)} %</span></div>`;
+  let h='<div class="mapatabla">';
+  h+=`<div class="mrsec">Cultivos${haBarb>0?" (sin contar barbecho)":""}</div>`;
+  h+=cultList.map(r=>fila(r,haCult)).join("");
+  if(cultList.length) h+=`<div class="mref tot"><i></i><span class="mrt">Total cultivos</span>
+    <span class="mrh">${nf(haCult,0)} ha</span><span class="mrp">100 %</span></div>`;
+  if(barbList.length){
+    h+=`<div class="mrsec barb">Barbecho</div>`;
+    h+=barbList.map(r=>fila(r,haBarb)).join("");
+    h+=`<div class="mref tot"><i></i><span class="mrt">Total barbecho</span>
+      <span class="mrh">${nf(haBarb,0)} ha</span><span class="mrp">100 %</span></div>`;
+  }
+  h+='</div>';
+  return h;
 }
 
 // modal de mapa a pantalla completa
@@ -2181,33 +2226,28 @@ function mapa(){
     riego:[["#B0402B","atrasado"],["#D19B22","parcial"],["var(--g500)","al día"],["#EDEAE0","sin plan"]],
     cultivo:Object.entries(CULC).map(([c,col])=>[col,c]),
   };
-  // referencias con superficie: cuántas ha y qué % cae en cada color de la capa
-  const refs={}; let totRef=0;
+  // referencias con superficie. El barbecho se cuenta aparte, para no sumar
+  // "barbecho limpio" junto a "cultivo bueno": no son lo mismo.
+  const refsCult={}, refsBarb={}; let haCult=0, haBarb=0;
   lotes.forEach(l=>{
     const P=pinta(l); if(!P.act) return;
     const e=sb[K(l)]?est[K(l)]:null;
     const ha=(e?.superficie_ha)??(geoDe(l)?.ha_gis)??0;
     if(!ha) return;
     const key=refKey(l,P); if(!key) return;
-    refs[key.k]=refs[key.k]||{t:key.t,c:key.c,ha:0,n:0};
-    refs[key.k].ha+=Number(ha); refs[key.k].n++; totRef+=Number(ha);
+    const dest=key.barb?refsBarb:refsCult;
+    dest[key.k]=dest[key.k]||{t:key.t,c:key.c,ha:0,n:0};
+    dest[key.k].ha+=Number(ha); dest[key.k].n++;
+    if(key.barb) haBarb+=Number(ha); else haCult+=Number(ha);
   });
-  const refList=Object.values(refs).sort((a,b)=>b.ha-a.ha);
+  const cultList=Object.values(refsCult).sort((a,b)=>b.ha-a.ha);
+  const barbList=Object.values(refsBarb).sort((a,b)=>b.ha-a.ha);
 
   box.innerHTML=`<div class="mapawrap">
     <button class="mapafull" id="mapaFull" title="Ver en pantalla completa" aria-label="Pantalla completa">⤢</button>
     <svg class="mapa" viewBox="${-M} ${-M} ${W+2*M} ${H+2*M}"
       role="img" aria-label="Mapa de Finca Tolloche por ${capaMapa}">${paths}</svg></div>
-    <div class="mapatabla">
-      ${refList.map(r=>`<div class="mref">
-        <i style="background:${r.c}${r.c==="#fff"?";border:1px solid var(--ink3)":""}"></i>
-        <span class="mrt">${esc(r.t)}</span>
-        <span class="mrh">${nf(r.ha,0)} ha</span>
-        <span class="mrp">${nf(totRef?r.ha/totRef*100:0,1)} %</span>
-      </div>`).join("")}
-      ${refList.length?`<div class="mref tot"><i></i><span class="mrt">Total</span>
-        <span class="mrh">${nf(totRef,0)} ha</span><span class="mrp">100 %</span></div>`:""}
-    </div>`;
+    ${cuadroRef(cultList,haCult,barbList,haBarb)}`;
 
   el("mapaFull")?.addEventListener("click",()=>abrirMapaFull(capaMapa));
   box.querySelectorAll("path.act").forEach(p=>p.onclick=()=>{
