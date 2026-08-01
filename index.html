@@ -300,18 +300,30 @@ td .lotecel small{font-size:10px;color:var(--ink3);font-weight:400;letter-spacin
 .mref.tot .mrt,.mref.tot .mrh,.mref.tot .mrp{color:var(--ink)}
 
 #mapaOverlay{position:fixed;inset:0;z-index:200;background:rgba(30,30,20,.55);
-  backdrop-filter:blur(3px);display:none;flex-direction:column;padding:0}
-.mfhead{display:flex;align-items:center;justify-content:space-between;
-  padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--line)}
-.mfhead b{font-size:16px}
-.mfhead button{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);
-  background:var(--panel);font-size:16px;cursor:pointer}
+  backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;padding:24px}
+.mfpanel{background:var(--bg);border-radius:16px;overflow:hidden;width:100%;height:100%;
+  max-width:1400px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.mfhead{display:flex;align-items:baseline;gap:11px;
+  padding:15px 20px;background:var(--panel);border-bottom:1px solid var(--line)}
+.mfhead b{font-size:17px}
+.mfhead small{color:var(--ink2);font-size:13px}
+.mfhead button{margin-left:auto;width:34px;height:34px;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel);font-size:16px;cursor:pointer;align-self:center}
 .mfhead button:hover{background:var(--sand)}
-.mfbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg)}
-.mfbody svg{width:100%;height:100%;max-height:100%}
-.mffoot{background:var(--panel);border-top:1px solid var(--line);padding:12px 20px;max-height:32vh;overflow:auto}
-.mffoot .mapatabla{margin-top:0;max-width:560px}
-@media(max-width:620px){.mffoot{max-height:38vh}.mfbody{padding:8px}}
+.mfmain{flex:1;display:flex;min-height:0}
+.mfmap{flex:1;display:flex;align-items:center;justify-content:center;padding:22px;min-width:0;background:var(--bg)}
+.mfmap svg{width:100%;height:100%;max-height:100%}
+.mfref{width:310px;flex-shrink:0;border-left:1px solid var(--line);background:var(--panel);
+  padding:18px;overflow-y:auto}
+.mfref .mapatabla{margin-top:0;border:0}
+.mfref .mref{padding:8px 6px}
+@media(max-width:820px){
+  #mapaOverlay{padding:0}
+  .mfpanel{border-radius:0}
+  .mfmain{flex-direction:column}
+  .mfref{width:auto;border-left:0;border-top:1px solid var(--line);max-height:36vh;padding:12px 16px}
+  .mfmap{padding:12px}
+}
 .mapa{width:100%;height:auto;display:block;max-height:520px;background:var(--bg);border-radius:9px}
 .mapa .mp{transition:fill-opacity .12s}
 .mapa .mp.act{cursor:pointer}
@@ -821,7 +833,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v49 · 01-08 12:10";   // subí este número en cada cambio
+const BUILD = "v50 · 01-08 12:35";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -2051,6 +2063,7 @@ function refKey(l,P){
 
   if(capaMapa==="estado"){
     if(e?.sinMonitoreo) return {k:"sinrec",t:"Sin recorrer",c:"#FFFFFF"};
+    if(e?._viejo) return {k:"viejo",t:"Dato viejo (+10 días)",c:"var(--g200)",viejo:true};
     const g=e?._general;
     if(g==="ok")       return {k:"ok",t:"Bueno",c:"var(--g500)"};
     if(g==="atencion") return {k:"aten",t:"Atención",c:"#D19B22"};
@@ -2075,7 +2088,7 @@ function refKey(l,P){
 // cuadro de referencias: cultivos y, aparte, barbecho
 function cuadroRef(cultList,haCult,barbList,haBarb){
   const fila=(r,base)=>`<div class="mref">
-    <i style="background:${r.c}${r.c==="#fff"||r.c==="#E8E4D6"?";border:1px solid var(--ink3)":""}"></i>
+    <i style="background:${r.c}${r.viejo?";border:1.5px dashed var(--warn)":(r.c==="#fff"||r.c==="#E8E4D6"?";border:1px solid var(--ink3)":"")}"></i>
     <span class="mrt">${esc(r.t)}</span>
     <span class="mrh">${nf(r.ha,0)} ha</span>
     <span class="mrp">${nf(base?r.ha/base*100:0,1)} %</span></div>`;
@@ -2100,13 +2113,18 @@ function abrirMapaFull(capa){
   const tabla=el("mapaLotes").querySelector(".mapatabla")?.outerHTML||"";
   let ov=el("mapaOverlay");
   if(!ov){ ov=document.createElement("div"); ov.id="mapaOverlay"; document.body.appendChild(ov); }
-  ov.innerHTML=`<div class="mfhead">
-      <b>Finca Tolloche · ${({estado:"Estado general",malezas:"Malezas",plagas:"Plagas",
-        enfermedades:"Enfermedades",stand:"Stand",humedad:"Humedad",riego:"Riego",cultivo:"Cultivo"})[capa]||capa}</b>
+  const titulo={estado:"Estado general",malezas:"Malezas",plagas:"Plagas",
+    enfermedades:"Enfermedades",stand:"Stand",humedad:"Humedad",riego:"Riego",cultivo:"Cultivo"}[capa]||capa;
+  ov.innerHTML=`<div class="mfpanel">
+    <div class="mfhead">
+      <b>Finca Tolloche</b><small>${esc(titulo)}</small>
       <button id="mfClose" aria-label="Cerrar">✕</button>
     </div>
-    <div class="mfbody">${svg.outerHTML}</div>
-    <div class="mffoot">${tabla}</div>`;
+    <div class="mfmain">
+      <div class="mfmap">${svg.outerHTML}</div>
+      <aside class="mfref">${tabla}</aside>
+    </div>
+  </div>`;
   ov.style.display="flex";
   document.body.style.overflow="hidden";
   const cerrar=()=>{ ov.style.display="none"; document.body.style.overflow=""; };
@@ -2236,7 +2254,7 @@ function mapa(){
     if(!ha) return;
     const key=refKey(l,P); if(!key) return;
     const dest=key.barb?refsBarb:refsCult;
-    dest[key.k]=dest[key.k]||{t:key.t,c:key.c,ha:0,n:0};
+    dest[key.k]=dest[key.k]||{t:key.t,c:key.c,ha:0,n:0,viejo:key.viejo};
     dest[key.k].ha+=Number(ha); dest[key.k].n++;
     if(key.barb) haBarb+=Number(ha); else haCult+=Number(ha);
   });
