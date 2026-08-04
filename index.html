@@ -842,7 +842,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v54 · 01-08 15:30";   // subí este número en cada cambio
+const BUILD = "v55 · 01-08 16:20";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -2505,7 +2505,14 @@ function standData(){
   });
 
   const u={};
-  L.sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).forEach(o=>{if(!u[K(o.lote)])u[K(o.lote)]=o;});
+  // por lote nos quedamos con el mejor stand: primero el que tenga logro calculable,
+  // después el más reciente. Así una recorrida nueva sin densidad no tapa
+  // al dato de planilla que sí la trae.
+  L.sort((a,b)=>{
+    const ta=(a.real!=null||a.coef!=null)?1:0, tb=(b.real!=null||b.coef!=null)?1:0;
+    if(ta!==tb) return tb-ta;                       // primero los que tienen dato
+    return String(b.fecha||"").localeCompare(String(a.fecha||""));  // luego el más reciente
+  }).forEach(o=>{if(!u[K(o.lote)])u[K(o.lote)]=o;});
   return Object.values(u);
 }
 
