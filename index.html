@@ -842,7 +842,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v56 · 01-08 17:25";   // subí este número en cada cambio
+const BUILD = "v57 · 04-08 11:00";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -2114,9 +2114,9 @@ function refKey(l,P){
 
   // resto de capas: clasificar por color de relleno
   const nom={
-    "var(--g500)":capaMapa==="stand"?"Logrado":capaMapa==="humedad"?"Capacidad de campo":capaMapa==="riego"?"Al día":"OK",
-    "#7DAB2A":"OK","#D19B22":capaMapa==="riego"?"Parcial":capaMapa==="stand"?"Medio":"Atención",
-    "var(--crit)":capaMapa==="stand"?"Bajo":capaMapa==="riego"?"Atrasado":"Crítico",
+    "var(--g500)":capaMapa==="stand"?"Logrado":capaMapa==="humedad"?"Capacidad de campo":capaMapa==="riego"?"≥90 % del plan":"OK",
+    "#7DAB2A":"OK","#D19B22":capaMapa==="riego"?"70–90 % del plan":capaMapa==="stand"?"Medio":"Atención",
+    "var(--crit)":capaMapa==="stand"?"Bajo":capaMapa==="riego"?"<70 % del plan":"Crítico",
     "#8272AD":"A revisar","var(--g200)":"Sin umbral",
     "#FFFFFF":"Sin recorrer","#fff":"Sin recorrer","#EDEAE0":"Sin dato",
     "#B07753":"Seco","#CFA349":"50 % CC","#9BB544":"75 % CC","#5F8F3A":"Capacidad de campo","#3E7A82":"Saturado",
@@ -2285,7 +2285,8 @@ function mapa(){
       const r=rg[K(l)]; const pct=r?.cumplimiento_pct;
       if(pct==null) return {fill:"#EDEAE0",op:.5,txt:`${base}\nsin plan de riego`,act:true};
       const rc=pct<70?"var(--crit)":pct<90?"#D19B22":"var(--g500)";
-      return {fill:rc,op,txt:`${base}\nriego ${nf(r.mm_aplicado,0)} mm · ${nf(pct,0)} % del plan`,act:true};
+      const falta=r.mm_pendiente!=null?` · faltan ${nf(r.mm_pendiente,0)} mm`:"";
+      return {fill:rc,op,txt:`${base}\nriego ${nf(r.mm_aplicado,0)} de ${nf(r.mm_planificado,0)} mm · ${nf(pct,0)} % del plan${falta}`,act:true};
     }
     if(capaMapa==="stand"){
       const d=std[K(l)];
