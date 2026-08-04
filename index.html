@@ -842,7 +842,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v55d · 01-08 16:40";   // subí este número en cada cambio
+const BUILD = "v55e · 01-08 17:00";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1261,6 +1261,22 @@ async function cargar(){
   if(!ident){ pedirQuien(); return; }
   el("app").style.display="";
   ir(vista, subvista);   // aplica la config de la vista: oculta filtros en home, etc.
+
+  // --- DIAGNÓSTICO TEMPORAL ---
+  try{
+    const stVals=S.vals.filter(v=>v.categoria_id==="stand");
+    const real=S.vals.filter(v=>v.indicador==="Densidad real");
+    const plan=S.vals.filter(v=>v.origen==="planilla");
+    const sd=standData();
+    const g05=sd.find(o=>K(o.lote)==="G05");
+    console.log("DIAG stand:", JSON.stringify({
+      totalVals:S.vals.length, valsStand:stVals.length,
+      densidadReal:real.length, origenPlanilla:plan.length,
+      standDataLotes:sd.length, conCoef:sd.filter(o=>o.coef!=null).length,
+      g05: g05?{real:g05.real,obj:g05.obj,coef:g05.coef}:"NO ESTA",
+      muestraReal: real.slice(0,2).map(v=>({lote:v.lote,val:v.valor,cat:v.categoria_id,ind:v.indicador}))
+    }));
+  }catch(e){ console.error("DIAG error:",e.message,e.stack); }
 }
 
 const K=l=>String(l||"").trim().toUpperCase();   // clave de lote, sin distinguir mayúsculas
