@@ -833,6 +833,22 @@ canvas{max-width:100%;display:block}
 .sdtop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .sdmodo{margin-bottom:0}
 .sdimg{margin-left:6px;border-style:dashed !important}
+/* visor de lote: la imagen se escala con nitidez de píxel, no interpolada.
+   Un píxel de Sentinel son 10 m reales y difuminarlo inventa detalle. */
+.lotevis{background:var(--bg2);border-radius:var(--r-sm);padding:10px;
+  display:flex;justify-content:center;overflow:hidden}
+.lotevis img{max-width:100%;max-height:420px;image-rendering:pixelated;
+  image-rendering:crisp-edges;border-radius:3px}
+.loteleg{display:flex;align-items:center;gap:9px;margin:10px 0 4px;font-size:12px;
+  color:var(--ink2);font-variant-numeric:tabular-nums}
+.lrampa{flex:1;height:11px;border-radius:3px;background:linear-gradient(90deg,
+  #A5382F 0%,#C85528 20%,#E09B22 35%,#E8D646 50%,#9BB544 65%,#5F8F3A 80%,#1C5228 100%)}
+.selote{font-family:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);
+  border-radius:var(--r-sm);background:var(--panel);color:var(--ink);max-width:190px}
+@media(max-width:620px){
+  .selote{max-width:100%;flex:1}
+  .lotevis img{max-height:300px}
+}
 .sdimg[disabled]{opacity:.4;cursor:not-allowed}
 .sdimg.on{background:var(--g600) !important;border-color:var(--g600) !important;
   color:#fff !important;border-style:solid !important;font-weight:500}
@@ -885,7 +901,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v60 · 05-08 · NDVI + raster";   // subí este número en cada cambio
+const BUILD = "v61 · 05-08 · contraste + GPS";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1147,6 +1163,18 @@ const BUILD = "v60 · 05-08 · NDVI + raster";   // subí este número en cada c
       <th>Lote</th><th>Cultivo</th><th>Secc.</th><th>Días</th><th>ha</th>
       <th>NDVI</th><th>Sus pares</th><th>Desvío</th><th>Patrón</th>
     </tr></thead><tbody></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <div class="sdtop">
+      <div><h2>Detalle de un lote</h2>
+        <p class="cap">Píxeles de 10 m, uno por uno. Acá se ven los ambientes.</p></div>
+      <div class="capas sdmodo">
+        <select id="sdLote" class="selote"></select>
+        <button id="sdContr" class="on">Contraste</button>
+      </div>
+    </div>
+    <div id="sdLoteBox"></div>
   </div>
 
   <div class="card">
@@ -2381,6 +2409,8 @@ function mapa(){
     for(let i=0;i<r.length;i+=2){const x=r[i]*kLat,y=-r[i+1];
       if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}));
   const W=x1-x0,H=y1-y0,M=W*0.012;
+  S.gpsX0=x0; S.gpsY0=y0;   // el marcador de GPS necesita el mismo origen
+
 
   const SEMC={ok:"var(--g500)",atencion:"#D19B22",critico:"var(--crit)",revisar:"#8272AD"};
 
@@ -2584,6 +2614,7 @@ function mapa(){
     <svg class="mapa" viewBox="${-M} ${-M} ${W+2*M} ${H+2*M}"
       role="img" aria-label="Mapa de Finca Tolloche por ${capaMapa}">${capaImg}${paths}</svg></div>
     ${cuadroRef(cultList,haCult,barbList,haBarb)}`;
+  if(S.gps) pintarGps();
 
   if(capaMapa==="variedad"&&!F().cul){
     const nota=document.createElement("div");
@@ -2820,7 +2851,7 @@ function stand(){
    órbita las imágenes realmente utilizables aparecen cada 12-15 días.
    La tira de fechas dice cuál sirve, para no leer un mapa hecho de nubes.
    ==================================================================== */
-let sdModo="rel", sdFecha=null, sdRaster=false;
+let sdModo="rel", sdFecha=null, sdRaster=false, sdContraste=true, sdLoteSel=null;
 
 // Los PNG salen del Edge Function en grilla 2x2 sobre el bbox de la finca:
 // 3.849 x 2.654 px a 10 m superan el máximo de 2.500 px por request.
@@ -2987,6 +3018,21 @@ function salud(){
              ["sucio","#D19B22"],["muy sucio","var(--crit)"]];
   el("sdCapBarb").innerHTML=`Lotes sin siembra 26/27. El NDVI detecta cobertura verde,
     que en un barbecho es enmalezamiento.`;
+  // --- visor de lote ---
+  const conDato=[...new Set(serie.map(r=>r.lote))].sort();
+  if(!sdLoteSel||!conDato.includes(sdLoteSel))
+    sdLoteSel=alertas[0]?.lote&&conDato.includes(alertas[0].lote)?alertas[0].lote:conDato[0];
+  const sel=el("sdLote");
+  sel.innerHTML=conDato.map(l=>{
+    const a=S.ndviAl.find(x=>x.lote===l);
+    return `<option value="${esc(l)}"${l===sdLoteSel?" selected":""}>${esc(l)}${
+      a?.cultivo?" · "+esc(a.cultivo):""}</option>`;}).join("");
+  sel.onchange=()=>{sdLoteSel=sel.value; visorLote(sdLoteSel,sdFecha);};
+  const bc=el("sdContr");
+  bc.classList.toggle("on",sdContraste);
+  bc.onclick=()=>{sdContraste=!sdContraste; visorLote(sdLoteSel,sdFecha);};
+  if(sdLoteSel) visorLote(sdLoteSel,sdFecha);
+
   el("sdBarb").innerHTML=(haB?ORD.filter(([k])=>B[k]).map(([k,c])=>{
       const d=B[k], pc=haB?100*d.ha/haB:0;
       return `<div class="sdbar"><i style="background:${c};width:${Math.max(3,pc*2.4)}px"></i>
@@ -2995,6 +3041,125 @@ function salud(){
     +`<p class="provis">Los cortes de NDVI todavía no están validados contra recorrida:
       hay 15 registros de enmalezamiento cargados a mano contra ${S.ndviBarb.length} lotes de barbecho.
       Tomalos como orientativos hasta tener con qué calibrarlos.</p>`;
+}
+
+/* ==================== VISOR DE LOTE (contraste) ====================
+   Lee el PNG de valores con canvas y colorea en el navegador. Eso permite
+   estirar la rampa al rango propio del lote: sin esto, un trigo entre 0,60
+   y 0,75 cae todo en la misma banda verde y los ambientes no se ven.
+
+   Se baja solo el tile que toca el lote, de la grilla 4x4 (~960x660 px,
+   ~2,5 MB en canvas). Con la grilla 2x2 del raster coloreado serían 10 MB
+   por tile, que en un teléfono viejo se traba.
+   ================================================================== */
+const TILES_VAL=4;
+const cacheTile={};
+
+function tileDe(lat,lon,p){
+  const ix=Math.min(TILES_VAL-1,Math.floor((lon-p.lon_min)/((p.lon_max-p.lon_min)/TILES_VAL)));
+  const iy=Math.min(TILES_VAL-1,Math.floor((lat-p.lat_min)/((p.lat_max-p.lat_min)/TILES_VAL)));
+  return {ix,iy};
+}
+
+// decodifica: banda 0 = (ndvi+0.2)/1.2*255, banda 1 = validez
+async function cargarTile(fecha,ix,iy){
+  const k=`${fecha}/${ix}${iy}`;
+  if(cacheTile[k]) return cacheTile[k];
+  const img=new Image();
+  img.crossOrigin="anonymous";          // sin esto getImageData tira SecurityError
+  img.src=`${S.url}/storage/v1/object/public/ndvi/${fecha}/v${ix}${iy}.png`;
+  await new Promise((ok,mal)=>{img.onload=ok; img.onerror=()=>mal(new Error("no se pudo leer el tile"));});
+  const c=document.createElement("canvas");
+  c.width=img.width; c.height=img.height;
+  const cx=c.getContext("2d",{willReadFrequently:true});
+  cx.drawImage(img,0,0);
+  const d=cx.getImageData(0,0,c.width,c.height);
+  return cacheTile[k]={w:c.width,h:c.height,data:d.data};
+}
+
+const decNdvi=v=>v/255*1.2-0.2;
+
+async function visorLote(lote,fecha){
+  const cont=el("sdLoteBox"); if(!cont) return;
+  const p=S.ndviPas.find(x=>x.fecha===fecha);
+  if(!p||!p.png_val_path){
+    cont.innerHTML=`<div class="empty"><b>Sin imagen de detalle</b>
+      Esa fecha todavía no tiene el raster de valores generado.</div>`; return;
+  }
+  cont.innerHTML=`<p class="cap">Cargando imagen…</p>`;
+
+  // bbox del lote y tile que lo contiene
+  const rings=GEO.p[lote]; if(!rings){cont.innerHTML="";return;}
+  let xa=1e9,xb=-1e9,ya=1e9,yb=-1e9;
+  rings.forEach(r=>{for(let i=0;i<r.length;i+=2){
+    xa=Math.min(xa,r[i]); xb=Math.max(xb,r[i]);
+    ya=Math.min(ya,r[i+1]); yb=Math.max(yb,r[i+1]);}});
+  const lonA=GEO.o[0]+xa/GEO.e, lonB=GEO.o[0]+xb/GEO.e;
+  const latA=GEO.o[1]+ya/GEO.e, latB=GEO.o[1]+yb/GEO.e;
+  const t=tileDe((latA+latB)/2,(lonA+lonB)/2,p);
+
+  let T; try{ T=await cargarTile(fecha,t.ix,t.iy); }
+  catch(e){ cont.innerHTML=`<div class="empty"><b>No se pudo leer la imagen</b>${esc(e.message)}</div>`; return; }
+
+  // recorte del tile correspondiente al lote
+  const tdx=(p.lon_max-p.lon_min)/TILES_VAL, tdy=(p.lat_max-p.lat_min)/TILES_VAL;
+  const tLonA=p.lon_min+t.ix*tdx, tLatA=p.lat_min+t.iy*tdy;
+  const px=lon=>Math.round((lon-tLonA)/tdx*T.w);
+  const py=lat=>Math.round((1-(lat-tLatA)/tdy)*T.h);   // y invertido
+  const cx0=Math.max(0,px(lonA)), cx1=Math.min(T.w,px(lonB));
+  const cy0=Math.max(0,py(latB)), cy1=Math.min(T.h,py(latA));
+  const cw=cx1-cx0, chh=cy1-cy0;
+  if(cw<2||chh<2){cont.innerHTML=`<div class="empty"><b>Lote fuera del tile</b></div>`;return;}
+
+  // valores válidos del recorte, para el estirado de contraste
+  const vals=[];
+  for(let y=cy0;y<cy1;y++) for(let x=cx0;x<cx1;x++){
+    const i=(y*T.w+x)*4;
+    if(T.data[i+3]>0&&T.data[i]>0) vals.push(T.data[i]);
+  }
+  if(!vals.length){cont.innerHTML=`<div class="empty"><b>Sin píxeles válidos</b>
+    Nube o sombra sobre el lote en esa fecha.</div>`;return;}
+  vals.sort((a,b)=>a-b);
+  const q=f=>vals[Math.min(vals.length-1,Math.floor(vals.length*f))];
+  // p2-p98 y no min-max: dos píxeles raros del borde arruinarían la escala
+  const lo=sdContraste?q(0.02):0, hi=sdContraste?q(0.98):255;
+  const rango=Math.max(1,hi-lo);
+
+  const cv=document.createElement("canvas");
+  cv.width=cw; cv.height=chh;
+  const g=cv.getContext("2d");
+  const out=g.createImageData(cw,chh);
+  for(let y=0;y<chh;y++) for(let x=0;x<cw;x++){
+    const i=((y+cy0)*T.w+(x+cx0))*4, o=(y*cw+x)*4;
+    if(T.data[i+3]===0||T.data[i]===0){out.data[o+3]=0; continue;}
+    const n=Math.max(0,Math.min(1,(T.data[i]-lo)/rango));
+    const c=rampa(n);
+    out.data[o]=c[0]; out.data[o+1]=c[1]; out.data[o+2]=c[2]; out.data[o+3]=255;
+  }
+  g.putImageData(out,0,0);
+
+  cont.innerHTML=`<div class="lotevis"><img src="${cv.toDataURL()}" alt="NDVI de ${esc(lote)}"></div>
+    <div class="loteleg">
+      <span>${nf(decNdvi(lo),2)}</span>
+      <i class="lrampa"></i>
+      <span>${nf(decNdvi(hi),2)}</span>
+    </div>
+    <p class="cap">${sdContraste
+      ? `Rampa estirada al rango propio del lote (percentil 2 a 98). Es lo que hace
+         visibles los ambientes: sin esto, un cultivo cerrado se ve todo del mismo verde.`
+      : `Rampa fija de −0,20 a 1,00, igual que el mapa de la finca.`}
+      ${nf(vals.length,0)} píxeles de 10 m · mediana ${nf(decNdvi(q(0.5)),2)}</p>`;
+}
+
+// rampa continua, mismos colores que el mapa
+function rampa(n){
+  const P=[[0,165,42,30],[.2,200,85,35],[.35,224,155,34],[.5,232,214,70],
+           [.65,155,181,68],[.8,95,143,58],[1,28,82,40]];
+  for(let i=1;i<P.length;i++) if(n<=P[i][0]){
+    const a=P[i-1],b=P[i],t=(n-a[0])/(b[0]-a[0]);
+    return [a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t,a[3]+(b[3]-a[3])*t];
+  }
+  return [28,82,40];
 }
 
 function notas(){
@@ -4536,10 +4701,68 @@ function marcarOrden(tid,k){
   });
 }
 
-navigator.geolocation?.getCurrentPosition(
-  p=>{S.gps={lat:p.coords.latitude,lon:p.coords.longitude};
-      const g=el("gpsTxt"); if(g) g.textContent=`GPS ${S.gps.lat.toFixed(5)}, ${S.gps.lon.toFixed(5)}`;},
-  ()=>{const g=el("gpsTxt"); if(g) g.textContent="sin GPS";},{timeout:8000});
+/* ============================ GPS ============================
+   Antes era un getCurrentPosition de una sola vez, solo para estampar
+   monitoreos y fotos. Ahora sigue la posición mientras caminás y resuelve
+   en qué lote estás parado, cruzando el punto contra las 308 geometrías.
+
+   Precisión: el GPS del navegador da ±5 a 20 m. Con píxeles de 10 m eso
+   te ubica a uno o dos píxeles: alcanza para caminar hasta un manchón,
+   no para marcar un punto con precisión agronómica. Por eso se muestra
+   el radio de error y no solo el puntito.
+   ============================================================ */
+
+// punto en polígono, regla par-impar. Las coordenadas de GEO son enteros
+// relativos al origen, así que el punto se convierte a esas unidades.
+function loteEnPunto(lat,lon){
+  const gx=(lon-GEO.o[0])*GEO.e, gy=(lat-GEO.o[1])*GEO.e;
+  for(const l in GEO.p){
+    let dentro=false;
+    for(const r of GEO.p[l]){
+      for(let i=0,j=r.length-2;i<r.length;j=i,i+=2){
+        const xi=r[i],yi=r[i+1],xj=r[j],yj=r[j+1];
+        if((yi>gy)!==(yj>gy) && gx < (xj-xi)*(gy-yi)/(yj-yi)+xi) dentro=!dentro;
+      }
+    }
+    if(dentro) return l;
+  }
+  return null;
+}
+
+function pintarGps(){
+  const g=el("gpsTxt"); if(!g) return;
+  if(!S.gps){g.textContent="sin GPS"; return;}
+  const l=S.gps.lote;
+  g.textContent=l ? `en ${l} · ±${Math.round(S.gps.acc)} m`
+                  : `fuera de lotes · ±${Math.round(S.gps.acc)} m`;
+  // el marcador se redibuja con el mapa; si está a la vista, refrescarlo
+  document.querySelectorAll(".gpsmark").forEach(n=>n.remove());
+  document.querySelectorAll("svg.mapa").forEach(svg=>{
+    const kLat=Math.cos(-25.44*Math.PI/180);
+    const vb=svg.getAttribute("viewBox").split(" ").map(Number);
+    const x=(S.gps.lon-GEO.o[0])*GEO.e*kLat-(S.gpsX0??0);
+    const y=-(S.gps.lat-GEO.o[1])*GEO.e-(S.gpsY0??0);
+    if(x<vb[0]||x>vb[0]+vb[2]||y<vb[1]||y>vb[1]+vb[3]) return;
+    const r=Math.max(vb[2]*0.004,S.gps.acc*11);   // 1 m ≈ 11 unidades GEO
+    svg.insertAdjacentHTML("beforeend",
+      `<g class="gpsmark"><circle cx="${x}" cy="${y}" r="${r}"
+         fill="var(--g500)" fill-opacity=".16" stroke="var(--g600)"
+         stroke-width="${vb[2]*0.0008}" stroke-opacity=".5"/>
+       <circle cx="${x}" cy="${y}" r="${vb[2]*0.005}" fill="var(--g700)"
+         stroke="#fff" stroke-width="${vb[2]*0.002}"/></g>`);
+  });
+}
+
+if(navigator.geolocation){
+  navigator.geolocation.watchPosition(
+    p=>{
+      const lat=p.coords.latitude, lon=p.coords.longitude;
+      S.gps={lat,lon,acc:p.coords.accuracy??99,lote:loteEnPunto(lat,lon)};
+      pintarGps();
+    },
+    ()=>{const g=el("gpsTxt"); if(g) g.textContent="sin GPS";},
+    {enableHighAccuracy:true,timeout:10000,maximumAge:5000});
+}else{const g=el("gpsTxt"); if(g) g.textContent="sin GPS";}
 
 /* =========================== arranque =========================== */
 function arrancar(u,k){
