@@ -885,7 +885,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v59 · 05-08 · NDVI + raster";   // subí este número en cada cambio
+const BUILD = "v60 · 05-08 · NDVI + raster";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -2288,16 +2288,18 @@ function refKey(l,P){
 
 
 // cuadro de referencias: cultivos y, aparte, barbecho
+const TITREF={ndvi:"Nivel de NDVI",ndvirel:"Contra sus pares"};
 function cuadroRef(cultList,haCult,barbList,haBarb){
+  const titulo=TITREF[capaMapa]||"Cultivos";
   const fila=(r,base)=>`<div class="mref">
     <i style="background:${r.c}${r.viejo?";border:1.5px dashed var(--warn)":(r.c==="#fff"||r.c==="#E8E4D6"?";border:1px solid var(--ink3)":"")}"></i>
     <span class="mrt">${esc(r.t)}</span>
     <span class="mrh">${nf(r.ha,0)} ha</span>
     <span class="mrp">${nf(base?r.ha/base*100:0,1)} %</span></div>`;
   let h='<div class="mapatabla">';
-  h+=`<div class="mrsec">Cultivos${haBarb>0?" (sin contar barbecho)":""}</div>`;
+  h+=`<div class="mrsec">${esc(titulo)}${haBarb>0&&!TITREF[capaMapa]?" (sin contar barbecho)":""}</div>`;
   h+=cultList.map(r=>fila(r,haCult)).join("");
-  if(cultList.length) h+=`<div class="mref tot"><i></i><span class="mrt">Total cultivos</span>
+  if(cultList.length) h+=`<div class="mref tot"><i></i><span class="mrt">Total ${TITREF[capaMapa]?"sembrado":"cultivos"}</span>
     <span class="mrh">${nf(haCult,0)} ha</span><span class="mrp">100 %</span></div>`;
   if(barbList.length){
     h+=`<div class="mrsec barb">Barbecho</div>`;
@@ -2311,7 +2313,7 @@ function cuadroRef(cultList,haCult,barbList,haBarb){
 
 // modal de mapa a pantalla completa, con selector de capa propio
 const CAPAS_MF=[["estado","Estado general"],["malezas","Malezas"],["plagas","Plagas"],
-  ["enfermedades","Enfermedades"],["stand","Stand"],["humedad","Humedad"],["riego","Riego"],["cultivo","Cultivo"],["variedad","Variedad"]];
+  ["enfermedades","Enfermedades"],["stand","Stand"],["humedad","Humedad"],["riego","Riego"],["cultivo","Cultivo"],["variedad","Variedad"],["ndvi","NDVI"],["ndvirel","NDVI comparado"]];
 
 function pintarMapaFull(){
   // reusa la función del mapa chico para regenerar SVG y cuadro en la capa activa
@@ -2566,8 +2568,16 @@ function mapa(){
     dest[key.k].ha+=Number(ha); dest[key.k].n++;
     if(key.barb) haBarb+=Number(ha); else haCult+=Number(ha);
   });
-  const cultList=Object.values(refsCult).sort((a,b)=>b.ha-a.ha);
-  const barbList=Object.values(refsBarb).sort((a,b)=>b.ha-a.ha);
+  // En las capas NDVI el orden lo manda la escala: una rampa salteada
+  // (0,20-0,30 / 0,30-0,40 / 0,50-0,65) no se puede leer. En el resto,
+  // ordenar por superficie sigue siendo lo más útil.
+  const esEscala=capaMapa==="ndvi"||capaMapa==="ndvirel";
+  const ordEsc=(capaMapa==="ndvi"?LEGNDVI:LEGREL).map(x=>x[1]);
+  const ordenar=arr=>esEscala
+    ? arr.sort((a,b)=>ordEsc.indexOf(a.t)-ordEsc.indexOf(b.t))
+    : arr.sort((a,b)=>b.ha-a.ha);
+  const cultList=ordenar(Object.values(refsCult));
+  const barbList=ordenar(Object.values(refsBarb));
 
   box.innerHTML=`<div class="mapawrap">
     <button class="mapafull" id="mapaFull" title="Ver en pantalla completa" aria-label="Pantalla completa">⤢</button>
