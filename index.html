@@ -832,6 +832,10 @@ canvas{max-width:100%;display:block}
 /* ---------- Salud / NDVI ---------- */
 .sdtop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .sdmodo{margin-bottom:0}
+.sdimg{margin-left:6px;border-style:dashed !important}
+.sdimg[disabled]{opacity:.4;cursor:not-allowed}
+.sdimg.on{background:var(--g600) !important;border-color:var(--g600) !important;
+  color:#fff !important;border-style:solid !important;font-weight:500}
 /* Tira de fechas: scroll horizontal en el teléfono, que es donde se usa a campo.
    Cada chip dice qué tan utilizable es la imagen, no solo la fecha. */
 .sdfechas{display:flex;gap:6px;margin-top:12px;overflow-x:auto;padding-bottom:4px;
@@ -881,7 +885,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v58 · 05-08 · NDVI Sentinel-2";   // subí este número en cada cambio
+const BUILD = "v59 · 05-08 · NDVI + raster";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1122,6 +1126,7 @@ const BUILD = "v58 · 05-08 · NDVI Sentinel-2";   // subí este número en cada
       <div class="capas sdmodo" id="sdModo">
         <button data-m="rel" class="on">Comparar</button>
         <button data-m="abs">Escala absoluta</button>
+        <button id="sdImg" class="sdimg">Ver imagen</button>
       </div>
     </div>
     <div class="sdfechas" id="sdFechas" role="tablist" aria-label="Fechas de imagen"></div>
@@ -2501,18 +2506,38 @@ function mapa(){
       txt:`${base}\n${capaMapa}: ${cat.sem||"sin umbral"}${cat.top?.length?" · "+cat.top.slice(0,2).join(", "):""}`,act:true};
   }
 
+  // con el raster encendido los lotes van sin relleno: la imagen es el dato
+  const conRaster=sdRaster&&(capaMapa==="ndvi"||capaMapa==="ndvirel")&&rasterTiles(sdFecha).length;
+  const dDe={};
   const paths=lotes.map(l=>{
     const P=pinta(l);
     const rayado=P.viejo?` stroke-dasharray="2.5 2"`:"";
-    const d=GEO.p[l].map(r=>{let s2="";
+    const d=dDe[l]=GEO.p[l].map(r=>{let s2="";
       for(let i=0;i<r.length;i+=2)
         s2+=(i?"L":"M")+((r[i]*kLat-x0).toFixed(0))+","+((-r[i+1]-y0).toFixed(0));
       return s2+"Z";}).join("");
-    return `<path d="${d}" fill="${P.fill}" fill-opacity="${P.op}"
+    return `<path d="${d}" fill="${conRaster?"none":P.fill}" fill-opacity="${conRaster?0:P.op}"
       stroke="${P.viejo?"var(--warn)":"var(--ink3)"}"${rayado}
       stroke-width="${P.viejo?(W*0.0013).toFixed(1):(W*0.0006).toFixed(1)}" data-lote="${esc(l)}"
       class="mp${P.act?" act":""}"><title>${esc(P.txt)}</title></path>`;
   }).join("");
+
+  // Raster NDVI recortado a los lotes. El clipPath reusa los mismos "d"
+  // que los polígonos, así la imagen no se derrama al campo vecino.
+  let capaImg="";
+  if(conRaster){
+    const T=rasterTiles(sdFecha);
+    const gx=lon=>(lon-GEO.o[0])*GEO.e, gy=lat=>(lat-GEO.o[1])*GEO.e;
+    const clip=lotes.map(l=>`<path d="${dDe[l]}"/>`).join("");
+    const imgs=T.map(t=>{
+      const x=(gx(t.lonA)*kLat-x0).toFixed(0), y=(-gy(t.latB)-y0).toFixed(0);
+      const w=((t.lonB-t.lonA)*GEO.e*kLat).toFixed(0), h=((t.latB-t.latA)*GEO.e).toFixed(0);
+      return `<image href="${t.url}" x="${x}" y="${y}" width="${w}" height="${h}"
+        preserveAspectRatio="none"/>`;
+    }).join("");
+    capaImg=`<defs><clipPath id="clipNdvi">${clip}</clipPath></defs>
+      <g clip-path="url(#clipNdvi)">${imgs}</g>`;
+  }
 
   const LEG={
     estado:[["var(--g500)","ok / barbecho limpio"],["#D19B22","atención"],["var(--crit)","crítico / barbecho sucio"],
@@ -2547,7 +2572,7 @@ function mapa(){
   box.innerHTML=`<div class="mapawrap">
     <button class="mapafull" id="mapaFull" title="Ver en pantalla completa" aria-label="Pantalla completa">⤢</button>
     <svg class="mapa" viewBox="${-M} ${-M} ${W+2*M} ${H+2*M}"
-      role="img" aria-label="Mapa de Finca Tolloche por ${capaMapa}">${paths}</svg></div>
+      role="img" aria-label="Mapa de Finca Tolloche por ${capaMapa}">${capaImg}${paths}</svg></div>
     ${cuadroRef(cultList,haCult,barbList,haBarb)}`;
 
   if(capaMapa==="variedad"&&!F().cul){
@@ -2785,7 +2810,21 @@ function stand(){
    órbita las imágenes realmente utilizables aparecen cada 12-15 días.
    La tira de fechas dice cuál sirve, para no leer un mapa hecho de nubes.
    ==================================================================== */
-let sdModo="rel", sdFecha=null;
+let sdModo="rel", sdFecha=null, sdRaster=false;
+
+// Los PNG salen del Edge Function en grilla 2x2 sobre el bbox de la finca:
+// 3.849 x 2.654 px a 10 m superan el máximo de 2.500 px por request.
+function rasterTiles(fecha){
+  if(!fecha) return [];
+  const p=S.ndviPas.find(x=>x.fecha===fecha);
+  if(!p||!p.png_path||p.lon_min==null) return [];
+  const dx=(p.lon_max-p.lon_min)/2, dy=(p.lat_max-p.lat_min)/2, out=[];
+  for(let ix=0;ix<2;ix++) for(let iy=0;iy<2;iy++)
+    out.push({lonA:p.lon_min+ix*dx, lonB:p.lon_min+(ix+1)*dx,
+              latA:p.lat_min+iy*dy, latB:p.lat_min+(iy+1)*dy,
+              url:`${S.url}/storage/v1/object/public/ndvi/${fecha}/t${ix}${iy}.png`});
+  return out;
+}
 // Paleta propia: CULC se arma dentro de mapa() y acá no está en alcance.
 // Mismas familias de color que el mapa, para que se lean como lo mismo.
 const COHC={"Garbanzo":"#7E5AA8","Trigo candeal":"#D98B1E","Trigo pan":"#F2C94C",
@@ -2826,10 +2865,20 @@ function salud(){
   }).join("");
   el("sdFechas").querySelectorAll(".sdf").forEach(b=>b.onclick=()=>{sdFecha=b.dataset.f; salud();});
 
-  el("sdModo").querySelectorAll("button").forEach(b=>{
+  el("sdModo").querySelectorAll("button[data-m]").forEach(b=>{
     b.classList.toggle("on",b.dataset.m===sdModo);
     b.onclick=()=>{sdModo=b.dataset.m; salud();};
   });
+  // El botón de imagen solo tiene sentido si esa fecha tiene raster generado.
+  const hayImg=rasterTiles(sdFecha).length>0;
+  const bImg=el("sdImg");
+  bImg.disabled=!hayImg;
+  bImg.title=hayImg?"Ver la imagen del satélite dentro de cada lote"
+                   :"Esta fecha todavía no tiene imagen generada";
+  if(!hayImg) sdRaster=false;
+  bImg.classList.toggle("on",sdRaster);
+  bImg.textContent=sdRaster?"Ver por lote":"Ver imagen";
+  bImg.onclick=()=>{sdRaster=!sdRaster; salud();};
 
   // --- datos de la fecha elegida ---
   const serie=S.ndviSerie.filter(r=>r.fecha===sdFecha);
@@ -2854,10 +2903,22 @@ function salud(){
 
   // --- mapa ---
   const modoAbs=sdModo==="abs";
-  el("sdMapaTit").textContent=modoAbs?"NDVI absoluto":"Comparado con sus pares";
-  el("sdMapaCap").innerHTML=modoAbs
+  el("sdMapaTit").textContent=sdRaster?"Imagen del satélite"
+    :modoAbs?"NDVI absoluto":"Comparado con sus pares";
+  el("sdMapaCap").innerHTML=sdRaster
+    ? `Píxeles de 10 m recortados al borde de cada lote. Acá se ve la variabilidad
+       <b>dentro</b> del lote: manchones, fallas de riego por sector, cabeceras.
+       Los huecos blancos son nube o sombra, no suelo desnudo.`
+    : modoAbs
     ? "Valor crudo del índice. Sirve para ver la finca de un vistazo, pero un lote recién sembrado siempre va a estar bajo: la escala mide verde, no sanidad."
     : "Cada lote contra la mediana de su mismo cultivo <b>a la misma edad</b>. Así un lote de 15 días no compite contra uno de 70.";
+  if(sdRaster){
+    el("sdMapaCap").innerHTML+=`<br><span style="display:inline-flex;gap:9px;flex-wrap:wrap;margin-top:6px">
+      ${LEGNDVI.slice(0,7).map(([c,t])=>
+        `<span style="white-space:nowrap"><i style="display:inline-block;width:11px;height:11px;
+         border-radius:2px;background:${c};vertical-align:-1px;margin-right:3px"></i>${t}</span>`).join("")}
+    </span>`;
+  }
   const cont=el("mapaLotes"), destino=el("sdMapa");
   if(cont&&destino){          // se reusa el motor de mapa de Resumen
     const capaPrev=capaMapa, guardado=cont.innerHTML;
