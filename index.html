@@ -828,6 +828,45 @@ details[open] summary::before{content:"▾ "}
 }
 canvas{max-width:100%;display:block}
 .chartbox{position:relative;height:250px;width:100%}
+
+/* ---------- Salud / NDVI ---------- */
+.sdtop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.sdmodo{margin-bottom:0}
+/* Tira de fechas: scroll horizontal en el teléfono, que es donde se usa a campo.
+   Cada chip dice qué tan utilizable es la imagen, no solo la fecha. */
+.sdfechas{display:flex;gap:6px;margin-top:12px;overflow-x:auto;padding-bottom:4px;
+  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.sdfechas::-webkit-scrollbar{height:5px}
+.sdfechas::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.sdf{flex:0 0 auto;scroll-snap-align:start;border:1px solid var(--line);background:var(--panel);
+  border-radius:var(--r-sm);padding:7px 11px;cursor:pointer;text-align:left;line-height:1.25;
+  font-family:inherit;color:var(--ink2);min-width:78px}
+.sdf b{display:block;font-size:12.5px;font-weight:600;color:var(--ink)}
+.sdf span{font-size:10.5px;letter-spacing:.02em}
+.sdf.on{background:var(--g700);border-color:var(--g700)}
+.sdf.on b,.sdf.on span{color:#fff}
+.sdf.nube{opacity:.5}
+.sdf:focus-visible{outline:2px solid var(--g500);outline-offset:2px}
+.sdi{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:baseline}
+.sdi.sol{background:var(--g400)} .sdi.parcial{background:var(--warn)} .sdi.nube{background:var(--ink3)}
+/* barras de barbecho */
+.sdbar{display:flex;align-items:center;gap:9px;margin:7px 0;font-size:13px}
+.sdbar i{display:block;height:15px;border-radius:3px;flex:0 0 auto;min-width:3px}
+.sdbar em{font-style:normal;color:var(--ink2);font-size:12px;margin-left:auto;white-space:nowrap}
+.provis{font-size:11.5px;color:var(--ink3);font-style:italic;margin-top:9px}
+.tsal .neg{color:var(--crit);font-weight:600}
+.tsal .pos{color:var(--ok);font-weight:600}
+@media(max-width:620px){
+  .sdtop{flex-direction:column;gap:9px}
+  .sdmodo{width:100%}
+  .sdmodo button{flex:1}
+  .sdfechas{margin:12px -14px 0;padding:0 14px 5px}
+  /* En pantalla chica la tabla de alertas pierde las columnas de detalle:
+     lo que se necesita a campo es lote, cultivo y cuánto está por debajo. */
+  .tsal th:nth-child(3),.tsal td:nth-child(3),
+  .tsal th:nth-child(5),.tsal td:nth-child(5),
+  .tsal th:nth-child(7),.tsal td:nth-child(7){display:none}
+}
 .chartbox canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
 details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 </style>
@@ -842,7 +881,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v57 · 04-08 11:00";   // subí este número en cada cambio
+const BUILD = "v58 · 05-08 · NDVI Sentinel-2";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -935,6 +974,7 @@ const BUILD = "v57 · 04-08 11:00";   // subí este número en cada cambio
   <button role="tab" aria-selected="false" data-t="campania">Campaña</button>
   <button role="tab" aria-selected="false" data-t="registros">Registros</button>
   <button role="tab" aria-selected="false" data-t="stand">Stand</button>
+  <button role="tab" aria-selected="false" data-t="salud">Salud</button>
   <button role="tab" aria-selected="false" data-t="notas">Notas y fotos</button>
 </nav>
 
@@ -979,6 +1019,8 @@ const BUILD = "v57 · 04-08 11:00";   // subí este número en cada cambio
           <button data-capa="riego">Riego</button>
           <button data-capa="cultivo">Cultivo</button>
           <button data-capa="variedad">Variedad</button>
+          <button data-capa="ndvi">NDVI</button>
+          <button data-capa="ndvirel">NDVI comparado</button>
         </div>
         <div id="mapaLotes"></div></div>
   <div class="card"><h2>Presión por categoría</h2><p class="cap">Lotes en cada estado, según la última medición.</p><div class="chartbox"><canvas id="chCat"></canvas></div></div>
@@ -1066,6 +1108,53 @@ const BUILD = "v57 · 04-08 11:00";   // subí este número en cada cambio
       <th data-k="real">Densidad real</th><th data-k="obj">Objetivo</th>
       <th data-k="coef">Logro</th><th data-k="sem">Estado</th><th data-k="scouter">Monitoreador</th>
     </tr></thead><tbody></tbody></table></div>
+  </div>
+</section>
+
+<!-- ===== SALUD (NDVI Sentinel-2) ===== -->
+<section id="s-salud" style="display:none">
+  <div class="card sdcab">
+    <div class="sdtop">
+      <div>
+        <h2>Salud del cultivo</h2>
+        <p class="cap" id="sdCap">NDVI de Sentinel-2, actualizado cada pasada del satélite.</p>
+      </div>
+      <div class="capas sdmodo" id="sdModo">
+        <button data-m="rel" class="on">Comparar</button>
+        <button data-m="abs">Escala absoluta</button>
+      </div>
+    </div>
+    <div class="sdfechas" id="sdFechas" role="tablist" aria-label="Fechas de imagen"></div>
+  </div>
+
+  <div class="kpis" id="kpisSalud"></div>
+
+  <div class="card">
+    <h2 id="sdMapaTit">Mapa</h2>
+    <p class="cap" id="sdMapaCap"></p>
+    <div id="sdMapa"></div>
+  </div>
+
+  <div class="card">
+    <h2>Lotes fuera de rango</h2>
+    <p class="cap" id="sdCapAl"></p>
+    <div class="tw"><table id="tSalud"><thead><tr>
+      <th>Lote</th><th>Cultivo</th><th>Secc.</th><th>Días</th><th>ha</th>
+      <th>NDVI</th><th>Sus pares</th><th>Desvío</th><th>Patrón</th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Curva por cultivo</h2>
+    <p class="cap">Mediana de cada cultivo según días desde siembra. Es la referencia
+      contra la que se compara cada lote.</p>
+    <div class="chartbox"><canvas id="chCoh"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2>Barbecho</h2>
+    <p class="cap" id="sdCapBarb"></p>
+    <div id="sdBarb"></div>
   </div>
 </section>
 
@@ -1204,7 +1293,9 @@ const BUILD = "v57 · 04-08 11:00";   // subí este número en cada cambio
 <script>
 /* =========================== estado =========================== */
 const S={url:"",key:"",vals:[],mons:[],fotos:[],inds:[],occs:[],cats:[],
-         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],riegoSem:[],opers:[],geo:[],stdec:[],ch:{},sort:{},fotosPend:[],gps:null};
+         lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],riegoSem:[],opers:[],geo:[],stdec:[],
+         ndviPas:[],ndviAl:[],ndviBarb:[],ndviSerie:[],ndviCoh:[],
+         ch:{},sort:{},fotosPend:[],gps:null};
 const el=id=>document.getElementById(id);
 const hoyISO=()=>{const d=new Date();
   return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);};
@@ -1232,6 +1323,8 @@ async function api(path,opt={}){
   catch{ return null; }
 }
 const soft=async p=>{try{return await api(p)}catch(e){console.warn(e.message);return[]}};
+// apiAll pero sin tumbar la carga si la vista todavía no existe.
+const softAll=async p=>{try{return await apiAll(p)}catch(e){console.warn(e.message);return[]}};
 
 // Supabase corta en 1000 filas por request. Para tablas grandes paginamos con Range.
 async function apiAll(path){
@@ -1271,6 +1364,15 @@ async function cargar(){
     soft("mon_geo?select=*&limit=1000"),
     soft(`mon_stand_decision?select=*&campania=eq.${camp}&limit=3000`)
   ]);
+  // NDVI Sentinel-2. Va aparte y con soft(): si el pipeline de Copernicus
+  // todavía no corrió, la app tiene que abrir igual y solo faltar esta capa.
+  [S.ndviPas,S.ndviAl,S.ndviBarb,S.ndviCoh,S.ndviSerie]=await Promise.all([
+    soft("ndvi_pasadas?select=fecha,estado,nub_ft,png_path,lon_min,lat_min,lon_max,lat_max&order=fecha.desc"),
+    soft("ndvi_alertas?select=*"),
+    soft("ndvi_barbecho?select=*"),
+    soft("ndvi_cohorte?select=*&order=cultivo,dds_bin"),
+    softAll("ndvi_dds?select=lote,fecha,ndvi_medio,ndvi_sd,dds,cultivo,ha_gis&order=fecha")
+  ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
   const ident=await cargarOperadores();
@@ -1304,6 +1406,53 @@ function idxRiego(){
   S.riegos.forEach(r=>{const l=K(r.lote); if(l) o[l]=r;});
   return o;
 }
+
+/* ============================ NDVI ============================
+   Dos lecturas distintas del mismo dato:
+
+   ABSOLUTO   el valor crudo. Sirve para ver la finca de un vistazo,
+              pero ordenar por NDVI ordena por EDAD del cultivo, no por
+              sanidad: un lote de 9 días siempre va a estar abajo.
+
+   COMPARADO  desvío contra la mediana del mismo cultivo a la misma edad,
+              medido en rangos intercuartiles de esa cohorte. Un -1,5 es
+              "bien por debajo de sus pares"; ahí sí hay algo que mirar.
+   ============================================================ */
+function idxNdvi(){
+  const o={};
+  S.ndviAl.forEach(r=>{const l=K(r.lote); if(l) o[l]=r;});
+  S.ndviBarb.forEach(r=>{const l=K(r.lote); if(l&&!o[l]) o[l]={...r,_barb:true};});
+  return o;
+}
+// último valor por lote de la serie completa, para lotes sin cohorte
+// (cebada y girasol quedaron fuera por tener menos de 5 lotes)
+function idxNdviUlt(){
+  const o={};
+  S.ndviSerie.forEach(r=>{const l=K(r.lote); if(!l) return;
+    if(!o[l]||String(r.fecha)>String(o[l].fecha)) o[l]=r;});
+  return o;
+}
+const NDVI_ESC=[[0.20,"#A5382F"],[0.30,"#C05A28"],[0.40,"#D69B2C"],
+                [0.50,"#E4D64A"],[0.65,"#9BB544"],[0.80,"#5F8F3A"],[9,"#2E6A32"]];
+const ndviColor=v=>(NDVI_ESC.find(x=>v<x[0])||NDVI_ESC[NDVI_ESC.length-1])[1];
+// escala divergente para el comparado: el gris del centro es "normal",
+// y no quiero que un lote sano grite verde solo por estar en su lugar.
+function relColor(d){
+  if(d==null) return "#EDEAE0";
+  if(d<=-1.5) return "var(--crit)";
+  if(d<=-0.7) return "#D19B22";
+  if(d>= 1.0) return "var(--g500)";
+  return "#CFCBB8";
+}
+const relTxt=d=>d==null?"sin cohorte":d<=-1.5?"muy por debajo":d<=-0.7?"por debajo"
+  :d>=1.0?"por encima":"en su rango";
+// A nivel de módulo porque refKey() las necesita fuera de mapa().
+const LEGNDVI=[["#A5382F","< 0,20"],["#C05A28","0,20-0,30"],["#D69B2C","0,30-0,40"],
+               ["#E4D64A","0,40-0,50"],["#9BB544","0,50-0,65"],["#5F8F3A","0,65-0,80"],
+               ["#2E6A32","> 0,80"],["#EDEAE0","sin imagen"]];
+const LEGREL=[["var(--crit)","muy por debajo de sus pares"],["#D19B22","por debajo"],
+              ["#CFCBB8","en su rango"],["var(--g500)","por encima"],
+              ["#DCD8C6","barbecho, no compara"],["#EDEAE0","sin cohorte"]];
 
 /* =========================== filtros =========================== */
 function poblar(){
@@ -2082,6 +2231,14 @@ function refKey(l,P){
   const barb=esBarbecho(l);
   const e=(sbDe(l)||barb) ? resumenLotes().find(r=>K(r.lote)===K(l)) : null;
 
+  // En las capas NDVI la referencia agrupa por tramo de color, no por
+  // cultivo: lo que se quiere leer es cuántas hectáreas hay en cada nivel.
+  if(capaMapa==="ndvi"||capaMapa==="ndvirel"){
+    const leg=(capaMapa==="ndvi"?LEGNDVI:LEGREL).find(x=>x[0]===P.fill);
+    if(!leg) return null;
+    return {k:capaMapa+":"+leg[1], t:leg[1], c:P.fill, barb:P.fill==="#DCD8C6"};
+  }
+
   if(capaMapa==="cultivo"){
     const a=e?.actividad||e?.cultivo; if(!a) return null;
     return {k:"act:"+a,t:a,c:P.fill,barb:a==="Barbecho"};
@@ -2207,7 +2364,7 @@ function mapa(){
   const box=el("mapaLotes");
   const R=resumenLotes(), est={}; R.forEach(r=>est[K(r.lote)]=r);
   const std={}; standData().forEach(d=>std[K(d.lote)]=d);
-  const sb=idxSiembra(), rg=idxRiego();
+  const sb=idxSiembra(), rg=idxRiego(), nx=idxNdvi(), nu=idxNdviUlt();
 
   const f=F(), soloVisibles=!!(f.cul||f.sis||f.sec||f.sem);
   const lotes=Object.keys(GEO.p);
@@ -2253,6 +2410,33 @@ function mapa(){
   // devuelve {fill, txt, activo} para el lote según la capa
   function pinta(l){
     const e=sb[K(l)]?est[K(l)]:null;
+
+    // Las capas NDVI van antes del corte por barbecho: el satélite mide
+    // el barbecho igual que el cultivo, y ahí el dato es el que delata
+    // un lote enmalezado.
+    if(capaMapa==="ndvi"||capaMapa==="ndvirel"){
+      const nd=nx[K(l)], ul=nu[K(l)];
+      const cul=e?.cultivo||nd?.cultivo||ul?.cultivo;
+      const nom=`${l} · ${cul||"barbecho"}`;
+      const val=nd?.ndvi_medio ?? ul?.ndvi_medio;
+      if(val==null) return {fill:"#EDEAE0",op:.4,act:!!geoDe(l),txt:`${nom}\nsin imagen útil`};
+      const dentro=!soloVisibles||R.some(r=>K(r.lote)===K(l));
+      const op=dentro?.94:.16;
+      const cuando=nd?.fecha||ul?.fecha;
+      if(capaMapa==="ndvi")
+        return {fill:ndviColor(val),op,act:true,
+          txt:`${nom}\nNDVI ${nf(val,2)}${nd?.dds!=null?" · "+nd.dds+" días de sembrado":""}\n${fd(cuando)}`};
+      // comparado
+      if(nd?._barb) return {fill:"#DCD8C6",op:dentro?.5:.16,act:true,
+        txt:`${nom}\nbarbecho, no entra en la comparación\nNDVI ${nf(val,2)}`};
+      const d=nd?.desvio_iqr;
+      if(d==null) return {fill:"#EDEAE0",op:.4,act:true,
+        txt:`${nom}\nNDVI ${nf(val,2)}\nsin cohorte: menos de 5 lotes del cultivo`};
+      return {fill:relColor(d),op,act:true,
+        txt:`${nom} · ${nd.dds} días\nNDVI ${nf(val,2)} · sus pares ${nf(nd.coh_mediana,2)}`
+           +`\n${relTxt(d)} (${d>0?"+":""}${nf(d,1)} RIC) · ${nd.patron}`};
+    }
+
     if(!e){
       // barbecho: buscar el último estado de barbecho cargado
       const bv=S.vals.filter(v=>K(v.lote)===K(l)&&v.indicador==="Estado de barbecho"&&v.valor!=null)
@@ -2341,6 +2525,7 @@ function mapa(){
     humedad:[["#B07753","seco"],["#CFA349","50 %"],["#9BB544","75 %"],["#5F8F3A","CC"],["#3E7A82","saturado"],["#EDEAE0","sin dato"]],
     riego:[["#B0402B","atrasado"],["#D19B22","parcial"],["var(--g500)","al día"],["#EDEAE0","sin plan"]],
     cultivo:Object.entries(CULC).map(([c,col])=>[col,c]),
+    ndvi:LEGNDVI, ndvirel:LEGREL,
   };
   // referencias con superficie. El barbecho se cuenta aparte, para no sumar
   // "barbecho limpio" junto a "cultivo bueno": no son lo mismo.
@@ -2595,6 +2780,152 @@ function stand(){
 }
 
 /* =========================== notas y fotos =========================== */
+/* =========================== SALUD / NDVI ===========================
+   El satélite pasa cada 5 días, pero entre nubes y pasadas parciales de
+   órbita las imágenes realmente utilizables aparecen cada 12-15 días.
+   La tira de fechas dice cuál sirve, para no leer un mapa hecho de nubes.
+   ==================================================================== */
+let sdModo="rel", sdFecha=null;
+// Paleta propia: CULC se arma dentro de mapa() y acá no está en alcance.
+// Mismas familias de color que el mapa, para que se lean como lo mismo.
+const COHC={"Garbanzo":"#7E5AA8","Trigo candeal":"#D98B1E","Trigo pan":"#F2C94C",
+            "Camelina":"#C0392B","Cartamo":"#8A5A2B","Cártamo":"#8A5A2B",
+            "Colza":"#3E6B9E","Cobertura":"#5F9E3A","Cebada":"#B79AD4","Girasol":"#5F8F3A"};
+
+function sdFechasUtiles(){
+  // Fechas con al menos la mitad de la finca visible. Debajo de eso el
+  // mapa engaña más de lo que informa.
+  const porFecha={};
+  S.ndviSerie.forEach(r=>{porFecha[r.fecha]=(porFecha[r.fecha]||0)+1;});
+  return S.ndviPas
+    .filter(p=>(porFecha[p.fecha]||0)>=150)
+    .sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)))
+    .map(p=>({...p,lotes:porFecha[p.fecha]||0}));
+}
+
+function salud(){
+  if(!S.ndviSerie.length){
+    el("sdCap").textContent="Todavía no hay imágenes cargadas.";
+    el("kpisSalud").innerHTML=`<div class="empty" style="grid-column:1/-1">
+      <b>Sin datos de satélite</b>Corré la sincronización con Copernicus para poblar esta sección.</div>`;
+    ["sdMapa","sdBarb"].forEach(i=>{const e=el(i); if(e) e.innerHTML="";});
+    el("tSalud").querySelector("tbody").innerHTML="";
+    return;
+  }
+  const F=sdFechasUtiles();
+  if(!sdFecha||!F.some(f=>f.fecha===sdFecha)) sdFecha=F[0]?.fecha||null;
+
+  // --- tira de fechas ---
+  el("sdFechas").innerHTML=F.map(f=>{
+    const est=f.estado||"sol";
+    const cob=f.lotes>=300?"finca completa":`${f.lotes} lotes`;
+    return `<button class="sdf ${f.fecha===sdFecha?"on":""} ${est==="nube"?"nube":""}"
+      data-f="${f.fecha}" role="tab" aria-selected="${f.fecha===sdFecha}"
+      title="${esc(cob)}"><b>${fd(f.fecha)}</b>
+      <span><i class="sdi ${est}"></i>${est==="sol"?"despejado":est==="parcial"?"algo de nube":"nublado"}</span></button>`;
+  }).join("");
+  el("sdFechas").querySelectorAll(".sdf").forEach(b=>b.onclick=()=>{sdFecha=b.dataset.f; salud();});
+
+  el("sdModo").querySelectorAll("button").forEach(b=>{
+    b.classList.toggle("on",b.dataset.m===sdModo);
+    b.onclick=()=>{sdModo=b.dataset.m; salud();};
+  });
+
+  // --- datos de la fecha elegida ---
+  const serie=S.ndviSerie.filter(r=>r.fecha===sdFecha);
+  const sb=idxSiembra();
+  const conCul=serie.filter(r=>r.cultivo);
+  const haCul=conCul.reduce((a,r)=>a+Number(r.ha_gis||0),0);
+  const medio=conCul.length?conCul.reduce((a,r)=>a+Number(r.ndvi_medio),0)/conCul.length:0;
+
+  const alertas=S.ndviAl.filter(a=>a.nivel==="critico"||a.nivel==="atencion")
+    .sort((a,b)=>Number(a.desvio_iqr)-Number(b.desvio_iqr));
+  const haAl=alertas.reduce((a,r)=>a+Number(r.ha_sembrada||0),0);
+  const esFechaAl=S.ndviAl[0]?.fecha===sdFecha;
+
+  // --- KPIs ---
+  el("kpisSalud").innerHTML=[
+    ["Lotes con imagen",nf(serie.length,0),`de ${Object.keys(GEO.p).length}`],
+    ["Superficie con cultivo",nf(haCul,0)+" ha",`${conCul.length} lotes`],
+    ["NDVI medio del cultivo",nf(medio,2),fd(sdFecha)],
+    ["Fuera de rango",alertas.length?nf(haAl,0)+" ha":"—",
+      alertas.length?`${alertas.length} lotes`:"ninguno"],
+  ].map(([l,v,h])=>`<div class="kpi"><div class="lab">${esc(l)}</div><div class="val">${esc(v)}</div><div class="hint">${esc(h)}</div></div>`).join("");
+
+  // --- mapa ---
+  const modoAbs=sdModo==="abs";
+  el("sdMapaTit").textContent=modoAbs?"NDVI absoluto":"Comparado con sus pares";
+  el("sdMapaCap").innerHTML=modoAbs
+    ? "Valor crudo del índice. Sirve para ver la finca de un vistazo, pero un lote recién sembrado siempre va a estar bajo: la escala mide verde, no sanidad."
+    : "Cada lote contra la mediana de su mismo cultivo <b>a la misma edad</b>. Así un lote de 15 días no compite contra uno de 70.";
+  const cont=el("mapaLotes"), destino=el("sdMapa");
+  if(cont&&destino){          // se reusa el motor de mapa de Resumen
+    const capaPrev=capaMapa, guardado=cont.innerHTML;
+    capaMapa=modoAbs?"ndvi":"ndvirel";
+    mapa();
+    destino.innerHTML=cont.innerHTML;
+    cont.innerHTML=guardado;
+    capaMapa=capaPrev;        // sin esto, volver a Resumen muestra NDVI
+    destino.querySelectorAll(".mapafull").forEach(b=>b.remove());
+  }
+
+  // --- tabla de alertas ---
+  el("sdCapAl").innerHTML=esFechaAl
+    ? `Ordenados por desvío contra su cohorte, no por NDVI. Un lote nuevo con índice bajo
+       es normal; uno viejo por debajo de sus pares, no. <b>RIC</b> = rangos intercuartiles.`
+    : `Las alertas se calculan sobre la última fecha con la finca completa
+       (${fd(S.ndviAl[0]?.fecha)}), no sobre la que estás mirando.`;
+  const tb=el("tSalud"); tb.classList.add("tsal");
+  tb.querySelector("tbody").innerHTML=alertas.length?alertas.map(a=>`
+    <tr>
+      <td><b>${esc(a.lote)}</b></td>
+      <td>${esc(a.cultivo||"")}</td>
+      <td>${esc(a.seccion||"")}</td>
+      <td>${a.dds??""}</td>
+      <td>${nf(a.ha_sembrada,0)}</td>
+      <td>${nf(a.ndvi_medio,2)}</td>
+      <td>${nf(a.coh_mediana,2)}</td>
+      <td class="${Number(a.desvio_iqr)<0?"neg":"pos"}">${Number(a.desvio_iqr)>0?"+":""}${nf(a.desvio_iqr,1)}</td>
+      <td>${a.patron==="irregular"
+            ?'<span class="pill atencion">por manchones</span>'
+            :'<span class="pill na">parejo</span>'}</td>
+    </tr>`).join("")
+    :`<tr><td colspan="9"><div class="empty"><b>Ningún lote fuera de rango</b>
+       Todos están dentro de lo esperable para su cultivo y edad.</div></td></tr>`;
+
+  // --- curva de cohortes ---
+  const cults=[...new Set(S.ndviCoh.map(c=>c.cultivo))];
+  chart("chCoh",{type:"line",data:{datasets:cults.map(c=>({
+      label:c,
+      data:S.ndviCoh.filter(x=>x.cultivo===c)
+             .sort((a,b)=>a.dds_bin-b.dds_bin)
+             .map(x=>({x:Number(x.dds_bin),y:Number(x.mediana)})),
+      borderColor:COHC[c]||"var(--ink3)",backgroundColor:"transparent",
+      borderWidth:2,pointRadius:2,tension:.3
+    }))},
+    options:{scales:{
+      x:{type:"linear",title:{display:true,text:"días desde siembra"},grid:{color:"#EDEAE0"}},
+      y:{title:{display:true,text:"NDVI mediano"},grid:{color:"#EDEAE0"}}},
+      plugins:{legend:{labels:{boxWidth:12,font:{size:11}}}}}});
+
+  // --- barbecho ---
+  const B={}; let haB=0;
+  S.ndviBarb.forEach(b=>{B[b.estado_ndvi]=B[b.estado_ndvi]||{n:0,ha:0};
+    B[b.estado_ndvi].n++; B[b.estado_ndvi].ha+=Number(b.ha_gis||0); haB+=Number(b.ha_gis||0);});
+  const ORD=[["limpio","var(--g500)"],["algo de verde","#9BB544"],
+             ["sucio","#D19B22"],["muy sucio","var(--crit)"]];
+  el("sdCapBarb").innerHTML=`Lotes sin siembra 26/27. El NDVI detecta cobertura verde,
+    que en un barbecho es enmalezamiento.`;
+  el("sdBarb").innerHTML=(haB?ORD.filter(([k])=>B[k]).map(([k,c])=>{
+      const d=B[k], pc=haB?100*d.ha/haB:0;
+      return `<div class="sdbar"><i style="background:${c};width:${Math.max(3,pc*2.4)}px"></i>
+        <span>${esc(k)}</span><em>${nf(d.ha,0)} ha · ${d.n} lotes · ${nf(pc,0)} %</em></div>`;
+    }).join(""):`<div class="empty"><b>Sin barbecho medido</b></div>`)
+    +`<p class="provis">Los cortes de NDVI todavía no están validados contra recorrida:
+      hay 15 registros de enmalezamiento cargados a mano contra ${S.ndviBarb.length} lotes de barbecho.
+      Tomalos como orientativos hasta tener con qué calibrarlos.</p>`;
+}
+
 function notas(){
   // El índice se arma con TODOS los monitoreos, no solo los filtrados:
   // así una foto nunca queda sin identificar aunque su recorrida no pase el filtro.
@@ -3604,7 +3935,7 @@ const SECC={
   cosecha:  {tit:"Cosecha",   sub:false, filtros:false},
   resumen:  {tit:"Resumen",   sub:true,  filtros:true},
 };
-const SUB=["resumen","campania","registros","stand","notas"];
+const SUB=["resumen","campania","registros","stand","salud","notas"];
 let vista="home", subvista="resumen";
 
 // Cada persona tiene la lista de secciones donde puede cargar.
@@ -3647,6 +3978,7 @@ function ir(v,sv){
   if(v==="siembra") tablaSiembra();
   if(v==="resumen"&&subvista==="campania") requestAnimationFrame(campania);
   if(v==="cosecha") tablaCosecha();
+  if(v==="resumen"&&subvista==="salud") requestAnimationFrame(salud);
   if(v==="resumen") requestAnimationFrame(render);
   window.scrollTo({top:0,behavior:"instant"});
 }
