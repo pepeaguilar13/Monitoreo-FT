@@ -827,6 +827,49 @@ details[open] summary::before{content:"▾ "}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 canvas{max-width:100%;display:block}
+/* ---------- Modo recorrida ----------
+   Fondo oscuro y números grandes: se mira de reojo, en movimiento y con
+   sol de frente. En horizontal el mapa va al lado del dato; en vertical,
+   arriba. El dato nunca queda fuera de pantalla. */
+.recorrida{position:fixed;inset:0;z-index:9999;background:#14140F;display:flex;
+  flex-direction:column;color:#F2EFE4;overscroll-behavior:none}
+.recmapa{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
+  position:relative;padding:10px}
+.recmapa img{max-width:100%;max-height:100%;image-rendering:pixelated;
+  image-rendering:crisp-edges;border-radius:4px}
+.reccarga{color:#8C8977;font-size:15px;letter-spacing:.02em}
+.recdot{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;
+  background:#2F7FE0;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.45);
+  pointer-events:none;transition:left .35s linear,top .35s linear}
+.recinfo{flex:0 0 auto;padding:14px 18px 20px;border-top:1px solid #2A2A22;background:#1A1A14}
+.reclote{font-size:17px;font-weight:600;letter-spacing:.01em}
+.reclote span{font-weight:400;color:#9A9784;font-size:14px;margin-left:6px}
+.recval{display:flex;align-items:baseline;gap:11px;margin-top:6px}
+.recval b{font-size:46px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.recval span{font-size:13px;color:#9A9784}
+.recval.malo b{color:#E86B5A} .recval.medio b{color:#E8C84A} .recval.bueno b{color:#7FCB5E}
+.recamb{display:inline-block;margin-top:8px;padding:5px 13px;border-radius:99px;
+  font-size:14px;font-weight:600}
+.recamb.malo{background:#4A1F19;color:#F09A8A}
+.recamb.medio{background:#463C14;color:#EDD473}
+.recamb.bueno{background:#1E3D18;color:#96D97C}
+.recrango{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:12px;
+  color:#8C8977;font-variant-numeric:tabular-nums}
+.recpie{margin-top:9px;font-size:11.5px;color:#6E6C5D}
+.recvacio{color:#8C8977;font-size:14px;line-height:1.5;padding:6px 0}
+.recsalir{position:absolute;top:12px;right:12px;width:42px;height:42px;border-radius:50%;
+  background:rgba(0,0,0,.55);color:#F2EFE4;border:1px solid #3A3A2E;font-size:19px;
+  cursor:pointer;line-height:1;z-index:2}
+.sdrec{margin-left:6px;background:var(--g700) !important;color:#fff !important;
+  border-color:var(--g700) !important;font-weight:500}
+@media(orientation:landscape) and (max-height:560px){
+  .recorrida{flex-direction:row}
+  .recinfo{flex:0 0 44%;max-width:330px;border-top:none;border-left:1px solid #2A2A22;
+    overflow-y:auto;padding-top:18px}
+  .recval b{font-size:40px}
+}
+@media(max-width:620px){ .sdrec{margin-left:0;width:100%;margin-top:6px} }
+
 .chartbox{position:relative;height:250px;width:100%}
 
 /* ---------- Salud / NDVI ---------- */
@@ -901,7 +944,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v62 · 05-08 · contraste + GPS";   // subí este número en cada cambio
+const BUILD = "v63 · 05-08 · recorrida + zoom";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1143,6 +1186,7 @@ const BUILD = "v62 · 05-08 · contraste + GPS";   // subí este número en cada
         <button data-m="rel" class="on">Comparar</button>
         <button data-m="abs">Escala absoluta</button>
         <button id="sdImg" class="sdimg">Ver imagen</button>
+        <button id="sdRec" class="sdrec">Modo recorrida</button>
       </div>
     </div>
     <div class="sdfechas" id="sdFechas" role="tablist" aria-label="Fechas de imagen"></div>
@@ -2614,6 +2658,7 @@ function mapa(){
     <svg class="mapa" viewBox="${-M} ${-M} ${W+2*M} ${H+2*M}"
       role="img" aria-label="Mapa de Finca Tolloche por ${capaMapa}">${capaImg}${paths}</svg></div>
     ${cuadroRef(cultList,haCult,barbList,haBarb)}`;
+  box.querySelectorAll("svg.mapa").forEach(habilitarZoom);
   if(S.gps) pintarGps();
 
   if(capaMapa==="variedad"&&!F().cul){
@@ -2920,6 +2965,7 @@ function salud(){
   bImg.classList.toggle("on",sdRaster);
   bImg.textContent=sdRaster?"Ver por lote":"Ver imagen";
   bImg.onclick=()=>{sdRaster=!sdRaster; salud();};
+  el("sdRec").onclick=abrirRecorrida;
 
   // --- datos de la fecha elegida ---
   const serie=S.ndviSerie.filter(r=>r.fecha===sdFecha);
@@ -3079,17 +3125,17 @@ async function cargarTile(fecha,ix,iy){
 
 const decNdvi=v=>v/255*1.2-0.2;
 
-async function visorLote(lote,fecha){
-  const cont=el("sdLoteBox"); if(!cont) return;
+// Extrae los píxeles de un lote una sola vez y los cachea: lo usan tanto el
+// visor de la sección Salud como el modo recorrida, que lee el valor bajo
+// la posición del GPS.
+const cacheLote={};
+async function pixelesLote(lote,fecha){
+  const k=`${lote}/${fecha}`;
+  if(cacheLote[k]) return cacheLote[k];
   const p=S.ndviPas.find(x=>x.fecha===fecha);
-  if(!p||!p.png_val_path){
-    cont.innerHTML=`<div class="empty"><b>Sin imagen de detalle</b>
-      Esa fecha todavía no tiene el raster de valores generado.</div>`; return;
-  }
-  cont.innerHTML=`<p class="cap">Cargando imagen…</p>`;
+  if(!p||!p.png_val_path) throw new Error("sin raster de valores para esa fecha");
+  const rings=GEO.p[lote]; if(!rings) throw new Error("lote sin geometría");
 
-  // bbox del lote y tile que lo contiene
-  const rings=GEO.p[lote]; if(!rings){cont.innerHTML="";return;}
   let xa=1e9,xb=-1e9,ya=1e9,yb=-1e9;
   rings.forEach(r=>{for(let i=0;i<r.length;i+=2){
     xa=Math.min(xa,r[i]); xb=Math.max(xb,r[i]);
@@ -3097,11 +3143,8 @@ async function visorLote(lote,fecha){
   const lonA=GEO.o[0]+xa/GEO.e, lonB=GEO.o[0]+xb/GEO.e;
   const latA=GEO.o[1]+ya/GEO.e, latB=GEO.o[1]+yb/GEO.e;
   const t=tileDe((latA+latB)/2,(lonA+lonB)/2,p);
+  const T=await cargarTile(fecha,t.ix,t.iy);
 
-  let T; try{ T=await cargarTile(fecha,t.ix,t.iy); }
-  catch(e){ cont.innerHTML=`<div class="empty"><b>No se pudo leer la imagen</b>${esc(e.message)}</div>`; return; }
-
-  // recorte del tile correspondiente al lote
   const tdx=(p.lon_max-p.lon_min)/TILES_VAL, tdy=(p.lat_max-p.lat_min)/TILES_VAL;
   const tLonA=p.lon_min+t.ix*tdx, tLatA=p.lat_min+t.iy*tdy;
   const px=lon=>Math.round((lon-tLonA)/tdx*T.w);
@@ -3109,27 +3152,29 @@ async function visorLote(lote,fecha){
   const cx0=Math.max(0,px(lonA)), cx1=Math.min(T.w,px(lonB));
   const cy0=Math.max(0,py(latB)), cy1=Math.min(T.h,py(latA));
   const cw=cx1-cx0, chh=cy1-cy0;
-  if(cw<2||chh<2){cont.innerHTML=`<div class="empty"><b>Lote fuera del tile</b></div>`;return;}
+  if(cw<2||chh<2) throw new Error("el lote cae fuera del tile");
 
-  // valores válidos del recorte, para el estirado de contraste
   const vals=[];
   for(let y=cy0;y<cy1;y++) for(let x=cx0;x<cx1;x++){
     const i=(y*T.w+x)*4;
     if(T.data[i+3]>0&&T.data[i]>0) vals.push(T.data[i]);
   }
-  if(!vals.length){cont.innerHTML=`<div class="empty"><b>Sin píxeles válidos</b>
-    Nube o sombra sobre el lote en esa fecha.</div>`;return;}
+  if(!vals.length) throw new Error("sin píxeles válidos: nube o sombra sobre el lote");
   vals.sort((a,b)=>a-b);
+  return cacheLote[k]={T,cx0,cy0,cw,ch:chh,vals,lonA,lonB,latA,latB,tLonA,tLatA,tdx,tdy};
+}
+
+// pinta el recorte con la rampa, estirada o fija
+function pintarLote(D,contraste){
+  const {T,cx0,cy0,cw,ch,vals}=D;
   const q=f=>vals[Math.min(vals.length-1,Math.floor(vals.length*f))];
   // p2-p98 y no min-max: dos píxeles raros del borde arruinarían la escala
-  const lo=sdContraste?q(0.02):0, hi=sdContraste?q(0.98):255;
+  const lo=contraste?q(0.02):0, hi=contraste?q(0.98):255;
   const rango=Math.max(1,hi-lo);
-
   const cv=document.createElement("canvas");
-  cv.width=cw; cv.height=chh;
-  const g=cv.getContext("2d");
-  const out=g.createImageData(cw,chh);
-  for(let y=0;y<chh;y++) for(let x=0;x<cw;x++){
+  cv.width=cw; cv.height=ch;
+  const g=cv.getContext("2d"), out=g.createImageData(cw,ch);
+  for(let y=0;y<ch;y++) for(let x=0;x<cw;x++){
     const i=((y+cy0)*T.w+(x+cx0))*4, o=(y*cw+x)*4;
     if(T.data[i+3]===0||T.data[i]===0){out.data[o+3]=0; continue;}
     const n=Math.max(0,Math.min(1,(T.data[i]-lo)/rango));
@@ -3137,18 +3182,37 @@ async function visorLote(lote,fecha){
     out.data[o]=c[0]; out.data[o+1]=c[1]; out.data[o+2]=c[2]; out.data[o+3]=255;
   }
   g.putImageData(out,0,0);
+  return {url:cv.toDataURL(),lo,hi,q};
+}
 
-  cont.innerHTML=`<div class="lotevis"><img src="${cv.toDataURL()}" alt="NDVI de ${esc(lote)}"></div>
+// valor y percentil bajo un punto: el dato que se quiere parado en el campo
+function ndviEnPunto(D,lat,lon){
+  const x=Math.floor((lon-D.tLonA)/D.tdx*D.T.w);
+  const y=Math.floor((1-(lat-D.tLatA)/D.tdy)*D.T.h);
+  if(x<0||y<0||x>=D.T.w||y>=D.T.h) return null;
+  const i=(y*D.T.w+x)*4;
+  if(D.T.data[i+3]===0||D.T.data[i]===0) return null;
+  const v=D.T.data[i];
+  let lo=0,hi=D.vals.length;                 // percentil por búsqueda binaria
+  while(lo<hi){const m=(lo+hi)>>1; if(D.vals[m]<v) lo=m+1; else hi=m;}
+  return {ndvi:decNdvi(v),pct:Math.round(100*lo/D.vals.length),px:{x,y}};
+}
+
+async function visorLote(lote,fecha){
+  const cont=el("sdLoteBox"); if(!cont) return;
+  cont.innerHTML=`<p class="cap">Cargando imagen…</p>`;
+  let D; try{ D=await pixelesLote(lote,fecha); }
+  catch(e){ cont.innerHTML=`<div class="empty"><b>Sin imagen de detalle</b>${esc(e.message)}</div>`; return; }
+  const R=pintarLote(D,sdContraste);
+  cont.innerHTML=`<div class="lotevis"><img src="${R.url}" alt="NDVI de ${esc(lote)}"></div>
     <div class="loteleg">
-      <span>${nf(decNdvi(lo),2)}</span>
-      <i class="lrampa"></i>
-      <span>${nf(decNdvi(hi),2)}</span>
+      <span>${nf(decNdvi(R.lo),2)}</span><i class="lrampa"></i><span>${nf(decNdvi(R.hi),2)}</span>
     </div>
     <p class="cap">${sdContraste
       ? `Rampa estirada al rango propio del lote (percentil 2 a 98). Es lo que hace
          visibles los ambientes: sin esto, un cultivo cerrado se ve todo del mismo verde.`
       : `Rampa fija de −0,20 a 1,00, igual que el mapa de la finca.`}
-      ${nf(vals.length,0)} píxeles de 10 m · mediana ${nf(decNdvi(q(0.5)),2)}</p>`;
+      ${nf(D.vals.length,0)} píxeles de 10 m · mediana ${nf(decNdvi(R.q(0.5)),2)}</p>`;
 }
 
 // rampa continua, mismos colores que el mapa
@@ -3160,6 +3224,184 @@ function rampa(n){
     return [a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t,a[3]+(b[3]-a[3])*t];
   }
   return [28,82,40];
+}
+
+/* ======================= MODO RECORRIDA =======================
+   Pensado para la camioneta: pantalla completa, sin cromo, letra grande y
+   alto contraste porque se mira de reojo y con sol. El GPS decide qué lote
+   se muestra, y lo que importa no es el mapa sino UN número: el NDVI del
+   píxel donde estás parado, y en qué parte del lote cae ese valor.
+
+   Sin GPS adentro de un lote muestra la finca entera con el punto, para
+   que sepas hacia dónde ir.
+   ============================================================ */
+let recAbierto=false, recLote=null, recD=null, recWake=null;
+
+async function abrirRecorrida(){
+  if(recAbierto) return;
+  recAbierto=true;
+  document.body.insertAdjacentHTML("beforeend",`
+    <div class="recorrida" id="recorrida" role="dialog" aria-label="Modo recorrida">
+      <div class="recmapa" id="recMapa"><div class="reccarga">Buscando señal…</div></div>
+      <div class="recinfo" id="recInfo"></div>
+      <button class="recsalir" id="recSalir" aria-label="Salir">✕</button>
+    </div>`);
+  el("recSalir").onclick=cerrarRecorrida;
+  // que no se apague la pantalla en medio del lote
+  try{ recWake=await navigator.wakeLock?.request("screen"); }catch(e){}
+  document.addEventListener("keydown",recEsc);
+  refrescarRecorrida();
+}
+function recEsc(e){ if(e.key==="Escape") cerrarRecorrida(); }
+function cerrarRecorrida(){
+  recAbierto=false; recLote=null; recD=null;
+  recWake?.release?.(); recWake=null;
+  document.removeEventListener("keydown",recEsc);
+  el("recorrida")?.remove();
+}
+
+async function refrescarRecorrida(){
+  if(!recAbierto) return;
+  const mapa_=el("recMapa"), info=el("recInfo");
+  if(!mapa_||!info) return;
+
+  if(!S.gps){
+    mapa_.innerHTML=`<div class="reccarga">Sin señal de GPS</div>`;
+    info.innerHTML=`<div class="recvacio">Activá la ubicación en el navegador</div>`;
+    return;
+  }
+  const lote=S.gps.lote;
+
+  if(!lote){
+    mapa_.innerHTML=`<div class="reccarga">Fuera de los lotes</div>`;
+    info.innerHTML=`<div class="recvacio">±${Math.round(S.gps.acc)} m de precisión<br>
+      <small>Acercate a un lote para ver sus ambientes</small></div>`;
+    recLote=null; return;
+  }
+
+  // recargar la imagen solo al cambiar de lote, no en cada lectura del GPS
+  if(lote!==recLote){
+    recLote=lote; recD=null;
+    mapa_.innerHTML=`<div class="reccarga">Cargando ${esc(lote)}…</div>`;
+    try{ recD=await pixelesLote(lote,sdFecha); }
+    catch(e){
+      mapa_.innerHTML=`<div class="reccarga">${esc(lote)}</div>`;
+      info.innerHTML=`<div class="recvacio">${esc(e.message)}</div>`;
+      return;
+    }
+    const R=pintarLote(recD,true);
+    mapa_.innerHTML=`<img id="recImg" src="${R.url}" alt="Ambientes de ${esc(lote)}">
+      <div class="recdot" id="recDot"></div>`;
+    recD._R=R;
+  }
+  if(!recD) return;
+
+  // punto del GPS sobre la imagen, en porcentaje del recorte
+  const fx=100*((S.gps.lon-recD.lonA)/(recD.lonB-recD.lonA));
+  const fy=100*(1-(S.gps.lat-recD.latA)/(recD.latB-recD.latA));
+  const dot=el("recDot");
+  if(dot){
+    const fuera=fx<0||fx>100||fy<0||fy>100;
+    dot.style.display=fuera?"none":"block";
+    dot.style.left=fx+"%"; dot.style.top=fy+"%";
+  }
+
+  const v=ndviEnPunto(recD,S.gps.lat,S.gps.lon);
+  const al=S.ndviAl.find(a=>K(a.lote)===K(lote));
+  const q=recD._R.q;
+  if(!v){
+    info.innerHTML=`<div class="reclote">${esc(lote)}</div>
+      <div class="recvacio">Sin dato en este punto<br><small>nube o borde del lote</small></div>`;
+    return;
+  }
+  // El percentil es lo que responde la pregunta real: no "cuánto vale"
+  // sino "estoy en lo bueno o en lo malo de ESTE lote".
+  const nivel=v.pct<=25?"malo":v.pct>=75?"bueno":"medio";
+  const txt={malo:"zona baja del lote",medio:"zona media",bueno:"zona alta del lote"}[nivel];
+  info.innerHTML=`
+    <div class="reclote">${esc(lote)}${al?.cultivo?` <span>${esc(al.cultivo)}</span>`:""}</div>
+    <div class="recval ${nivel}">
+      <b>${nf(v.ndvi,2)}</b>
+      <span>NDVI acá · percentil ${v.pct}</span>
+    </div>
+    <div class="recamb ${nivel}">${txt}</div>
+    <div class="recrango">
+      <span>${nf(decNdvi(q(0.02)),2)}</span><i class="lrampa"></i><span>${nf(decNdvi(q(0.98)),2)}</span>
+    </div>
+    <div class="recpie">±${Math.round(S.gps.acc)} m · ${fd(sdFecha)}${
+      al?.desvio_iqr!=null?` · ${al.desvio_iqr>0?"+":""}${nf(al.desvio_iqr,1)} vs. sus pares`:""}</div>`;
+}
+
+/* ========================= ZOOM DEL MAPA =========================
+   Solo acerca. El alejamiento tope es el encuadre inicial, que ya muestra
+   la finca completa: dejar alejar mas solo sirve para perderse.
+   Rueda y pinza para escalar, arrastre para desplazar.
+   ============================================================== */
+function habilitarZoom(svg){
+  if(!svg||svg.dataset.zoom) return;
+  svg.dataset.zoom="1";
+  const vb0=svg.getAttribute("viewBox").split(" ").map(Number);
+  let vb=[...vb0], arr=null, pinza=null;
+
+  const aplicar=()=>{
+    // nunca mas ancho que el encuadre inicial, y nunca fuera de sus bordes
+    vb[2]=Math.min(vb0[2],vb[2]); vb[3]=Math.min(vb0[3],vb[3]);
+    vb[0]=Math.max(vb0[0],Math.min(vb0[0]+vb0[2]-vb[2],vb[0]));
+    vb[1]=Math.max(vb0[1],Math.min(vb0[1]+vb0[3]-vb[3],vb[1]));
+    svg.setAttribute("viewBox",vb.join(" "));
+    svg.style.cursor=vb[2]<vb0[2]*0.995?"grab":"";
+    if(S.gps) pintarGps();
+  };
+  const puntoEn=(cx,cy)=>{
+    const r=svg.getBoundingClientRect();
+    return [vb[0]+(cx-r.left)/r.width*vb[2], vb[1]+(cy-r.top)/r.height*vb[3]];
+  };
+  const escalar=(f,cx,cy)=>{
+    const [ax,ay]=puntoEn(cx,cy);
+    const k=Math.max(0.02,Math.min(1,vb[2]*f/vb0[2]));
+    const nw=vb0[2]*k, nh=vb0[3]*k;
+    vb[0]=ax-(ax-vb[0])*(nw/vb[2]); vb[1]=ay-(ay-vb[1])*(nh/vb[3]);
+    vb[2]=nw; vb[3]=nh; aplicar();
+  };
+
+  svg.addEventListener("wheel",e=>{e.preventDefault();
+    escalar(e.deltaY>0?1.18:1/1.18,e.clientX,e.clientY);},{passive:false});
+
+  svg.addEventListener("pointerdown",e=>{
+    if(e.pointerType==="touch") return;
+    arr={x:e.clientX,y:e.clientY,vx:vb[0],vy:vb[1]};
+    svg.setPointerCapture(e.pointerId); svg.style.cursor="grabbing";});
+  svg.addEventListener("pointermove",e=>{
+    if(!arr) return;
+    const r=svg.getBoundingClientRect();
+    vb[0]=arr.vx-(e.clientX-arr.x)/r.width*vb[2];
+    vb[1]=arr.vy-(e.clientY-arr.y)/r.height*vb[3]; aplicar();});
+  ["pointerup","pointercancel","pointerleave"].forEach(ev=>
+    svg.addEventListener(ev,()=>{arr=null; svg.style.cursor=vb[2]<vb0[2]*0.995?"grab":"";}));
+
+  svg.addEventListener("touchstart",e=>{
+    if(e.touches.length===2){
+      const a=e.touches[0], b=e.touches[1];
+      pinza={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),
+             cx:(a.clientX+b.clientX)/2, cy:(a.clientY+b.clientY)/2};
+    }else if(e.touches.length===1){
+      pinza=null; arr={x:e.touches[0].clientX,y:e.touches[0].clientY,vx:vb[0],vy:vb[1]};
+    }},{passive:true});
+  svg.addEventListener("touchmove",e=>{
+    if(e.touches.length===2&&pinza){
+      e.preventDefault();
+      const a=e.touches[0], b=e.touches[1];
+      const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+      escalar(pinza.d/d,pinza.cx,pinza.cy);
+      pinza.d=d;
+    }else if(e.touches.length===1&&arr){
+      const r=svg.getBoundingClientRect();
+      vb[0]=arr.vx-(e.touches[0].clientX-arr.x)/r.width*vb[2];
+      vb[1]=arr.vy-(e.touches[0].clientY-arr.y)/r.height*vb[3]; aplicar();
+    }},{passive:false});
+  svg.addEventListener("touchend",()=>{pinza=null; arr=null;},{passive:true});
+
+  svg.addEventListener("dblclick",e=>{e.preventDefault(); vb=[...vb0]; aplicar();});
 }
 
 function notas(){
@@ -4759,6 +5001,7 @@ if(navigator.geolocation){
       const lat=p.coords.latitude, lon=p.coords.longitude;
       S.gps={lat,lon,acc:p.coords.accuracy??99,lote:loteEnPunto(lat,lon)};
       pintarGps();
+      if(recAbierto) refrescarRecorrida();
     },
     ()=>{const g=el("gpsTxt"); if(g) g.textContent="sin GPS";},
     {enableHighAccuracy:true,timeout:10000,maximumAge:5000});
