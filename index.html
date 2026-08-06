@@ -941,6 +941,15 @@ canvas{max-width:100%;display:block}
 .apldh span{background:var(--bg2);padding:1px 7px;border-radius:99px;margin-left:6px}
 .apldh span.pend{background:#F7EBCE;color:#8A6210}
 .apldh em{float:right;font-style:normal;font-variant-numeric:tabular-nums;color:var(--ink2)}
+.pas{margin:6px 0 0;padding:5px 0 5px 8px;border-left:2px solid var(--bg2)}
+.pash{font-size:10.5px;color:var(--ink3);letter-spacing:.05em;text-transform:uppercase;
+  margin-bottom:2px;display:flex;align-items:baseline;gap:7px}
+.pash em{margin-left:auto;font-style:normal;text-transform:none;letter-spacing:0;
+  font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--ink2)}
+/* el % de superficie no es un detalle: una dosis "0,6 l/ha" sobre el 30 %
+   del lote cuesta un tercio y se aplica en un tercio del área. */
+.pcp{background:#EDE7F5;color:#5B4483;padding:1px 7px;border-radius:99px;
+  font-size:10px;letter-spacing:.02em;text-transform:none;font-weight:600}
 .aplit{display:flex;align-items:baseline;gap:7px;padding:2px 0;font-size:12.5px}
 .aplit i{width:8px;height:8px;border-radius:2px;flex:0 0 auto}
 .aplit b{font-weight:500}
@@ -1028,7 +1037,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v68 · 06-08 · detalle presupuesto";   // subí este número en cada cambio
+const BUILD = "v69 · 06-08 · pasadas y % de lote";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1540,7 +1549,7 @@ async function cargar(){
   // abra aunque el pipeline de Finnegans no haya corrido.
   [S.apl,S.presu]=await Promise.all([
     softAll("apl_aplicaciones?select=lote,fecha,actividad,act_presu,estadio,tipo,producto,rubro,cant_ha,unidad,superficie,importe,importe_ha,contratista&order=fecha"),
-    soft("apl_presupuesto?select=actividad,sistema,estadio,rubro,producto,cant_ha,unidad,importe_ha&limit=2000")
+    soft("apl_presupuesto?select=id,actividad,sistema,estadio,rubro,producto,cant_ha,unidad,importe_ha,porcentaje&order=id&limit=2000")
   ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
@@ -2233,7 +2242,7 @@ function bxAplic(D){
         let P=S.presu.filter(x=>x.actividad===act);
         const cs=P.filter(x=>x.sistema===sis); if(cs.length) P=cs;
         if(!P.length) return `<p class="cap">Sin líneas cargadas.</p>`;
-        // agrupado por estadío, en el orden en que ocurre a campo
+        P=[...P].sort((x,y)=>x.id-y.id);   // el orden del Excel agrupa las pasadas
         const ORD=["Barbecho","Preemergente","Siembra","Fertilización","Riego",
                    "Postemergente","Insecticida","Fungicida","Desecante/Defoliante",
                    "Cosecha","Comercialización"];
@@ -2242,17 +2251,36 @@ function bxAplic(D){
         return Object.keys(g)
           .sort((x,y)=>(ORD.indexOf(x)+1||99)-(ORD.indexOf(y)+1||99))
           .map(e=>{
-            const li=g[e].sort((x,y)=>Number(y.importe_ha)-Number(x.importe_ha));
+            const li=g[e];
             const sub=li.reduce((a2,x)=>a2+Number(x.importe_ha||0),0);
             const ya=hechos.has(e);
+            // Una pasada = la labor mas los productos que la acompañan. Se corta
+            // al aparecer una labor nueva; si no, "Pulverización Terrestre" se
+            // repite cuatro veces y parece un error de carga cuando en realidad
+            // son cuatro pasadas distintas.
+            const pas=[]; let cur=null;
+            li.forEach(x=>{
+              const lab=x.rubro==="Laboreo"||x.rubro==="Riego";
+              if(!cur||(lab&&cur.tieneLab)) {cur={it:[],tieneLab:false}; pas.push(cur);}
+              if(lab) cur.tieneLab=true;
+              cur.it.push(x);
+            });
             return `<div class="apldia"><div class="apldh">${esc(e)}
               <span class="${ya?"":"pend"}">${ya?"ya transitado":"pendiente"}</span>
               <em>${nf(sub,1)} US$/ha</em></div>
-              ${li.map(x=>`<div class="aplit">
-                <i style="background:${RUBC[x.rubro]||"#B7B3A0"}"></i>
-                <b>${esc(x.producto||"")}</b>
-                <span>${x.cant_ha?nf(x.cant_ha,3)+" "+esc(x.unidad||""):""}</span>
-                <em>${nf(x.importe_ha,2)} US$/ha</em></div>`).join("")}
+              ${pas.map((q,i)=>{
+                const pc=Number(q.it[0].porcentaje);
+                const st=q.it.reduce((a2,x)=>a2+Number(x.importe_ha||0),0);
+                return `<div class="pas">
+                  <div class="pash">${pas.length>1?`pasada ${i+1}`:"aplicación"}
+                    ${pc&&pc<0.999?`<b class="pcp">${nf(pc*100,0)} % del lote</b>`:""}
+                    <em>${nf(st,2)} US$/ha</em></div>
+                  ${q.it.map(x=>`<div class="aplit">
+                    <i style="background:${RUBC[x.rubro]||"#B7B3A0"}"></i>
+                    <b>${esc(x.producto||"")}</b>
+                    <span>${x.cant_ha?nf(x.cant_ha,3)+" "+esc(x.unidad||""):""}</span>
+                    <em>${nf(x.importe_ha,2)} US$/ha</em></div>`).join("")}
+                </div>`;}).join("")}
             </div>`;}).join("");
       })()}
     </details>`:""}
