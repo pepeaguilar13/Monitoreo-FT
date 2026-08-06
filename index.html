@@ -915,6 +915,40 @@ canvas{max-width:100%;display:block}
 .mapzoom button:hover{background:var(--sand)}
 .mapa{touch-action:none}
 
+/* ---------- Aplicaciones ---------- */
+.tapl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tapl th{text-align:left;font-weight:500;color:var(--ink2);font-size:10.5px;
+  letter-spacing:.05em;text-transform:uppercase;padding:4px 7px;border-bottom:1px solid var(--line)}
+.tapl th.n,.tapl td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tapl td{padding:5px 7px;border-bottom:1px solid var(--bg2)}
+.tapl td i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;
+  vertical-align:-1px}
+/* dos barras superpuestas: presupuesto atrás, ejecutado adelante.
+   Se lee de un vistazo si te pasaste sin tener que restar. */
+.tapl td.bar{position:relative;width:88px;min-width:88px;height:15px;padding:5px 7px}
+.tapl td.bar span{position:absolute;left:7px;height:6px;border-radius:2px}
+.tapl .bp{top:7px;background:#CFCBB8}
+.tapl .be{top:15px;background:var(--g500)}
+.tapl tr.sobre .be{background:var(--crit)}
+.tapl tr.nuevo .be{background:var(--warn)}
+.tapl td.dv{font-weight:600}
+.tapl tr.sobre td.dv{color:var(--crit)}
+.tapl tr.bajo td.dv{color:var(--ink2)}
+.apldet{margin-top:11px;font-size:12.5px}
+.apldet summary{cursor:pointer;color:var(--g600);font-size:12px;padding:4px 0}
+.apldia{margin-top:9px;padding-left:10px;border-left:2px solid var(--line)}
+.apldh{font-size:11px;color:var(--ink2);letter-spacing:.03em;margin-bottom:3px}
+.apldh span{background:var(--bg2);padding:1px 7px;border-radius:99px;margin-left:6px}
+.aplit{display:flex;align-items:baseline;gap:7px;padding:2px 0;font-size:12.5px}
+.aplit i{width:8px;height:8px;border-radius:2px;flex:0 0 auto}
+.aplit b{font-weight:500}
+.aplit span{color:var(--ink2);font-size:11.5px}
+.aplit em{margin-left:auto;font-style:normal;color:var(--ink2);font-size:11.5px;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+@media(max-width:620px){
+  .tapl td.bar,.tapl th:nth-child(4){display:none}
+}
+
 .chartbox{position:relative;height:250px;width:100%}
 
 /* ---------- Salud / NDVI ---------- */
@@ -989,7 +1023,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v65 · 05-08 · zoom del mapa";   // subí este número en cada cambio
+const BUILD = "v66 · 06-08 · aplicaciones";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1418,6 +1452,7 @@ const BUILD = "v65 · 05-08 · zoom del mapa";   // subí este número en cada c
 const S={url:"",key:"",vals:[],mons:[],fotos:[],inds:[],occs:[],cats:[],
          lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],riegoSem:[],opers:[],geo:[],stdec:[],
          ndviPas:[],ndviAl:[],ndviBarb:[],ndviSerie:[],ndviCoh:[],
+         apl:[],presu:[],
          ch:{},sort:{},fotosPend:[],gps:null};
 const el=id=>document.getElementById(id);
 const hoyISO=()=>{const d=new Date();
@@ -1495,6 +1530,12 @@ async function cargar(){
     soft("ndvi_barbecho?select=*"),
     soft("ndvi_cohorte?select=*&order=cultivo,dds_bin"),
     softAll("ndvi_dds?select=lote,fecha,ndvi_medio,ndvi_sd,dds,cultivo,ha_gis&order=fecha")
+  ]);
+  // Aplicaciones y presupuesto. Igual que NDVI: con soft(), para que la app
+  // abra aunque el pipeline de Finnegans no haya corrido.
+  [S.apl,S.presu]=await Promise.all([
+    softAll("apl_aplicaciones?select=lote,fecha,actividad,act_presu,estadio,tipo,producto,rubro,cant_ha,unidad,superficie,importe,importe_ha,contratista&order=fecha"),
+    soft("apl_presupuesto?select=actividad,sistema,estadio,rubro,producto,cant_ha,unidad,importe_ha&limit=2000")
   ]);
   el("dot").classList.add("live");
   el("liveTxt").textContent=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
@@ -1775,6 +1816,7 @@ function fichaLote(lote){
       ${bxBalance(D)}
       ${bxStand(D)}
       ${bxSanidad(D)}
+      ${bxAplic(D)}
       ${bxCrono(D)}
       ${bxFotos(D)}
       ${bxNotas(D)}
@@ -2093,6 +2135,104 @@ function bxCrono(D){
     ${val.length>6?`<div class="pie">Se muestran las 6 más recientes de ${val.length}.</div>`:""}
     ${sinVisita!=null?`<div class="pie">Última recorrida hace ${sinVisita} ${sinVisita===1?"día":"días"}.</div>`:""}
     </div>`;
+}
+
+/* ===================== APLICACIONES =====================
+   Qué se aplicó, cuándo y en qué estadío, contra lo presupuestado.
+
+   La comparación va por RUBRO y no por producto: el presupuesto nombra
+   principios activos (METSULFURON) y Finnegans registra comerciales
+   (CONTROL MAX). Cruzar producto a producto cubre el 22 % del gasto;
+   por rubro, el 90 %.
+
+   El presupuesto es por actividad × sistema, no por lote: la referencia
+   de un lote es el promedio de su cultivo, prorrateado por hectárea.
+   ====================================================== */
+const RUBC={Herbicida:"#7E5AA8",Insecticida:"#C0392B",Fungicida:"#3E6B9E",
+  Coadyuvante:"#9BB544",Fertilizante:"#D98B1E",Semilla:"#8A5A2B",
+  Laboreo:"#6E6B5C",Riego:"#2F7FE0","Tratamiento de semilla":"#B79AD4",
+  Bioestimulante:"#5F8F3A",Regulador:"#C98A2E",Cosecha:"#54523F",Flete:"#8C8977"};
+
+function bxAplic(D){
+  const A=S.apl.filter(x=>K(x.lote)===K(D.lote));
+  if(!A.length)
+    return `<div class="bx b6"><h3>Aplicaciones</h3>
+      <div class="vacio">Sin aplicaciones cargadas para este lote.</div></div>`;
+
+  const ha=Math.max(...A.map(x=>Number(x.superficie)||0));
+  const act=A.find(x=>x.act_presu)?.act_presu;
+  const sis=D.sb?.sistema;
+
+  // ejecutado por rubro
+  const eje={}; let tot=0;
+  A.forEach(x=>{const r=x.rubro||"Sin clasificar";
+    eje[r]=(eje[r]||0)+Number(x.importe||0); tot+=Number(x.importe||0);});
+
+  // presupuestado por rubro, del mismo cultivo y sistema
+  const pre={}; let totP=0;
+  if(act){
+    let P=S.presu.filter(x=>x.actividad===act);
+    const conSis=P.filter(x=>x.sistema===sis);
+    if(conSis.length) P=conSis;          // si no hay del sistema, promedio del cultivo
+    P.forEach(x=>{const r=x.rubro||"Sin clasificar";
+      pre[r]=(pre[r]||0)+Number(x.importe_ha||0); totP+=Number(x.importe_ha||0);});
+  }
+
+  const rubros=[...new Set([...Object.keys(eje),...Object.keys(pre)])]
+    .sort((a,b)=>(eje[b]||0)-(eje[a]||0));
+  const ejeHa=r=>ha?(eje[r]||0)/ha:0;
+
+  const filas=rubros.map(r=>{
+    const e=ejeHa(r), p=pre[r]||0, d=e-p;
+    const sit=!p?"nuevo":!eje[r]?"pendiente":Math.abs(d)/Math.max(p,1)<0.15?"ok":d>0?"sobre":"bajo";
+    const et={nuevo:"no presupuestado",pendiente:"sin ejecutar",ok:"en línea",
+              sobre:"por encima",bajo:"por debajo"}[sit];
+    const w=Math.max(e,p)||1;
+    return `<tr class="ar ${sit}">
+      <td><i style="background:${RUBC[r]||"#B7B3A0"}"></i>${esc(r)}</td>
+      <td class="n">${p?nf(p,1):"–"}</td>
+      <td class="n">${eje[r]?nf(e,1):"–"}</td>
+      <td class="bar"><span style="width:${Math.min(100,100*p/w)}%" class="bp"></span>
+        <span style="width:${Math.min(100,100*e/w)}%" class="be"></span></td>
+      <td class="n dv">${p&&eje[r]?(d>0?"+":"")+nf(d,1):""}</td>
+      <td><span class="pill ${sit==="ok"?"ok":sit==="nuevo"||sit==="sobre"?"atencion":"na"}">${et}</span></td>
+    </tr>`;}).join("");
+
+  const dTot=totP?(tot/ha)-totP:null;
+
+  // detalle cronológico, agrupado por fecha y estadío
+  const porDia={};
+  A.forEach(x=>{const k=x.fecha+"|"+(x.estadio||"–");
+    (porDia[k]=porDia[k]||[]).push(x);});
+  const dias=Object.entries(porDia)
+    .sort((a,b)=>b[0].localeCompare(a[0])).slice(0,14);
+
+  return `<div class="bx b6"><h3>Aplicaciones</h3>
+    <p class="cap">${A.length} movimientos · ${nf(ha,0)} ha ·
+      <b>${nf(tot/ha,0)} US$/ha</b> ejecutados${totP?` contra ${nf(totP,0)} presupuestados`:""}
+      ${dTot!=null?` · <b style="color:${dTot>0?"var(--crit)":"var(--ok)"}">${
+        dTot>0?"+":""}${nf(dTot,0)} US$/ha</b>`:""}</p>
+    ${act?"":`<p class="cap" style="color:var(--warn)">La actividad de este lote no
+      tiene línea en el presupuesto, así que no hay contra qué comparar.</p>`}
+    <div class="tw"><table class="tapl"><thead><tr>
+      <th>Rubro</th><th class="n">Presup.</th><th class="n">Ejec.</th><th></th>
+      <th class="n">Desvío</th><th>Estado</th></tr></thead>
+      <tbody>${filas}</tbody></table></div>
+    <details class="apldet"><summary>Ver el detalle de cada aplicación</summary>
+      ${dias.map(([k,xs])=>{
+        const [fe,est]=k.split("|");
+        return `<div class="apldia"><div class="apldh">${fd(fe)}
+          <span>${esc(est)}</span></div>
+          ${xs.map(x=>`<div class="aplit">
+            <i style="background:${RUBC[x.rubro]||"#B7B3A0"}"></i>
+            <b>${esc(x.producto)}</b>
+            <span>${x.cant_ha!=null?nf(x.cant_ha,2)+" "+esc(x.unidad||""):""}</span>
+            <em>${nf(x.importe_ha,1)} US$/ha</em></div>`).join("")}
+        </div>`;}).join("")}
+      ${Object.keys(porDia).length>14?`<p class="cap">Se muestran las 14 fechas más
+        recientes de ${Object.keys(porDia).length}.</p>`:""}
+    </details>
+  </div>`;
 }
 
 function bxFotos(D){
