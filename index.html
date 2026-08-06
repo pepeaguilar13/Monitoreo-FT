@@ -901,7 +901,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v61 · 05-08 · contraste + GPS";   // subí este número en cada cambio
+const BUILD = "v62 · 05-08 · contraste + GPS";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1400,7 +1400,7 @@ async function cargar(){
   // NDVI Sentinel-2. Va aparte y con soft(): si el pipeline de Copernicus
   // todavía no corrió, la app tiene que abrir igual y solo faltar esta capa.
   [S.ndviPas,S.ndviAl,S.ndviBarb,S.ndviCoh,S.ndviSerie]=await Promise.all([
-    soft("ndvi_pasadas?select=fecha,estado,nub_ft,png_path,lon_min,lat_min,lon_max,lat_max&order=fecha.desc"),
+    soft("ndvi_pasadas?select=fecha,estado,nub_ft,png_path,png_val_path,lon_min,lat_min,lon_max,lat_max&order=fecha.desc"),
     soft("ndvi_alertas?select=*"),
     soft("ndvi_barbecho?select=*"),
     soft("ndvi_cohorte?select=*&order=cultivo,dds_bin"),
