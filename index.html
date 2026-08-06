@@ -939,10 +939,15 @@ canvas{max-width:100%;display:block}
 .apldia{margin-top:9px;padding-left:10px;border-left:2px solid var(--line)}
 .apldh{font-size:11px;color:var(--ink2);letter-spacing:.03em;margin-bottom:3px}
 .apldh span{background:var(--bg2);padding:1px 7px;border-radius:99px;margin-left:6px}
+.apldh span.pend{background:#F7EBCE;color:#8A6210}
+.apldh em{float:right;font-style:normal;font-variant-numeric:tabular-nums;color:var(--ink2)}
 .aplit{display:flex;align-items:baseline;gap:7px;padding:2px 0;font-size:12.5px}
 .aplit i{width:8px;height:8px;border-radius:2px;flex:0 0 auto}
 .aplit b{font-weight:500}
 .aplit span{color:var(--ink2);font-size:11.5px}
+.aplit.rev b,.aplit.rev em{color:var(--ink3)}
+.aplit.rev::after{content:"reversión";font-size:10px;color:var(--ink3);
+  background:var(--bg2);padding:1px 6px;border-radius:99px;margin-left:5px}
 .aplit em{margin-left:auto;font-style:normal;color:var(--ink2);font-size:11.5px;
   font-variant-numeric:tabular-nums;white-space:nowrap}
 @media(max-width:620px){
@@ -1023,7 +1028,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v66 · 06-08 · aplicaciones";   // subí este número en cada cambio
+const BUILD = "v68 · 06-08 · detalle presupuesto";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -2159,14 +2164,19 @@ function bxAplic(D){
     return `<div class="bx b6"><h3>Aplicaciones</h3>
       <div class="vacio">Sin aplicaciones cargadas para este lote.</div></div>`;
 
-  const ha=Math.max(...A.map(x=>Number(x.superficie)||0));
+  // La superficie sale de la siembra, no del maximo de las aplicaciones:
+  // una correccion posterior (-4 ha) no baja ese maximo y el costo por
+  // hectarea quedaba subestimado.
+  const ha=Number(D.sb?.ha)||Math.max(...A.map(x=>Number(x.superficie)||0));
   const act=A.find(x=>x.act_presu)?.act_presu;
   const sis=D.sb?.sistema;
 
   // ejecutado por rubro
+  // Los importes negativos son reversiones contables y tienen que restar.
   const eje={}; let tot=0;
   A.forEach(x=>{const r=x.rubro||"Sin clasificar";
     eje[r]=(eje[r]||0)+Number(x.importe||0); tot+=Number(x.importe||0);});
+  Object.keys(eje).forEach(r=>{if(Math.abs(eje[r])<0.01) delete eje[r];});
 
   // presupuestado por rubro, del mismo cultivo y sistema
   const pre={}; let totP=0;
@@ -2218,12 +2228,40 @@ function bxAplic(D){
       <th>Rubro</th><th class="n">Presup.</th><th class="n">Ejec.</th><th></th>
       <th class="n">Desvío</th><th>Estado</th></tr></thead>
       <tbody>${filas}</tbody></table></div>
+    ${act?`<details class="apldet"><summary>Ver qué se presupuestó</summary>
+      ${(()=>{
+        let P=S.presu.filter(x=>x.actividad===act);
+        const cs=P.filter(x=>x.sistema===sis); if(cs.length) P=cs;
+        if(!P.length) return `<p class="cap">Sin líneas cargadas.</p>`;
+        // agrupado por estadío, en el orden en que ocurre a campo
+        const ORD=["Barbecho","Preemergente","Siembra","Fertilización","Riego",
+                   "Postemergente","Insecticida","Fungicida","Desecante/Defoliante",
+                   "Cosecha","Comercialización"];
+        const g={}; P.forEach(x=>{(g[x.estadio||"–"]=g[x.estadio||"–"]||[]).push(x);});
+        const hechos=new Set(A.map(x=>x.estadio).filter(Boolean));
+        return Object.keys(g)
+          .sort((x,y)=>(ORD.indexOf(x)+1||99)-(ORD.indexOf(y)+1||99))
+          .map(e=>{
+            const li=g[e].sort((x,y)=>Number(y.importe_ha)-Number(x.importe_ha));
+            const sub=li.reduce((a2,x)=>a2+Number(x.importe_ha||0),0);
+            const ya=hechos.has(e);
+            return `<div class="apldia"><div class="apldh">${esc(e)}
+              <span class="${ya?"":"pend"}">${ya?"ya transitado":"pendiente"}</span>
+              <em>${nf(sub,1)} US$/ha</em></div>
+              ${li.map(x=>`<div class="aplit">
+                <i style="background:${RUBC[x.rubro]||"#B7B3A0"}"></i>
+                <b>${esc(x.producto||"")}</b>
+                <span>${x.cant_ha?nf(x.cant_ha,3)+" "+esc(x.unidad||""):""}</span>
+                <em>${nf(x.importe_ha,2)} US$/ha</em></div>`).join("")}
+            </div>`;}).join("");
+      })()}
+    </details>`:""}
     <details class="apldet"><summary>Ver el detalle de cada aplicación</summary>
       ${dias.map(([k,xs])=>{
         const [fe,est]=k.split("|");
         return `<div class="apldia"><div class="apldh">${fd(fe)}
           <span>${esc(est)}</span></div>
-          ${xs.map(x=>`<div class="aplit">
+          ${xs.map(x=>`<div class="aplit${Number(x.importe)<0?" rev":""}">
             <i style="background:${RUBC[x.rubro]||"#B7B3A0"}"></i>
             <b>${esc(x.producto)}</b>
             <span>${x.cant_ha!=null?nf(x.cant_ha,2)+" "+esc(x.unidad||""):""}</span>
