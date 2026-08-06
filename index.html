@@ -906,6 +906,15 @@ canvas{max-width:100%;display:block}
   .exppie button{width:100%}
 }
 
+/* controles de zoom sobre el mapa */
+.mapzoom{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:4px;z-index:3}
+.mapzoom button{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);
+  background:rgba(255,255,255,.92);color:var(--ink);font:inherit;font-size:16px;line-height:1;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 1px 3px rgba(0,0,0,.10)}
+.mapzoom button:hover{background:var(--sand)}
+.mapa{touch-action:none}
+
 .chartbox{position:relative;height:250px;width:100%}
 
 /* ---------- Salud / NDVI ---------- */
@@ -980,7 +989,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v64 · 05-08 · exportar";   // subí este número en cada cambio
+const BUILD = "v65 · 05-08 · zoom del mapa";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -2476,9 +2485,9 @@ function abrirMapaFull(capa){
   capaMapa=capa;
   pintarMapaFull();
 }
-function mapa(){
+function mapa(destino){
   mapa._vmap=null;
-  const box=el("mapaLotes");
+  const box=destino||el("mapaLotes");
   const R=resumenLotes(), est={}; R.forEach(r=>est[K(r.lote)]=r);
   const std={}; standData().forEach(d=>std[K(d.lote)]=d);
   const sb=idxSiembra(), rg=idxRiego(), nx=idxNdvi(), nu=idxNdviUlt();
@@ -2693,6 +2702,11 @@ function mapa(){
 
   box.innerHTML=`<div class="mapawrap">
     <button class="mapafull" id="mapaFull" title="Ver en pantalla completa" aria-label="Pantalla completa">⤢</button>
+    <div class="mapzoom">
+      <button data-z="+" title="Acercar" aria-label="Acercar">+</button>
+      <button data-z="-" title="Alejar" aria-label="Alejar">−</button>
+      <button data-z="0" title="Ver todo" aria-label="Ver todo">⟲</button>
+    </div>
     <svg class="mapa" viewBox="${-M} ${-M} ${W+2*M} ${H+2*M}"
       role="img" aria-label="Mapa de Finca Tolloche por ${capaMapa}">${capaImg}${paths}</svg></div>
     ${cuadroRef(cultList,haCult,barbList,haBarb)}`;
@@ -3044,13 +3058,14 @@ function salud(){
          border-radius:2px;background:${c};vertical-align:-1px;margin-right:3px"></i>${t}</span>`).join("")}
     </span>`;
   }
-  const cont=el("mapaLotes"), destino=el("sdMapa");
-  if(cont&&destino){          // se reusa el motor de mapa de Resumen
-    const capaPrev=capaMapa, guardado=cont.innerHTML;
+  const destino=el("sdMapa");
+  if(destino){
+    // Se dibuja DIRECTO en el contenedor de Salud. Antes se copiaba con
+    // innerHTML desde el mapa de Resumen, y eso perdía los listeners: ni
+    // Salud tenía zoom ni Resumen lo conservaba al volver.
+    const capaPrev=capaMapa;
     capaMapa=modoAbs?"ndvi":"ndvirel";
-    mapa();
-    destino.innerHTML=cont.innerHTML;
-    cont.innerHTML=guardado;
+    mapa(destino);
     capaMapa=capaPrev;        // sin esto, volver a Resumen muestra NDVI
     destino.querySelectorAll(".mapafull").forEach(b=>b.remove());
   }
@@ -3440,6 +3455,17 @@ function habilitarZoom(svg){
   svg.addEventListener("touchend",()=>{pinza=null; arr=null;},{passive:true});
 
   svg.addEventListener("dblclick",e=>{e.preventDefault(); vb=[...vb0]; aplicar();});
+
+  // Los botones existen porque la rueda no se ve. Un gesto sin
+  // affordance es un gesto que nadie descubre.
+  const cont=svg.closest(".mapawrap");
+  cont?.querySelectorAll(".mapzoom button").forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const r=svg.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+    if(b.dataset.z==="+") escalar(1/1.5,cx,cy);
+    else if(b.dataset.z==="-") escalar(1.5,cx,cy);
+    else {vb=[...vb0]; aplicar();}
+  });
 }
 
 /* ========================= EXPORTAR =========================
