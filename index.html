@@ -832,22 +832,37 @@ canvas{max-width:100%;display:block}
    Fondo oscuro y números grandes: se mira de reojo, en movimiento y con
    sol de frente. En horizontal el mapa va al lado del dato; en vertical,
    arriba. El dato nunca queda fuera de pantalla. */
-.recorrida{position:fixed;inset:0;z-index:9999;background:#14140F;display:flex;
-  flex-direction:column;color:#F2EFE4;overscroll-behavior:none}
-.recmapa{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
-  position:relative;padding:10px}
+.recorrida{position:fixed;inset:0;z-index:9999;background:#14140F;
+  color:#F2EFE4;overscroll-behavior:none}
+/* El mapa ocupa TODO y el dato va superpuesto abajo. Antes el panel se
+   comía el 44 % del ancho en horizontal, que es justo donde menos sobra. */
+.recmapa{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;padding:8px 8px 112px}
+.solomapa .recmapa{padding:8px}
+.solomapa .recinfo{background:none;padding:0;bottom:auto;top:14px;left:16px;right:auto}
+.recgps{font-size:11.5px;color:#6E6C5D;font-variant-numeric:tabular-nums}
 .recmapa img{max-width:100%;max-height:100%;image-rendering:pixelated;
   image-rendering:crisp-edges;border-radius:4px}
 .reccarga{color:#8C8977;font-size:15px;letter-spacing:.02em}
-.recfinca{width:100%;max-height:100%;overflow:hidden}
-.recfinca .mapa{max-height:none;background:transparent;border-radius:0}
-.recfinca .mapawrap{margin:0}
+.recfinca{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.recfinca .mapawrap{margin:0;width:100%;height:100%;display:flex;
+  align-items:center;justify-content:center}
+/* width/height auto + max-*: el SVG se escala por viewBox y entra entero,
+   en vez de desbordar el alto y quedar cortado arriba y abajo. */
+.recfinca svg.mapa{width:auto;height:auto;max-width:100%;max-height:100%;
+  background:transparent;border-radius:0}
+/* Con el raster encendido los lotes van con fill="none", y en SVG eso
+   significa que el interior no recibe toques: solo el borde. Sin esto,
+   tocar el medio de un lote no dispara nada. */
+.recfinca .mp{stroke:#6E6C5D;pointer-events:all;cursor:pointer}
 .reccerca{font-size:15px;color:#C8C5B2;margin-top:7px}
 .reccerca b{color:#F2EFE4}
 .recdot{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;
   background:#2F7FE0;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.45);
   pointer-events:none;transition:left .35s linear,top .35s linear}
-.recinfo{flex:0 0 auto;padding:14px 18px 20px;border-top:1px solid #2A2A22;background:#1A1A14}
+.recinfo{position:absolute;left:0;right:0;bottom:0;padding:36px 18px 16px;
+  background:linear-gradient(to top,rgba(12,12,8,.94) 0%,rgba(12,12,8,.88) 55%,transparent 100%);
+  pointer-events:none}
 .reclote{font-size:17px;font-weight:600;letter-spacing:.01em}
 .reclote span{font-weight:400;color:#9A9784;font-size:14px;margin-left:6px}
 .recval{display:flex;align-items:baseline;gap:11px;margin-top:6px}
@@ -863,16 +878,30 @@ canvas{max-width:100%;display:block}
   color:#8C8977;font-variant-numeric:tabular-nums}
 .recpie{margin-top:9px;font-size:11.5px;color:#6E6C5D}
 .recvacio{color:#8C8977;font-size:14px;line-height:1.5;padding:6px 0}
+.rectip{position:fixed;z-index:10000;background:rgba(24,24,18,.97);color:#F2EFE4;
+  border:1px solid #3A3A2E;border-radius:12px;padding:12px 14px;min-width:186px;
+  max-width:250px;box-shadow:0 8px 26px rgba(0,0,0,.5);font-size:13px}
+.rectith{font-size:17px;font-weight:600;margin-bottom:7px;padding-right:20px}
+.rectip>div{display:flex;justify-content:space-between;gap:11px;padding:2.5px 0;
+  border-top:1px solid #2A2A22}
+.rectip>div span{color:#8C8977;font-size:11.5px;white-space:nowrap}
+.rectip>div b{font-weight:500;text-align:right}
+.rectipx{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;
+  background:none;border:none;color:#8C8977;font-size:14px;cursor:pointer;line-height:1}
 .recsalir{position:absolute;top:12px;right:12px;width:42px;height:42px;border-radius:50%;
   background:rgba(0,0,0,.55);color:#F2EFE4;border:1px solid #3A3A2E;font-size:19px;
   cursor:pointer;line-height:1;z-index:2}
 .sdrec{margin-left:6px;background:var(--g700) !important;color:#fff !important;
   border-color:var(--g700) !important;font-weight:500}
+/* En horizontal el alto es lo escaso: el dato se compacta en una linea. */
 @media(orientation:landscape) and (max-height:560px){
-  .recorrida{flex-direction:row}
-  .recinfo{flex:0 0 44%;max-width:330px;border-top:none;border-left:1px solid #2A2A22;
-    overflow-y:auto;padding-top:18px}
-  .recval b{font-size:40px}
+  .recmapa{padding:6px 6px 78px}
+  .recinfo{padding:24px 16px 10px}
+  .recval{margin-top:2px}
+  .recval b{font-size:32px}
+  .recamb{margin-top:4px;padding:3px 10px;font-size:12.5px}
+  .recrango{margin-top:6px}
+  .recpie{margin-top:5px}
 }
 @media(max-width:620px){ .sdrec{margin-left:0;width:100%;margin-top:6px} }
 
@@ -1042,7 +1071,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v70 · 06-08 · recorrida fuera de lote";   // subí este número en cada cambio
+const BUILD = "v74 · 06-08 · mapa limpio + ficha";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -3521,6 +3550,7 @@ function cerrarRecorrida(){
   recAbierto=false; recLote=null; recD=null;
   recWake?.release?.(); recWake=null;
   document.removeEventListener("keydown",recEsc);
+  el("recTip")?.remove();
   el("recorrida")?.remove();
 }
 
@@ -3543,19 +3573,27 @@ async function refrescarRecorrida(){
       recLote="__fuera"; recD=null;
       mapa_.innerHTML=`<div id="recFinca" class="recfinca"></div>`;
       const c=el("recFinca");
-      const prev=capaMapa; capaMapa="cultivo";
-      mapa(c); capaMapa=prev;
+      // Con el raster de NDVI, no con los colores de cultivo: manejando por
+      // los caminos lo que se quiere ver son los ambientes, para decidir
+      // dónde frenar.
+      const pc=capaMapa, pr=sdRaster;
+      capaMapa="ndvi"; sdRaster=true;
+      mapa(c);
+      capaMapa=pc; sdRaster=pr;
       c.querySelectorAll(".mapafull,.mapzoom,.mapatabla").forEach(n=>n.remove());
+      encuadrarConGps(c);
+      tocarLotes(c);
     }
     pintarGps();
-    const cerca=loteMasCerca(S.gps.lat,S.gps.lon);
-    info.innerHTML=`<div class="reclote">Fuera de los lotes</div>
-      ${cerca?`<div class="reccerca">El más cercano es <b>${esc(cerca.lote)}</b>
-        a ${cerca.m<1000?nf(cerca.m,0)+" m":nf(cerca.m/1000,1)+" km"}</div>`:""}
-      <div class="recpie">±${Math.round(S.gps.acc)} m de precisión</div>`;
+    // Sin franja: fuera de un lote el mapa es lo único que importa, y la
+    // ficha de cada lote sale al tocarlo. Solo queda la precisión del GPS,
+    // arriba y discreta, porque condiciona cuánto creerle al punto.
+    el("recorrida").classList.add("solomapa");
+    info.innerHTML=`<div class="recgps">±${Math.round(S.gps.acc)} m</div>`;
     return;
   }
   if(recLote==="__fuera") recLote=null;   // forzar redibujo al entrar a un lote
+  el("recorrida").classList.remove("solomapa");
 
   // recargar la imagen solo al cambiar de lote, no en cada lectura del GPS
   if(lote!==recLote){
@@ -3643,7 +3681,7 @@ function habilitarZoom(svg){
   };
 
   svg.addEventListener("wheel",e=>{e.preventDefault();
-    escalar(e.deltaY>0?1.18:1/1.18,e.clientX,e.clientY);},{passive:false});
+    escalar(e.deltaY>0?1.12:1/1.12,e.clientX,e.clientY);},{passive:false});
 
   svg.addEventListener("pointerdown",e=>{
     if(e.pointerType==="touch") return;
@@ -3687,8 +3725,10 @@ function habilitarZoom(svg){
   cont?.querySelectorAll(".mapzoom button").forEach(b=>b.onclick=e=>{
     e.stopPropagation();
     const r=svg.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
-    if(b.dataset.z==="+") escalar(1/1.5,cx,cy);
-    else if(b.dataset.z==="-") escalar(1.5,cx,cy);
+    // 1,25 y no 1,5: con el salto grande se pasaba de largo y habia que
+    // corregir con el otro boton.
+    if(b.dataset.z==="+") escalar(1/1.25,cx,cy);
+    else if(b.dataset.z==="-") escalar(1.25,cx,cy);
     else {vb=[...vb0]; aplicar();}
   });
 }
@@ -5569,23 +5609,68 @@ function loteEnPunto(lat,lon){
   return null;
 }
 
-// Distancia al lote mas cercano, midiendo contra los vertices de cada
-// poligono. Con lotes largos y angostos el centroide miente bastante.
-function loteMasCerca(lat,lon){
-  const gx=(lon-GEO.o[0])*GEO.e, gy=(lat-GEO.o[1])*GEO.e;
+// Tocar un lote para identificarlo. En el celular no hay hover, asi que el
+// <title> del SVG no sirve: hace falta un toque explicito.
+// Se ignora si el dedo se movio, para no disparar la ficha al arrastrar.
+function tocarLotes(cont){
+  const svg=cont.querySelector("svg.mapa"); if(!svg) return;
+  let x0=0,y0=0;
+  svg.addEventListener("pointerdown",e=>{x0=e.clientX; y0=e.clientY;});
+  svg.addEventListener("click",e=>{
+    if(Math.hypot(e.clientX-x0,e.clientY-y0)>6) return;      // fue arrastre
+    const l=e.target.closest?.("[data-lote]")?.dataset.lote;
+    if(!l){ el("recTip")?.remove(); return; }
+    recFicha(l,e.clientX,e.clientY);
+  });
+}
+
+// recFicha y no fichaLote: ese nombre ya lo usa el panel de detalle del
+// tablero, y pisarlo rompia la apertura de lote sin dar ningun sintoma.
+function recFicha(lote,px,py){
+  el("recTip")?.remove();
+  const g=idxSiembra()[K(lote)]||{};
+  const nd=S.ndviAl.find(a=>K(a.lote)===K(lote));
+  const ap=S.apl.filter(a=>K(a.lote)===K(lote));
+  const usd=ap.reduce((a,x)=>a+Number(x.importe||0),0);
+  const haA=Number(g.ha)||Math.max(0,...ap.map(x=>Number(x.superficie)||0));
+  const fila=(t,v)=>v?`<div><span>${t}</span><b>${esc(v)}</b></div>`:"";
+  document.body.insertAdjacentHTML("beforeend",`
+    <div class="rectip" id="recTip"><button class="rectipx" aria-label="Cerrar">✕</button>
+      <div class="rectith">${esc(lote)}</div>
+      ${fila("Cultivo",g.cultivo)}
+      ${fila("Actividad",g.actividad&&g.actividad!==g.cultivo?g.actividad:"")}
+      ${fila("Variedad",g.variedad)}
+      ${fila("Superficie",g.ha?nf(g.ha,0)+" ha":"")}
+      ${fila("Sistema",g.sistema)}
+      ${fila("Siembra",g.fecha_siembra?fd(g.fecha_siembra):"")}
+      ${nd?fila("NDVI",`${nf(nd.ndvi_medio,2)}${nd.desvio_iqr!=null
+          ?`  (${nd.desvio_iqr>0?"+":""}${nf(nd.desvio_iqr,1)} vs. pares)`:""}`):""}
+      ${usd&&haA?fila("Aplicado",nf(usd/haA,0)+" US$/ha"):""}
+    </div>`);
+  const t=el("recTip");
+  t.querySelector(".rectipx").onclick=()=>t.remove();
+  // que no se salga de la pantalla al tocar cerca de un borde
+  const r=t.getBoundingClientRect();
+  t.style.left=Math.max(8,Math.min(innerWidth-r.width-8,px-r.width/2))+"px";
+  t.style.top=(py-r.height-16<8?py+18:py-r.height-16)+"px";
+}
+
+// El encuadre que calcula mapa() cubre solo los lotes. Parado en un camino
+// la posicion cae afuera y el punto quedaba recortado: aca se estira el
+// viewBox hasta incluirlo.
+function encuadrarConGps(cont){
+  const svg=cont.querySelector("svg.mapa"); if(!svg||!S.gps) return;
+  const vb=svg.getAttribute("viewBox").split(" ").map(Number);
   const kLat=Math.cos(-25.44*Math.PI/180);
-  let mejor=null, d2=Infinity;
-  for(const l in GEO.p){
-    for(const r of GEO.p[l]){
-      for(let i=0;i<r.length;i+=2){
-        const dx=(r[i]-gx)*kLat, dy=r[i+1]-gy;
-        const d=dx*dx+dy*dy;
-        if(d<d2){d2=d; mejor=l;}
-      }
-    }
-  }
-  // 1 grado ≈ 111.000 m y GEO guarda en centomilesimas de grado -> 1,11 m
-  return mejor?{lote:mejor,m:Math.sqrt(d2)*1.11}:null;
+  const x=(S.gps.lon-GEO.o[0])*GEO.e*kLat-(S.gpsX0??0);
+  const y=-(S.gps.lat-GEO.o[1])*GEO.e-(S.gpsY0??0);
+  const m=vb[2]*0.05;
+  const x0=Math.min(vb[0],x-m), y0=Math.min(vb[1],y-m);
+  const x1=Math.max(vb[0]+vb[2],x+m), y1=Math.max(vb[1]+vb[3],y+m);
+  if(x0===vb[0]&&y0===vb[1]&&x1===vb[0]+vb[2]&&y1===vb[1]+vb[3]) return;
+  svg.setAttribute("viewBox",`${x0} ${y0} ${x1-x0} ${y1-y0}`);
+  svg.dataset.zoom="";              // que el zoom tome el encuadre nuevo como tope
+  habilitarZoom(svg);
 }
 
 function pintarGps(){
