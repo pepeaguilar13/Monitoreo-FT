@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   /* ---- escala de verdes derivada del isotipo LIAG (#9ACD32) ----
@@ -870,6 +871,41 @@ canvas{max-width:100%;display:block}
 }
 @media(max-width:620px){ .sdrec{margin-left:0;width:100%;margin-top:6px} }
 
+/* ---------- Exportar ---------- */
+.expback{position:fixed;inset:0;background:rgba(20,20,15,.55);z-index:9998;
+  display:flex;align-items:center;justify-content:center;padding:16px}
+.expmodal{background:var(--panel);border-radius:var(--r);max-width:720px;width:100%;
+  max-height:88vh;display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(0,0,0,.25)}
+.exphead{display:flex;justify-content:space-between;align-items:center;
+  padding:16px 20px 12px;border-bottom:1px solid var(--line)}
+.exphead h2{margin:0}
+.expx{background:none;border:none;font-size:19px;cursor:pointer;color:var(--ink2);
+  width:34px;height:34px;border-radius:50%}
+.expx:hover{background:var(--bg2)}
+.expbody{padding:16px 20px;overflow-y:auto;flex:1}
+.expf{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.expf label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink2);flex:1;min-width:130px}
+.expf input{font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line);
+  border-radius:var(--r-sm);background:var(--panel);color:var(--ink)}
+.expg{margin-bottom:15px}
+.expgh{display:flex;align-items:baseline;gap:10px;margin-bottom:7px;font-size:13px}
+.expgh b{font-weight:600}
+.expsel{font-size:11px;color:var(--g600);cursor:pointer;text-decoration:underline;
+  text-underline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;max-height:132px;overflow-y:auto}
+.chip{font-family:inherit;font-size:12px;padding:5px 11px;border:1px solid var(--line);
+  border-radius:99px;background:var(--panel);color:var(--ink2);cursor:pointer}
+.chip.on{background:var(--g700);border-color:var(--g700);color:#fff;font-weight:500}
+.exppie{display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;
+  border-top:1px solid var(--line)}
+.exppie button[disabled]{opacity:.45;cursor:not-allowed}
+@media(max-width:620px){
+  .expback{padding:0}
+  .expmodal{max-height:100vh;height:100%;border-radius:0}
+  .exppie{flex-direction:column-reverse}
+  .exppie button{width:100%}
+}
+
 .chartbox{position:relative;height:250px;width:100%}
 
 /* ---------- Salud / NDVI ---------- */
@@ -944,7 +980,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v63 · 05-08 · recorrida + zoom";   // subí este número en cada cambio
+const BUILD = "v64 · 05-08 · exportar";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1057,6 +1093,7 @@ const BUILD = "v63 · 05-08 · recorrida + zoom";   // subí este número en cad
   <div class="f"><label>&nbsp;</label>
     <button class="btn togvig" id="fVig" title="Ver solo lo recorrido en los últimos 10 días">Últimos 10 días</button></div>
   <div class="f"><label>&nbsp;</label><button class="btn" id="fReset">Limpiar</button></div>
+  <div class="f"><label>&nbsp;</label><button class="btn pri" id="fExp" title="Descargar Excel o generar informe PDF">Exportar</button></div>
   <div class="f" id="fAviso" style="display:none"><label>&nbsp;</label>
     <span class="pill atencion" style="padding:6px 11px">filtros activos</span></div>
 </div>
@@ -2184,6 +2221,7 @@ function resumenLotes(){
 
 function render(){
   if(subvista==="campania") campania();
+  el("fExp").onclick=abrirExportar;
   const F_=["fCultivo","fSistema","fSeccion","fLote","fCat","fSem","fD1","fD2"];
   el("fAviso").style.display=F_.some(i=>el(i).value)?"":"none";
   const lote=el("fLote").value.trim().toUpperCase();
@@ -3402,6 +3440,315 @@ function habilitarZoom(svg){
   svg.addEventListener("touchend",()=>{pinza=null; arr=null;},{passive:true});
 
   svg.addEventListener("dblclick",e=>{e.preventDefault(); vb=[...vb0]; aplicar();});
+}
+
+/* ========================= EXPORTAR =========================
+   Panel propio, separado de los filtros globales del tablero. Esos son de
+   selección única y mueven todo el dashboard; acá hace falta combinar varias
+   actividades CON varios lotes, y cambiar los globales para eso rompería el
+   resto de las vistas.
+   ========================================================== */
+const EXP={d1:"",d2:"",act:new Set(),sec:new Set(),lot:new Set(),cat:new Set(),sem:new Set()};
+
+function abrirExportar(){
+  if(el("expModal")) return;
+  const sb=idxSiembra();
+  const val=(f)=>[...new Set(S.mons.map(f).filter(Boolean))].sort();
+  const acts=[...new Set(S.siembras.map(x=>x.actividad||x.cultivo).filter(Boolean))].sort();
+  const secs=[...new Set(S.mons.map(m=>sb[K(m.lote)]?.seccion||seccion(m.lote)).filter(Boolean))].sort();
+  const lots=[...new Set(S.mons.map(m=>K(m.lote)).filter(Boolean))].sort();
+  const cats=[...new Set(S.vals.map(v=>v.categoria).filter(Boolean))].sort();
+
+  const fechas=S.mons.map(m=>m.fecha).filter(Boolean).sort();
+  if(!EXP.d1) EXP.d1=fechas[0]||"";
+  if(!EXP.d2) EXP.d2=fechas[fechas.length-1]||"";
+
+  const chips=(id,arr,set)=>arr.map(v=>
+    `<button class="chip${set.has(v)?" on":""}" data-g="${id}" data-v="${esc(v)}">${esc(v)}</button>`).join("");
+
+  document.body.insertAdjacentHTML("beforeend",`
+  <div class="expback" id="expModal">
+   <div class="expmodal" role="dialog" aria-label="Exportar">
+    <div class="exphead">
+      <h2>Exportar monitoreos</h2>
+      <button class="expx" id="expCerrar" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="expbody">
+      <div class="expf">
+        <label>Desde<input type="date" id="expD1" value="${EXP.d1}"></label>
+        <label>Hasta<input type="date" id="expD2" value="${EXP.d2}"></label>
+      </div>
+      ${[["act","Actividad",acts],["sec","Sección",secs],["cat","Categoría",cats],
+         ["sem","Estado",["ok","atencion","critico"]],["lot","Lote",lots]]
+        .map(([id,tit,arr])=>arr.length?`
+        <div class="expg">
+          <div class="expgh"><b>${tit}</b>
+            <span class="expsel" data-g="${id}" data-a="todo">todos</span>
+            <span class="expsel" data-g="${id}" data-a="nada">ninguno</span></div>
+          <div class="chips" id="exp_${id}">${chips(id,arr,EXP[id])}</div>
+        </div>`:"").join("")}
+      <p class="cap" id="expCuenta"></p>
+    </div>
+    <div class="exppie">
+      <button class="btn" id="expXls">Descargar Excel</button>
+      <button class="btn pri" id="expPdf">Informe PDF</button>
+    </div>
+   </div>
+  </div>`);
+
+  const cerrar=()=>el("expModal")?.remove();
+  el("expCerrar").onclick=cerrar;
+  el("expModal").onclick=e=>{if(e.target.id==="expModal") cerrar();};
+  el("expD1").onchange=e=>{EXP.d1=e.target.value; cuenta();};
+  el("expD2").onchange=e=>{EXP.d2=e.target.value; cuenta();};
+
+  el("expModal").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{
+    const set=EXP[b.dataset.g];
+    set.has(b.dataset.v)?set.delete(b.dataset.v):set.add(b.dataset.v);
+    b.classList.toggle("on"); cuenta();});
+  el("expModal").querySelectorAll(".expsel").forEach(x=>x.onclick=()=>{
+    const g=x.dataset.g, set=EXP[g];
+    set.clear();
+    if(x.dataset.a==="todo")
+      el("exp_"+g).querySelectorAll(".chip").forEach(b=>set.add(b.dataset.v));
+    el("exp_"+g).querySelectorAll(".chip").forEach(b=>b.classList.toggle("on",set.has(b.dataset.v)));
+    cuenta();});
+
+  el("expXls").onclick=()=>excelMonitoreos();
+  el("expPdf").onclick=()=>informePdf();
+  cuenta();
+}
+
+// Un Set vacío significa "sin filtrar", no "ninguno": es lo que espera
+// cualquiera que abre el panel y solo elige un rango de fechas.
+const pasa=(set,v)=>set.size===0||set.has(v);
+
+function expFiltrar(){
+  const sb=idxSiembra();
+  const mons=S.mons.filter(m=>{
+    const g=sb[K(m.lote)]||{};
+    const act=g.actividad||g.cultivo||m.cultivo;
+    const sec=g.seccion||seccion(m.lote);
+    return (!EXP.d1||(m.fecha||"")>=EXP.d1)&&(!EXP.d2||(m.fecha||"")<=EXP.d2)
+      && pasa(EXP.act,act) && pasa(EXP.sec,sec) && pasa(EXP.lot,K(m.lote));
+  });
+  const ids=new Set(mons.map(m=>m.id));
+  const vals=S.vals.filter(v=>{
+    const g=sb[K(v.lote)]||{};
+    const sec=g.seccion||seccion(v.lote);
+    const act=g.actividad||g.cultivo||v.cultivo;
+    return (!EXP.d1||(v.fecha||"")>=EXP.d1)&&(!EXP.d2||(v.fecha||"")<=EXP.d2)
+      && pasa(EXP.act,act) && pasa(EXP.sec,sec) && pasa(EXP.lot,K(v.lote))
+      && pasa(EXP.cat,v.categoria) && pasa(EXP.sem,v.semaforo);
+  });
+  const fotos=S.fotos.filter(f=>ids.has(f.monitoreo_id));
+  return {mons,vals,fotos,sb};
+}
+
+function cuenta(){
+  const {mons,vals,fotos}=expFiltrar();
+  const lotes=new Set(mons.map(m=>K(m.lote))).size;
+  el("expCuenta").textContent=
+    `${nf(mons.length,0)} recorridas · ${nf(vals.length,0)} registros · ${lotes} lotes · ${fotos.length} fotos`;
+  el("expXls").disabled=!vals.length&&!mons.length;
+  el("expPdf").disabled=!mons.length;
+}
+
+function expTitulo(){
+  const p=[];
+  if(EXP.d1||EXP.d2) p.push(`${EXP.d1?fd(EXP.d1):"inicio"} a ${EXP.d2?fd(EXP.d2):"hoy"}`);
+  [["act","actividad"],["sec","sección"],["lot","lote"],["cat","categoría"],["sem","estado"]]
+    .forEach(([k,n])=>{const S_=EXP[k];
+      if(S_.size) p.push(`${n}: ${[...S_].slice(0,4).join(", ")}${S_.size>4?` +${S_.size-4}`:""}`);});
+  return p.join(" · ")||"todos los registros";
+}
+
+/* ---------------------------- EXCEL ---------------------------- */
+function excelMonitoreos(){
+  if(typeof XLSX==="undefined"){alert("No se pudo cargar la librería de Excel.");return;}
+  const {mons,vals,sb}=expFiltrar();
+  const wb=XLSX.utils.book_new();
+
+  const hReg=vals.map(v=>{
+    const g=sb[K(v.lote)]||{};
+    return {Fecha:v.fecha,Lote:v.lote,Sección:g.seccion||seccion(v.lote),
+      Sistema:g.sistema||"",Cultivo:v.cultivo||g.cultivo||"",Actividad:g.actividad||"",
+      Variedad:g.variedad||"",Categoría:v.categoria||"",Ocurrencia:v.ocurrencia||"",
+      Indicador:v.indicador||"",Valor:v.valor,Unidad:v.unidad||"",
+      "U. control":v.umbral_control,"U. daño":v.umbral_dano,
+      Estado:v.semaforo||"",Monitoreador:v.scouter||""};
+  });
+  const hRec=mons.map(m=>{
+    const g=sb[K(m.lote)]||{};
+    return {Fecha:m.fecha,Lote:m.lote,Sección:g.seccion||seccion(m.lote),
+      Sistema:g.sistema||"",Cultivo:m.cultivo||g.cultivo||"",Actividad:g.actividad||"",
+      "ha":g.ha,"Fecha siembra":g.fecha_siembra||"",Monitoreador:m.scouter||"",
+      Origen:m.origen||"",Observaciones:m.observaciones||"",Latitud:m.lat,Longitud:m.lon};
+  });
+
+  // resumen por lote: peor estado y conteo, que es lo que se mira primero
+  const porLote={};
+  vals.forEach(v=>{
+    const k=K(v.lote); const g=sb[k]||{};
+    const o=porLote[k]=porLote[k]||{Lote:v.lote,Sección:g.seccion||seccion(v.lote),
+      Cultivo:v.cultivo||g.cultivo||"",Actividad:g.actividad||"",ha:g.ha,
+      Registros:0,Críticos:0,Atención:0,OK:0,"Última fecha":""};
+    o.Registros++;
+    if(v.semaforo==="critico")o.Críticos++;
+    else if(v.semaforo==="atencion")o.Atención++;
+    else if(v.semaforo==="ok")o.OK++;
+    if((v.fecha||"")>o["Última fecha"])o["Última fecha"]=v.fecha||"";
+  });
+  const hRes=Object.values(porLote).sort((a,b)=>b.Críticos-a.Críticos||b.Registros-a.Registros);
+
+  const poner=(datos,nombre)=>{
+    if(!datos.length) return;
+    const ws=XLSX.utils.json_to_sheet(datos);
+    // ancho por contenido: sin esto sale todo en columnas de 8 caracteres
+    ws["!cols"]=Object.keys(datos[0]).map(k=>({wch:Math.min(42,Math.max(
+      k.length+2,...datos.slice(0,300).map(d=>String(d[k]??"").length+2)))}));
+    ws["!autofilter"]={ref:ws["!ref"]};
+    ws["!freeze"]={xSplit:0,ySplit:1};
+    XLSX.utils.book_append_sheet(wb,ws,nombre);
+  };
+  poner(hRes,"Resumen por lote");
+  poner(hReg,"Registros");
+  poner(hRec,"Recorridas");
+
+  const hoy=new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb,`Monitoreo_FT_${hoy}.xlsx`);
+}
+
+/* ----------------------------- PDF -----------------------------
+   HTML para imprimir en vez de jsPDF: conserva la tipografía real, las
+   fotos no hay que pasarlas a base64 y los cortes de página los maneja
+   el navegador. Un clic más (elegir "PDF" como destino) a cambio de un
+   informe que se puede mandar sin pedir disculpas.
+   -------------------------------------------------------------- */
+function informePdf(){
+  const {mons,vals,fotos,sb}=expFiltrar();
+  if(!mons.length){alert("No hay recorridas en esa selección.");return;}
+
+  const porLote={};
+  mons.forEach(m=>{const k=K(m.lote);(porLote[k]=porLote[k]||{lote:m.lote,mons:[],vals:[],fotos:[]}).mons.push(m);});
+  vals.forEach(v=>{const k=K(v.lote); if(porLote[k])porLote[k].vals.push(v);});
+  const monLote={}; mons.forEach(m=>monLote[m.id]=K(m.lote));
+  fotos.forEach(f=>{const k=monLote[f.monitoreo_id]; if(porLote[k])porLote[k].fotos.push(f);});
+
+  const orden=Object.values(porLote).sort((a,b)=>{
+    const c=x=>x.vals.filter(v=>v.semaforo==="critico").length;
+    return c(b)-c(a)||String(a.lote).localeCompare(String(b.lote));
+  });
+
+  const tot={critico:0,atencion:0,ok:0};
+  vals.forEach(v=>{if(tot[v.semaforo]!=null)tot[v.semaforo]++;});
+  const haTot=[...new Set(mons.map(m=>K(m.lote)))]
+    .reduce((a,k)=>a+Number(sb[k]?.ha||0),0);
+
+  const SEM={critico:"Crítico",atencion:"Atención",ok:"OK"};
+  const secciones=orden.map(L=>{
+    const g=sb[K(L.lote)]||{};
+    const ult=[...L.vals].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+    const crit=ult.filter(v=>v.semaforo==="critico"||v.semaforo==="atencion").slice(0,14);
+    return `<section class="lote">
+      <div class="lh"><h2>${esc(L.lote)}</h2>
+        <div class="lmeta">${[g.cultivo,g.variedad,g.ha?nf(g.ha,0)+" ha":"",g.seccion?"secc. "+g.seccion:"",g.sistema]
+          .filter(Boolean).map(esc).join(" · ")}</div></div>
+      <div class="lstats">
+        <span>${L.mons.length} recorrida${L.mons.length>1?"s":""}</span>
+        <span>${L.vals.length} registros</span>
+        ${L.vals.filter(v=>v.semaforo==="critico").length?`<span class="c">${
+          L.vals.filter(v=>v.semaforo==="critico").length} críticos</span>`:""}
+      </div>
+      ${crit.length?`<table class="lt"><thead><tr><th>Fecha</th><th>Categoría</th>
+        <th>Ocurrencia</th><th>Indicador</th><th>Valor</th><th>Estado</th></tr></thead>
+        <tbody>${crit.map(v=>`<tr>
+          <td>${fd(v.fecha)}</td><td>${esc(v.categoria||"")}</td>
+          <td>${esc(v.ocurrencia||"")}</td><td>${esc(v.indicador||"")}</td>
+          <td class="n">${nf(v.valor,v.decimales??1)}${esc(v.unidad||"")}</td>
+          <td><span class="s ${v.semaforo}">${SEM[v.semaforo]||""}</span></td></tr>`).join("")}
+        </tbody></table>`:`<p class="sin">Sin registros por encima del umbral de control.</p>`}
+      ${L.fotos.length?`<div class="lfotos">${L.fotos.slice(0,8).map(f=>`
+        <figure><img src="${S.url}/storage/v1/object/public/monitoreo/${f.path}" loading="eager">
+          <figcaption>${esc(f.epigrafe||"general")}</figcaption></figure>`).join("")}</div>`:""}
+      ${L.mons.filter(m=>m.observaciones).length?`<div class="lobs"><b>Observaciones</b>
+        ${L.mons.filter(m=>m.observaciones).map(m=>
+          `<p><i>${fd(m.fecha)}${m.scouter?" · "+esc(m.scouter):""}</i> ${esc(m.observaciones)}</p>`).join("")}
+      </div>`:""}
+    </section>`;
+  }).join("");
+
+  const w=window.open("","_blank");
+  if(!w){alert("El navegador bloqueó la ventana. Habilitá las ventanas emergentes para este sitio.");return;}
+  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8">
+  <title>Monitoreo FT · ${esc(expTitulo())}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    @page{size:A4;margin:15mm 14mm}
+    *{box-sizing:border-box}
+    body{font-family:Geist,system-ui,sans-serif;color:#20201A;margin:0;font-size:10.5pt;line-height:1.45}
+    h1,h2{font-family:"Instrument Serif",Georgia,serif;font-weight:400;margin:0}
+    .portada{page-break-after:always;padding-top:52mm}
+    .portada h1{font-size:34pt;line-height:1.1}
+    .marca{font-size:11pt;letter-spacing:.16em;text-transform:uppercase;color:#6E6B5C;margin-bottom:5mm}
+    .sub{font-size:12pt;color:#54523F;margin-top:5mm;max-width:130mm}
+    .kpis{display:flex;gap:9mm;margin-top:16mm;flex-wrap:wrap}
+    .kpi b{display:block;font-size:26pt;font-family:"Instrument Serif",serif;line-height:1}
+    .kpi span{font-size:9pt;color:#6E6B5C;letter-spacing:.03em}
+    .kpi.c b{color:#A5382F} .kpi.a b{color:#B0801A}
+    .pie{position:fixed;bottom:6mm;left:0;right:0;font-size:8pt;color:#8C8977;
+      display:flex;justify-content:space-between}
+    /* que un lote no se parta al medio si entra entero en la página */
+    .lote{page-break-inside:avoid;margin-bottom:9mm;padding-bottom:5mm;border-bottom:.4pt solid #DDD9C8}
+    .lh{display:flex;align-items:baseline;gap:5mm;border-bottom:1.2pt solid #20201A;padding-bottom:2mm}
+    .lh h2{font-size:18pt}
+    .lmeta{font-size:9pt;color:#6E6B5C}
+    .lstats{display:flex;gap:5mm;margin:2.5mm 0 3mm;font-size:8.5pt;color:#54523F}
+    .lstats .c{color:#A5382F;font-weight:600}
+    table.lt{width:100%;border-collapse:collapse;font-size:8.5pt;margin-bottom:3mm}
+    .lt th{text-align:left;font-weight:500;color:#6E6B5C;border-bottom:.5pt solid #C9C5B2;
+      padding:1.4mm 2mm;font-size:7.5pt;letter-spacing:.04em;text-transform:uppercase}
+    .lt td{padding:1.3mm 2mm;border-bottom:.3pt solid #E8E4D6}
+    .lt td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .s{padding:.6mm 2mm;border-radius:2mm;font-size:7.5pt;font-weight:500}
+    .s.critico{background:#F5DED9;color:#8E2A20}
+    .s.atencion{background:#F7EBCE;color:#8A6210}
+    .s.ok{background:#E2EDDA;color:#3D6B33}
+    .sin{font-size:9pt;color:#8C8977;font-style:italic;margin:2mm 0 3mm}
+    .lfotos{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm;margin-bottom:3mm}
+    .lfotos figure{margin:0;page-break-inside:avoid}
+    .lfotos img{width:100%;height:32mm;object-fit:cover;border-radius:1.5mm;display:block}
+    .lfotos figcaption{font-size:7pt;color:#6E6B5C;margin-top:1mm}
+    .lobs{font-size:9pt;background:#F7F5EC;padding:3mm 4mm;border-radius:2mm}
+    .lobs b{font-size:8pt;letter-spacing:.04em;text-transform:uppercase;color:#6E6B5C}
+    .lobs p{margin:1.5mm 0 0} .lobs i{color:#8C8977;font-style:normal;font-size:8pt}
+    @media print{.noimp{display:none}}
+    .noimp{position:fixed;top:10px;right:10px;z-index:9;background:#2F5233;color:#fff;
+      border:none;padding:10px 18px;border-radius:8px;font-family:Geist,sans-serif;
+      font-size:14px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+  </style></head><body>
+  <button class="noimp" onclick="window.print()">Guardar como PDF</button>
+  <div class="portada">
+    <div class="marca">LIAG Argentina · Finca Tolloche</div>
+    <h1>Informe de monitoreo</h1>
+    <div class="sub">${esc(expTitulo())}</div>
+    <div class="kpis">
+      <div class="kpi"><b>${nf(orden.length,0)}</b><span>LOTES</span></div>
+      <div class="kpi"><b>${nf(haTot,0)}</b><span>HECTÁREAS</span></div>
+      <div class="kpi"><b>${nf(mons.length,0)}</b><span>RECORRIDAS</span></div>
+      <div class="kpi c"><b>${nf(tot.critico,0)}</b><span>CRÍTICOS</span></div>
+      <div class="kpi a"><b>${nf(tot.atencion,0)}</b><span>ATENCIÓN</span></div>
+    </div>
+    <div class="sub" style="margin-top:14mm;font-size:9pt;color:#8C8977">
+      Lotes ordenados por cantidad de registros críticos.
+      Se listan los indicadores por encima del umbral de control.</div>
+  </div>
+  ${secciones}
+  <div class="pie"><span>LIAG Argentina · Finca Tolloche · campaña 26/27</span>
+    <span>Generado el ${new Date().toLocaleDateString("es-AR")}</span></div>
+  </body></html>`);
+  w.document.close();
 }
 
 function notas(){
