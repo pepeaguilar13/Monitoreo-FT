@@ -839,6 +839,11 @@ canvas{max-width:100%;display:block}
 .recmapa img{max-width:100%;max-height:100%;image-rendering:pixelated;
   image-rendering:crisp-edges;border-radius:4px}
 .reccarga{color:#8C8977;font-size:15px;letter-spacing:.02em}
+.recfinca{width:100%;max-height:100%;overflow:hidden}
+.recfinca .mapa{max-height:none;background:transparent;border-radius:0}
+.recfinca .mapawrap{margin:0}
+.reccerca{font-size:15px;color:#C8C5B2;margin-top:7px}
+.reccerca b{color:#F2EFE4}
 .recdot{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;
   background:#2F7FE0;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.45);
   pointer-events:none;transition:left .35s linear,top .35s linear}
@@ -1037,7 +1042,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v69 · 06-08 · pasadas y % de lote";   // subí este número en cada cambio
+const BUILD = "v70 · 06-08 · recorrida fuera de lote";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -3532,11 +3537,25 @@ async function refrescarRecorrida(){
   const lote=S.gps.lote;
 
   if(!lote){
-    mapa_.innerHTML=`<div class="reccarga">Fuera de los lotes</div>`;
-    info.innerHTML=`<div class="recvacio">±${Math.round(S.gps.acc)} m de precisión<br>
-      <small>Acercate a un lote para ver sus ambientes</small></div>`;
-    recLote=null; return;
+    // En los caminos y en la oficina tambien hace falta ubicarse: se muestra
+    // la finca entera con el punto encima, en vez de un cartel que no ayuda.
+    if(recLote!=="__fuera"){
+      recLote="__fuera"; recD=null;
+      mapa_.innerHTML=`<div id="recFinca" class="recfinca"></div>`;
+      const c=el("recFinca");
+      const prev=capaMapa; capaMapa="cultivo";
+      mapa(c); capaMapa=prev;
+      c.querySelectorAll(".mapafull,.mapzoom,.mapatabla").forEach(n=>n.remove());
+    }
+    pintarGps();
+    const cerca=loteMasCerca(S.gps.lat,S.gps.lon);
+    info.innerHTML=`<div class="reclote">Fuera de los lotes</div>
+      ${cerca?`<div class="reccerca">El más cercano es <b>${esc(cerca.lote)}</b>
+        a ${cerca.m<1000?nf(cerca.m,0)+" m":nf(cerca.m/1000,1)+" km"}</div>`:""}
+      <div class="recpie">±${Math.round(S.gps.acc)} m de precisión</div>`;
+    return;
   }
+  if(recLote==="__fuera") recLote=null;   // forzar redibujo al entrar a un lote
 
   // recargar la imagen solo al cambiar de lote, no en cada lectura del GPS
   if(lote!==recLote){
@@ -5548,6 +5567,25 @@ function loteEnPunto(lat,lon){
     if(dentro) return l;
   }
   return null;
+}
+
+// Distancia al lote mas cercano, midiendo contra los vertices de cada
+// poligono. Con lotes largos y angostos el centroide miente bastante.
+function loteMasCerca(lat,lon){
+  const gx=(lon-GEO.o[0])*GEO.e, gy=(lat-GEO.o[1])*GEO.e;
+  const kLat=Math.cos(-25.44*Math.PI/180);
+  let mejor=null, d2=Infinity;
+  for(const l in GEO.p){
+    for(const r of GEO.p[l]){
+      for(let i=0;i<r.length;i+=2){
+        const dx=(r[i]-gx)*kLat, dy=r[i+1]-gy;
+        const d=dx*dx+dy*dy;
+        if(d<d2){d2=d; mejor=l;}
+      }
+    }
+  }
+  // 1 grado ≈ 111.000 m y GEO guarda en centomilesimas de grado -> 1,11 m
+  return mejor?{lote:mejor,m:Math.sqrt(d2)*1.11}:null;
 }
 
 function pintarGps(){
