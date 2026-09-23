@@ -997,6 +997,38 @@ canvas{max-width:100%;display:block}
   .tapl td.bar,.tapl th:nth-child(4){display:none}
 }
 
+/* ---------- Estimación de rinde ---------- */
+.modos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+.modos button{font-family:inherit;text-align:left;padding:16px 18px;border:1px solid var(--line);
+  border-radius:var(--r);background:var(--panel);cursor:pointer;color:var(--ink)}
+.modos button:hover{border-color:var(--g500);background:var(--sand)}
+.modos b{display:block;font-size:15px;font-weight:600;margin-bottom:4px}
+.modos span{font-size:12.5px;color:var(--ink2);line-height:1.4}
+.ambs{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:6px}
+.ambs button{font-family:inherit;padding:12px 8px;border:1px solid var(--line);
+  border-radius:var(--r-sm);background:var(--panel);cursor:pointer;color:var(--ink2);text-align:center}
+.ambs button b{display:block;font-size:19px;font-weight:600;color:var(--ink)}
+.ambs button span{font-size:11px;line-height:1.3;display:block;margin-top:3px}
+.ambs button.on{background:var(--g700);border-color:var(--g700)}
+.ambs button.on b,.ambs button.on span{color:#fff}
+.estg{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
+.estg .fld small{display:block;font-size:11px;color:var(--ink3);margin-top:3px;line-height:1.3}
+/* El resultado se recalcula al salir de cada campo: se ve el rinde armarse
+   mientras se carga, en vez de tener que guardar para saber si cierra. */
+.estres{margin-top:14px;padding:14px 16px;border-radius:var(--r-sm);background:var(--bg2)}
+.estres.vacio{background:none;border:1px dashed var(--line)}
+.ergrande{display:flex;align-items:baseline;gap:10px}
+.ergrande b{font-size:38px;line-height:1;font-family:"Instrument Serif",Georgia,serif;
+  color:var(--g700);font-variant-numeric:tabular-nums}
+.ergrande span{font-size:13px;color:var(--ink2)}
+.erdet{font-size:12px;color:var(--ink2);margin-top:6px;font-variant-numeric:tabular-nums}
+.erfalta{font-size:13px;color:var(--ink3);text-align:center;padding:4px 0}
+#tEstim td.n{text-align:right;font-variant-numeric:tabular-nums}
+@media(max-width:620px){
+  .modos{grid-template-columns:1fr}
+  .ambs button b{font-size:17px}
+}
+
 .chartbox{position:relative;height:250px;width:100%}
 
 /* ---------- Salud / NDVI ---------- */
@@ -1071,7 +1103,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v74 · 06-08 · mapa limpio + ficha";   // subí este número en cada cambio
+const BUILD = "v75 · 23-09 · estimación de rinde";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1401,7 +1433,22 @@ const BUILD = "v74 · 06-08 · mapa limpio + ficha";   // subí este número en 
 
 <!-- ===== COSECHA ===== -->
 <section id="s-cosecha" style="display:none">
-  <div class="card" id="cPaso1">
+  <div class="card" id="cModo">
+    <h2>¿Qué vas a medir?</h2>
+    <p class="cap">Dos cosas distintas: lo que hay en pie antes de cosechar,
+      o lo que quedó en el suelo detrás de la máquina.</p>
+    <div class="modos">
+      <button data-modo="estimacion">
+        <b>Estimación de rinde</b>
+        <span>Componentes del cultivo en pie. Da el rinde esperado en kg/ha.</span>
+      </button>
+      <button data-modo="perdida">
+        <b>Pérdida de cosecha</b>
+        <span>Granos en el suelo con aro o bandeja, detrás de la cosechadora.</span>
+      </button>
+    </div>
+  </div>
+  <div class="card" id="cPaso1" style="display:none">
     <h2>¿En qué lote estás controlando?</h2>
     <p class="cap">Elegí el lote y el sistema trae el cultivo y el peso de mil granos de referencia.</p>
     <div class="loteseek">
@@ -1412,6 +1459,7 @@ const BUILD = "v74 · 06-08 · mapa limpio + ficha";   // subí este número en 
   <div id="cPaso2" style="display:none">
     <div class="card ctx" id="cCtx"></div>
     <div id="cMsg"></div>
+    <div id="cEst" style="display:none"></div>
     <div id="cBox"></div>
     <div class="card">
       <h2>Nota y fotos</h2>
@@ -1424,7 +1472,16 @@ const BUILD = "v74 · 06-08 · mapa limpio + ficha";   // subí este número en 
       <button class="btn" id="cOtro">Cambiar de lote</button>
     </div>
   </div>
-  <div class="card">
+  <div class="card" id="cTablaEst" style="display:none">
+    <h2>Estimaciones de la campaña</h2>
+    <p class="cap" id="cCapEst"></p>
+    <div class="tw"><table id="tEstim"><thead><tr>
+      <th>Fecha</th><th>Lote</th><th>Cultivo</th><th>Amb.</th>
+      <th>Densidad</th><th>Comp. 1</th><th>Comp. 2</th>
+      <th>Granos/m²</th><th>P1000</th><th>Rinde</th><th>Estimó</th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+  <div class="card" id="cTablaPer">
     <h2>Controles de la campaña</h2>
     <p class="cap" id="cCap"></p>
     <div class="tw"><table id="tCosecha"><thead><tr>
@@ -1500,7 +1557,7 @@ const BUILD = "v74 · 06-08 · mapa limpio + ficha";   // subí este número en 
 const S={url:"",key:"",vals:[],mons:[],fotos:[],inds:[],occs:[],cats:[],
          lotes:[],siembras:[],riegos:[],umbrales:[],atlas:[],sdet:[],riegoSem:[],opers:[],geo:[],stdec:[],
          ndviPas:[],ndviAl:[],ndviBarb:[],ndviSerie:[],ndviCoh:[],
-         apl:[],presu:[],
+         apl:[],presu:[],estim:[],
          ch:{},sort:{},fotosPend:[],gps:null};
 const el=id=>document.getElementById(id);
 const hoyISO=()=>{const d=new Date();
@@ -1570,6 +1627,7 @@ async function cargar(){
     soft("mon_geo?select=*&limit=1000"),
     soft(`mon_stand_decision?select=*&campania=eq.${camp}&limit=3000`)
   ]);
+  S.estim=await soft(`mon_estimaciones?select=*&campania=eq.${camp}&order=fecha.desc&limit=3000`);
   // NDVI Sentinel-2. Va aparte y con soft(): si el pipeline de Copernicus
   // todavía no corrió, la app tiene que abrir igual y solo faltar esta capa.
   [S.ndviPas,S.ndviAl,S.ndviBarb,S.ndviCoh,S.ndviSerie]=await Promise.all([
@@ -5294,6 +5352,184 @@ function tablaSiembra(){
 /* =========================== cosecha =========================== */
 const C={lote:null,ctx:null,d:{},fotos:[]};
 
+/* ==================== ESTIMACIÓN DE RINDE ====================
+   Misma estructura para todos los cultivos: densidad x comp1 x comp2 da
+   los granos por m², y con el P1000 sale el rinde.
+
+       kg/ha = granos/m² x P1000 / 100
+
+   Cambian solo los nombres de cada componente. El ambiente (AP/PI/BP) se
+   guarda con cada medición: un lote con las tres se pondera después, no
+   se promedia a ciegas.
+   ============================================================ */
+const ESTIM={
+  "trigo candeal":{d:"Espigas por m²",c1:"Espiguillas por espiga",c2:"Granos por espiguilla",
+                   dh:"Contá las espigas de 1 m lineal y dividí por el ancho de surco",
+                   c1h:"Promedio de 10 espigas",c2h:"Suelen ser 2 a 3"},
+  "trigo pan":{d:"Espigas por m²",c1:"Espiguillas por espiga",c2:"Granos por espiguilla",
+               dh:"Contá las espigas de 1 m lineal y dividí por el ancho de surco",
+               c1h:"Promedio de 10 espigas",c2h:"Suelen ser 2 a 3"},
+  "cebada":{d:"Espigas por m²",c1:"Espiguillas por espiga",c2:"Granos por espiguilla",
+            dh:"",c1h:"",c2h:"En cebada de 2 hileras suele ser 1"},
+  "garbanzo":{d:"Plantas por m²",c1:"Vainas por planta",c2:"Granos por vaina",
+              dh:"",c1h:"Promedio de 10 plantas",c2h:"Normalmente 1, a veces 2"},
+  "soja":{d:"Plantas por m²",c1:"Vainas por planta",c2:"Granos por vaina",
+          dh:"",c1h:"Promedio de 10 plantas",c2h:"Entre 2 y 3"},
+  "soja primavera":{d:"Plantas por m²",c1:"Vainas por planta",c2:"Granos por vaina",
+                    dh:"",c1h:"Promedio de 10 plantas",c2h:"Entre 2 y 3"},
+  "soja de primera":{d:"Plantas por m²",c1:"Vainas por planta",c2:"Granos por vaina",
+                     dh:"",c1h:"Promedio de 10 plantas",c2h:"Entre 2 y 3"},
+  "poroto mung":{d:"Plantas por m²",c1:"Vainas por planta",c2:"Granos por vaina",dh:"",c1h:"",c2h:""},
+  "poroto black eyed peas":{d:"Plantas por m²",c1:"Vainas por planta",c2:"Granos por vaina",dh:"",c1h:"",c2h:""},
+  "poroto":{d:"Plantas por m²",c1:"Vainas por planta",c2:"Granos por vaina",dh:"",c1h:"",c2h:""},
+  "girasol":{d:"Plantas por m²",c1:"Capítulos por planta",c2:"Granos por capítulo",
+             dh:"",c1h:"Casi siempre 1",c2h:"Contá una porción y extrapolá"},
+  "cártamo":{d:"Plantas por m²",c1:"Capítulos por planta",c2:"Granos por capítulo",dh:"",c1h:"",c2h:""},
+  "cartamo":{d:"Plantas por m²",c1:"Capítulos por planta",c2:"Granos por capítulo",dh:"",c1h:"",c2h:""},
+  "colza":{d:"Plantas por m²",c1:"Silicuas por planta",c2:"Granos por silicua",
+           dh:"",c1h:"",c2h:"Suelen ser 15 a 25"},
+  "camelina":{d:"Plantas por m²",c1:"Silículas por planta",c2:"Granos por silícula",dh:"",c1h:"",c2h:""},
+  "sesamo":{d:"Plantas por m²",c1:"Cápsulas por planta",c2:"Granos por cápsula",dh:"",c1h:"",c2h:""},
+  "sésamo":{d:"Plantas por m²",c1:"Cápsulas por planta",c2:"Granos por cápsula",dh:"",c1h:"",c2h:""},
+  "maíz":{d:"Plantas por m²",c1:"Hileras por espiga",c2:"Granos por hilera",
+          dh:"",c1h:"Números pares: 14, 16, 18",c2h:"Contá una hilera entera"},
+  "maiz":{d:"Plantas por m²",c1:"Hileras por espiga",c2:"Granos por hilera",dh:"",c1h:"",c2h:""},
+  "sorgo":{d:"Panojas por m²",c1:"Granos por panoja",c2:"",dh:"",c1h:"",c2h:""},
+};
+const AMB=[["AP","Alto potencial"],["PI","Potencial intermedio"],["BP","Bajo potencial"]];
+const estimDe=c=>ESTIM[(c||"").toLowerCase().trim()]||
+  {d:"Plantas por m²",c1:"Frutos por planta",c2:"Granos por fruto",dh:"",c1h:"",c2h:""};
+
+let cModoSel=null;
+const E={d:{}};
+
+function estimCalc(){
+  const n=k=>{const v=parseFloat(E.d[k]); return isFinite(v)?v:null;};
+  const den=n("densidad"), c1=n("comp1"), c2=n("comp2"), p=n("p1000");
+  const def=estimDe(C.ctx?.cultivo);
+  // sorgo y cualquier cultivo de dos componentes: comp2 no se pide
+  const g = den!=null&&c1!=null ? (def.c2 ? (c2!=null?den*c1*c2:null) : den*c1) : null;
+  return {granos:g, p1000:p, kg: (g!=null&&p!=null) ? g*p/100 : null};
+}
+
+function cEstPintar(){
+  const def=estimDe(C.ctx?.cultivo);
+  const R=estimCalc();
+  if(E.d.p1000==null||E.d.p1000==="") E.d.p1000=p1000De(C.ctx?.cultivo)??"";
+  const campo=(k,lab,hint)=>lab?`<div class="fld">
+      <label>${esc(lab)}</label>
+      <input type="number" inputmode="decimal" step="any" data-e="${k}"
+        value="${E.d[k]??""}" placeholder="0">
+      ${hint?`<small>${esc(hint)}</small>`:""}
+    </div>`:"";
+  el("cEst").innerHTML=`
+    <div class="card">
+      <h2>Ambiente donde estás midiendo</h2>
+      <p class="cap">Un lote puede tener los tres. Medí y guardá cada uno por separado.</p>
+      <div class="ambs">${AMB.map(([k,t])=>
+        `<button data-amb="${k}" class="${E.d.ambiente===k?"on":""}"><b>${k}</b><span>${t}</span></button>`).join("")}</div>
+    </div>
+    <div class="card">
+      <h2>Componentes del rinde</h2>
+      <div class="estg">
+        ${campo("densidad",def.d,def.dh)}
+        ${campo("comp1",def.c1,def.c1h)}
+        ${campo("comp2",def.c2,def.c2h)}
+        ${campo("muestras","Muestras promediadas","Cuántos puntos promediaste")}
+      </div>
+      <div class="estg">
+        ${campo("p1000","Peso de mil granos (g)","Viene del cultivo, cambialo si tenés el real")}
+      </div>
+      <div class="estres ${R.kg!=null?"":"vacio"}">
+        ${R.kg!=null?`
+          <div class="ergrande"><b>${nf(R.kg/1000,2)}</b><span>tn/ha estimadas</span></div>
+          <div class="erdet">${nf(R.granos,0)} granos/m² · P1000 ${nf(R.p1000,1)} g
+            · ${nf(R.kg,0)} kg/ha</div>`
+        :`<div class="erfalta">Cargá los componentes para ver el rinde</div>`}
+      </div>
+    </div>`;
+  el("cEst").querySelectorAll("[data-amb]").forEach(b=>b.onclick=()=>{
+    E.d.ambiente=E.d.ambiente===b.dataset.amb?null:b.dataset.amb; cEstPintar();});
+  el("cEst").querySelectorAll("[data-e]").forEach(i=>{
+    i.oninput=()=>{E.d[i.dataset.e]=i.value;};
+    i.onblur=()=>cEstPintar();
+  });
+}
+
+async function cGuardarEstim(){
+  if(!C.lote) return cMsg("Elegí un lote.","err");
+  if(!E.d.ambiente) return cMsg("Marcá si es alto, intermedio o bajo potencial.","err");
+  const R=estimCalc();
+  if(R.kg==null) return cMsg("Faltan componentes para calcular el rinde.","err");
+  el("cGuardar").disabled=true; cMsg("Guardando…","ok");
+  const nota=el("cNota").value.trim();
+  let paso="crear la estimación";
+  try{
+    const mon=(await api("mon_monitoreos",{method:"POST",body:JSON.stringify([{
+      fecha:hoyISO(), lote:C.lote, campania:CAMPANIA,
+      cultivo:C.ctx?.cultivo||null, variedad:C.ctx?.variedad||null,
+      superficie_ha:C.ctx?.ha!=null?Number(C.ctx.ha):null,
+      scouter:YO?.nombre||null, operador_id:YO?.id??null,
+      nota:[nota,`estimación ${E.d.ambiente} · ${nf(R.kg/1000,2)} tn/ha`].filter(Boolean).join(" · "),
+      lat:S.gps?.lat??null, lon:S.gps?.lon??null,
+      origen:"app", ext_id:"est-"+uuid()}])}))[0];
+    paso="guardar los componentes";
+    const num=v=>{const x=parseFloat(v); return isFinite(x)?x:null;};
+    await api("mon_estimaciones",{method:"POST",prefer:"return=minimal",body:JSON.stringify([{
+      monitoreo_id:mon.id, lote:C.lote, campania:CAMPANIA, fecha:hoyISO(),
+      cultivo:C.ctx?.cultivo||null, variedad:C.ctx?.variedad||null,
+      ambiente:E.d.ambiente,
+      densidad:num(E.d.densidad), comp1:num(E.d.comp1), comp2:num(E.d.comp2),
+      granos_m2:R.granos, p1000:R.p1000, rinde_kg_ha:Math.round(R.kg),
+      muestras:num(E.d.muestras), scouter:YO?.nombre||null, operador_id:YO?.id??null,
+      nota:nota||null, lat:S.gps?.lat??null, lon:S.gps?.lon??null}])});
+    paso="subir las fotos";
+    let okF=0;
+    const slug=x=>String(x).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9_-]/g,"_");
+    for(const f of C.fotos){
+      try{
+        const blob=await aJpeg(f);
+        const path=`${slug(CAMPANIA)}/${slug(C.lote)}/${Date.now()}-${Math.random().toString(36).slice(2,7)}.jpg`;
+        const up=await fetch(`${S.url}/storage/v1/object/monitoreo/${path}`,{method:"POST",
+          headers:{apikey:S.key,Authorization:`Bearer ${S.key}`,"Content-Type":"image/jpeg","x-upsert":"true"},body:blob});
+        if(!up.ok) throw new Error(await up.text());
+        await api("mon_fotos",{method:"POST",body:JSON.stringify([{monitoreo_id:mon.id,path}]),prefer:"return=minimal"});
+        okF++;
+      }catch(e){ console.error(e); }
+    }
+    const amb=E.d.ambiente, kg=R.kg;
+    E.d={}; C.fotos=[]; el("cNota").value=""; cThumbs(); cEstPintar();
+    await cargar(); cTablaEstim();
+    cMsg(`Estimación guardada: ${nf(kg/1000,2)} tn/ha en ${amb}${okF?`, ${okF} fotos`:""}.`,"ok");
+  }catch(e){
+    cMsg(`No se pudo ${paso}: ${e.message}`,"err");
+  }finally{ el("cGuardar").disabled=false; }
+}
+
+function cTablaEstim(){
+  const E_=(S.estim||[]).slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  el("cCapEst").textContent=E_.length
+    ? `${E_.length} estimaciones en ${new Set(E_.map(x=>K(x.lote))).size} lotes.`
+    : "Todavía no hay estimaciones cargadas.";
+  el("tEstim").querySelector("tbody").innerHTML=E_.length?E_.map(x=>{
+    const def=estimDe(x.cultivo);
+    return `<tr>
+      <td>${fd(x.fecha)}</td><td><b>${esc(x.lote)}</b></td>
+      <td>${esc(x.cultivo||"")}</td>
+      <td><span class="pill ${x.ambiente==="AP"?"ok":x.ambiente==="BP"?"critico":"atencion"}">${esc(x.ambiente||"")}</span></td>
+      <td class="n" title="${esc(def.d)}">${nf(x.densidad,0)}</td>
+      <td class="n" title="${esc(def.c1)}">${nf(x.comp1,1)}</td>
+      <td class="n" title="${esc(def.c2)}">${x.comp2!=null?nf(x.comp2,1):"–"}</td>
+      <td class="n">${nf(x.granos_m2,0)}</td>
+      <td class="n">${nf(x.p1000,1)}</td>
+      <td class="n"><b>${nf(x.rinde_kg_ha/1000,2)}</b> tn</td>
+      <td>${esc(x.scouter||"")}</td></tr>`;}).join("")
+    :`<tr><td colspan="11"><div class="empty"><b>Sin estimaciones</b>
+       Elegí un lote y cargá la primera.</div></td></tr>`;
+}
+
+
+
 function controlesCosecha(){
   const b={};
   S.vals.filter(v=>v.categoria_id==="cosecha").forEach(v=>{
@@ -5359,7 +5595,12 @@ function cElegir(lote){
       <div><dt>P1000 de referencia</dt><dd class="mono">${p1000De(sb.cultivo)??"–"} g</dd></div>
     </dl>`;
   el("cPaso1").style.display="none"; el("cPaso2").style.display="";
-  cPintar(); window.scrollTo({top:0,behavior:"smooth"});
+  const est=cModoSel==="estimacion";
+  el("cEst").style.display=est?"":"none";
+  el("cBox").style.display=est?"none":"";
+  el("cGuardar").textContent=est?"Guardar estimación":"Guardar control";
+  if(est){ E.d={}; cEstPintar(); } else cPintar();
+  window.scrollTo({top:0,behavior:"smooth"});
 }
 
 function cPintar(){
@@ -5450,8 +5691,9 @@ async function cGuardar(){
   finally{ el("cGuardar").disabled=false; }
 }
 function cReiniciar(){
-  C.lote=null;C.d={};C.fotos=[];el("cNota").value="";cThumbs();
-  el("cPaso2").style.display="none";el("cPaso1").style.display="";
+  C.lote=null;C.d={};C.fotos=[];E.d={};el("cNota").value="";cThumbs();
+  el("cPaso2").style.display="none";el("cPaso1").style.display="none";
+  el("cModo").style.display="";cModoSel=null;
   el("cQLote").value="";cBuscar();
 }
 
@@ -5555,7 +5797,19 @@ el("nFotos").addEventListener("change",e=>{
   if(n) fmsg(`${M.fotos.length} foto(s) listas. Se comprimen al guardar.`,"ok");});
 
 /* cosecha */
-el("cGuardar").onclick=e=>{e.preventDefault();cGuardar();};
+el("cGuardar").onclick=e=>{e.preventDefault();
+  cModoSel==="estimacion"?cGuardarEstim():cGuardar();};
+el("cModo").querySelectorAll("[data-modo]").forEach(b=>b.onclick=()=>{
+  cModoSel=b.dataset.modo;
+  const est=cModoSel==="estimacion";
+  el("cModo").style.display="none";
+  el("cPaso1").style.display="";
+  el("cTablaEst").style.display=est?"":"none";
+  el("cTablaPer").style.display=est?"none":"";
+  el("cPaso1").querySelector("h2").textContent=est
+    ? "¿En qué lote estás estimando?" : "¿En qué lote estás controlando?";
+  if(est) cTablaEstim();
+});
 el("cOtro").onclick=e=>{e.preventDefault();cReiniciar();};
 el("cQLote").addEventListener("input",cBuscar);
 el("cQLote").addEventListener("keydown",e=>{
