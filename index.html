@@ -1103,7 +1103,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v76 · 23-09 · fenología de girasol";   // subí este número en cada cambio
+const BUILD = "v77 · 23-09 · pérdida por peso";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -4472,6 +4472,11 @@ function pintarMods(){
 // Escala LIAG: 1 seco · 1+ 50 % CC · 2 75 % CC · 2+ capacidad de campo · 3 saturado
 const MARCOS=[{id:"aro",     t:"Aro",     a:0.25, d:"1/4 m²"},
               {id:"bandeja", t:"Bandeja", a:0.10, d:"0,1 m²"}];
+// Semilla chica: contar granos de camelina o colza a campo no es practico.
+// Se pesa lo juntado y se saltea el P1000, que ahi solo agrega error.
+//   kg/ha = gramos / superficie del marco x 10
+const SEM_CHICA=["camelina","colza","sesamo","sésamo","alfalfa","trebol","trébol"];
+const esChica=c=>SEM_CHICA.some(x=>String(c||"").toLowerCase().includes(x));
 // Peso de mil granos por cultivo, mediana de los 864 controles históricos de FT.
 // Es solo el valor sugerido: se puede corregir en el momento.
 const P1000={"trigo candeal":42,"trigo pan":40,"cebada":42,"garbanzo":374,"soja":172,
@@ -4560,16 +4565,19 @@ function calcDe(mod,d){
     const mc=MARCOS.find(x=>x.id===d.marco)||MARCOS[0];
     const ctx=(C.lote?C.ctx:M.ctx)||{};
     const sug=p1000De(ctx.cultivo);
+    const chica=esChica(ctx.cultivo);
     const g=parseFloat(d.gm2)||null;
     const pmg=(d.pmg!==""&&d.pmg!=null)?parseFloat(d.pmg):sug;
     const rend=parseFloat(d.rend)||null;
-    const kg=(g&&pmg)?(g*pmg/1000)/mc.a*10:null;
+    const kg=chica ? (g?g/mc.a*10:null) : ((g&&pmg)?(g*pmg/1000)/mc.a*10:null);
     const pct=(kg&&rend)?kg/rend*100:null;
     return kg!=null
       ? `<div class="calc">Pérdida <b>${nf(kg,1)}</b> kg/ha
          ${pct!=null?` · <b>${nf(pct,2)} %</b> del rinde`:` · cargá el rinde para saber el porcentaje`}
          ${pct!=null?(pct>3?" — muy alta, parar y regular":pct>1.5?" — por encima del umbral":" — aceptable"):""}</div>`
-      : `<div class="leyenda calcsust">kg/ha = granos × peso de mil granos ÷ 1000 ÷ ${mc.d.replace(",",".")} × 10.</div>`;
+      : `<div class="leyenda calcsust">${chica
+          ?`kg/ha = gramos ÷ ${mc.d.replace(",",".")} × 10.`
+          :`kg/ha = granos × peso de mil granos ÷ 1000 ÷ ${mc.d.replace(",",".")} × 10.`}</div>`;
   }
   return "";
 }
@@ -4749,21 +4757,25 @@ function cajaDe(m){
 
     const mc=MARCOS.find(x=>x.id===d.marco);
     const sug=p1000De(M.ctx?.cultivo);
+    const chica=esChica(M.ctx?.cultivo);
     const g=parseFloat(d.gm2)||null;
     const pmg=(d.pmg!==""&&d.pmg!=null)?parseFloat(d.pmg):sug;
     const rend=parseFloat(d.rend)||null;
-    const kg=(g&&pmg)?(g*pmg/1000)/mc.a*10:null;     // g por marco -> g/m² -> kg/ha
+    const kg=chica ? (g?g/mc.a*10:null) : ((g&&pmg)?(g*pmg/1000)/mc.a*10:null);
     const pct=(kg&&rend)?kg/rend*100:null;
-    return `<div class="modbox" data-mod="${m.id}">${hd(m,`${mc.t} · ${mc.d}`)}
+    return `<div class="modbox" data-mod="${m.id}">${hd(m,`${mc.t} · ${mc.d}${chica?" · por peso":""}`)}
       <div class="form" style="margin-bottom:6px">
-        <div class="fld"><label>Granos en la ${mc.t.toLowerCase()}</label>
+        <div class="fld"><label>${chica?`Peso juntado en la ${mc.t.toLowerCase()} (g)`
+                                      :`Granos en la ${mc.t.toLowerCase()}`}</label>
           <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="gm2"
-                 value="${esc(d.gm2||"")}" style="font-size:17px;font-family:'Geist Mono',monospace"></div>
+                 value="${esc(d.gm2||"")}" style="font-size:17px;font-family:'Geist Mono',monospace">
+          ${chica?`<small style="display:block;font-size:11px;color:var(--ink3);margin-top:3px">
+            Pesá los granos juntados, no hace falta contarlos</small>`:""}</div>
         <div class="fld"><label>Rinde en el lugar (kg/ha)</label>
           <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="rend" value="${esc(d.rend||"")}"></div>
-        <div class="fld"><label>Peso de mil granos (g)</label>
+        ${chica?"":`<div class="fld"><label>Peso de mil granos (g)</label>
           <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="pmg"
-                 value="${esc(d.pmg??"")}" placeholder="${sug!=null?sug:"–"}"></div>
+                 value="${esc(d.pmg??"")}" placeholder="${sug!=null?sug:"–"}"></div>`}
         <div class="fld"><label>Grano verde (%)</label>
           <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="verde" value="${esc(d.verde||"")}"></div>
         <div class="fld"><label>Grano partido (%)</label>
@@ -4871,14 +4883,18 @@ function valoresDe(){
     const c=m.cosecha, occ="Control de pérdidas";
     const aro=(MARCOS.find(x=>x.id===c.marco)||MARCOS[0]).a;
     const g=parseFloat(c.gm2), rend=parseFloat(c.rend);
+    const chica=esChica(M.ctx?.cultivo);
     const pmg=(c.pmg!==""&&c.pmg!=null)?parseFloat(c.pmg):p1000De(M.ctx?.cultivo);
-    push("cosecha","Granos por aro",g,occ);
-    push("cosecha","Peso de mil granos",pmg,occ);
+    // En semilla chica el dato cargado son GRAMOS, no granos: va a su
+    // propio indicador para que la tabla no lea peso donde espera conteo.
+    if(chica) push("cosecha","Peso de granos",g,occ);
+    else{ push("cosecha","Granos por aro",g,occ);
+          push("cosecha","Peso de mil granos",pmg,occ); }
     push("cosecha","Rinde en el lugar",rend,occ);
     push("cosecha","Grano verde",parseFloat(c.verde),occ);
     push("cosecha","Grano partido",parseFloat(c.partido),occ);
-    if(g&&pmg){
-      const kg=(g*pmg/1000)/aro*10;
+    const kg=chica ? (g?g/aro*10:null) : ((g&&pmg)?(g*pmg/1000)/aro*10:null);
+    if(kg!=null){
       push("cosecha","Pérdida",kg,occ);
       if(rend) push("cosecha","Pérdida sobre rendimiento",kg/rend*100,occ);
     }
@@ -5550,6 +5566,7 @@ function controlesCosecha(){
       scouter:v.scouter,nota:v.nota};
     switch(v.indicador){
       case "Granos por aro":            o.granos=v.valor; break;
+      case "Peso de granos":            o.peso=v.valor;   break;
       case "Peso de mil granos":        o.pmg=v.valor;    break;
       case "Rinde en el lugar":         o.rinde=v.valor;  break;
       case "Pérdida":                   o.kg=v.valor;     break;
@@ -5568,7 +5585,9 @@ function tablaCosecha(){
   el("cCap").textContent=`${L.length} ${L.length===1?"control":"controles"} cargados.`;
   el("tCosecha").querySelector("tbody").innerHTML=L.length?L.map(o=>`<tr>
     <td class="mono">${fd(o.fecha)}</td><td class="mono"><b>${esc(o.lote)}</b></td>
-    <td>${esc(o.cultivo||"–")}</td><td class="num">${nf(o.granos,0)}</td>
+    <td>${esc(o.cultivo||"–")}</td>
+    <td class="num">${o.granos!=null?nf(o.granos,0)
+        :o.peso!=null?`${nf(o.peso,1)} g`:"–"}</td>
     <td class="num">${nf(o.pmg,1)}</td><td class="num">${nf(o.rinde,0)}</td>
     <td class="num">${nf(o.kg,1)}</td>
     <td class="num">${o.pct==null?"–":nf(o.pct,2)}</td>
