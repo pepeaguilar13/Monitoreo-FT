@@ -1103,7 +1103,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v77 · 23-09 · pérdida por peso";   // subí este número en cada cambio
+const BUILD = "v78 · 23-09 · coma decimal";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1566,6 +1566,10 @@ const hoyISO=()=>{const d=new Date();
 const uuid=()=>(self.crypto?.randomUUID)?crypto.randomUUID()
   :"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{
      const r=Math.random()*16|0; return (c==="x"?r:(r&0x3|0x8)).toString(16);});
+// El teclado del celular en español escribe coma, y un input type="number"
+// la rechaza: el valor llega vacío y se pierde el decimal. Todo lo que el
+// usuario tipea pasa por acá.
+const pf=v=>{const x=parseFloat(String(v??"").trim().replace(",","."));return isFinite(x)?x:NaN;};
 const nf=(v,d=0)=>v==null||v===""||isNaN(v)?"–":Number(v).toLocaleString("es-AR",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fd=s=>{if(!s)return "–";const d=new Date(s+(String(s).length<=10?"T12:00:00":""));return isNaN(d)?String(s).slice(0,10):d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"});};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -4432,7 +4436,7 @@ function filasLibres(cat,d){
         ${inds.map(x=>`<option value="${x.id}" ${String(f.ind)===String(x.id)?"selected":""}>${esc(x.nombre)}</option>`).join("")}
       </select></div>
     <div class="fld"><label>Valor</label>
-      <input type="number" step="any" inputmode="decimal" data-m="${cat}" data-fila="${i}" data-campo="val" value="${esc(f.val||"")}"></div>
+      <input type="text" inputmode="decimal" data-m="${cat}" data-fila="${i}" data-campo="val" value="${esc(f.val||"")}"></div>
     <div class="fld"><label>&nbsp;</label><button class="btn sm delesp" data-m="${cat}" data-fila="${i}">✕</button></div>
   </div>`).join("")
   +`<datalist id="dl-${cat}">${occs.map(o=>`<option value="${esc(o.nombre)}">`).join("")}</datalist>
@@ -4553,7 +4557,7 @@ function actualizarCalc(mod){
 
 function calcDe(mod,d){
   if(mod==="stand"){
-    const plm=parseFloat(d.pl_m)||null, surco=parseFloat(d.surco)||null;
+    const plm=pf(d.pl_m)||null, surco=pf(d.surco)||null;
     const real=(plm&&surco)?plm/(surco/100)*10000:null;
     const o=M.ctx?.densidad_obj, obj=o?(o<5000?o*10000:o):null;
     return real!=null
@@ -4566,9 +4570,9 @@ function calcDe(mod,d){
     const ctx=(C.lote?C.ctx:M.ctx)||{};
     const sug=p1000De(ctx.cultivo);
     const chica=esChica(ctx.cultivo);
-    const g=parseFloat(d.gm2)||null;
-    const pmg=(d.pmg!==""&&d.pmg!=null)?parseFloat(d.pmg):sug;
-    const rend=parseFloat(d.rend)||null;
+    const g=pf(d.gm2)||null;
+    const pmg=(d.pmg!==""&&d.pmg!=null)?pf(d.pmg):sug;
+    const rend=pf(d.rend)||null;
     const kg=chica ? (g?g/mc.a*10:null) : ((g&&pmg)?(g*pmg/1000)/mc.a*10:null);
     const pct=(kg&&rend)?kg/rend*100:null;
     return kg!=null
@@ -4649,7 +4653,7 @@ function cajaDe(m){
           ${u.observaciones?`<span class="uobs">${esc(u.observaciones)}</span>`:""}
         </div>
         <div class="uval">
-          <input type="number" step="any" inputmode="decimal" data-m="plagas" data-campo="${k}"
+          <input type="text" inputmode="decimal" data-m="plagas" data-campo="${k}"
                  value="${esc(val)}" placeholder="${u.umbral_inf==null?"–":""}">
           <span class="uuni">${esc(u.unidad||"")}${corr!=null?`<br><b title="el paño vertical captura el 60 %">≈ ${nf(corr,1)} reales</b>`:""}</span>
         </div>
@@ -4706,14 +4710,14 @@ function cajaDe(m){
                value="${esc(f.occ||"")}" placeholder="buscar o escribir"></div>
       ${PAR.map(([k,n,u])=>`<div class="fld num">
         <label>${n} <i>${u}</i></label>
-        <input type="number" step="any" inputmode="decimal"
+        <input type="text" inputmode="decimal"
                data-m="${m.id}" data-fila="${i}" data-campo="${k}" value="${esc(f[k]??"")}"></div>`).join("")}
       <div class="fld otro"><label>Otro indicador</label>
         <select data-m="${m.id}" data-fila="${i}" data-campo="ind"><option value="">–</option>
           ${otros.map(x=>`<option value="${x.id}" ${String(f.ind)===String(x.id)?"selected":""}>${esc(x.nombre)}${x.unidad?" ("+esc(x.unidad)+")":""}</option>`).join("")}
         </select></div>
       <div class="fld num"><label>Valor</label>
-        <input type="number" step="any" inputmode="decimal"
+        <input type="text" inputmode="decimal"
                data-m="${m.id}" data-fila="${i}" data-campo="val" value="${esc(f.val??"")}"></div>
       <div class="acc">
         <button class="btn sm fotoesp" data-m="${m.id}" data-fila="${i}" title="Foto de esta especie">📷${(f.fotos||[]).length?" "+f.fotos.length:""}</button>
@@ -4729,17 +4733,17 @@ function cajaDe(m){
         Si escribís una especie que no está en el catálogo, se agrega sola.</div></div>`;}
 
   case "stand":{
-    const surco=parseFloat(d.surco)||parseFloat(M.ctx?.surco)||null;
-    const plm=parseFloat(d.pl_m)||null;
+    const surco=pf(d.surco)||pf(M.ctx?.surco)||null;
+    const plm=pf(d.pl_m)||null;
     const real=(plm&&surco)?plm/(surco/100)*10000:null;
     const objRaw=M.ctx?.densidad_obj;
     const obj=objRaw?(objRaw<5000?objRaw*10000:objRaw):null;
     return `<div class="modbox" data-mod="${m.id}">${hd(m,"se calcula solo")}
       <div class="form" style="margin-bottom:6px">
         <div class="fld"><label>Plantas por metro lineal</label>
-          <input type="number" step="any" inputmode="decimal" data-m="stand" data-campo="pl_m" value="${esc(d.pl_m||"")}"></div>
+          <input type="text" inputmode="decimal" data-m="stand" data-campo="pl_m" value="${esc(d.pl_m||"")}"></div>
         <div class="fld"><label>Distancia entre surcos (cm)</label>
-          <input type="number" step="any" inputmode="decimal" data-m="stand" data-campo="surco" value="${esc(d.surco||"")}"></div>
+          <input type="text" inputmode="decimal" data-m="stand" data-campo="surco" value="${esc(d.surco||"")}"></div>
         <div class="fld"><label>Repeticiones</label>
           <input type="number" step="1" inputmode="numeric" data-m="stand" data-campo="rep" value="${esc(d.rep||"")}"></div>
       </div>
@@ -4758,28 +4762,28 @@ function cajaDe(m){
     const mc=MARCOS.find(x=>x.id===d.marco);
     const sug=p1000De(M.ctx?.cultivo);
     const chica=esChica(M.ctx?.cultivo);
-    const g=parseFloat(d.gm2)||null;
-    const pmg=(d.pmg!==""&&d.pmg!=null)?parseFloat(d.pmg):sug;
-    const rend=parseFloat(d.rend)||null;
+    const g=pf(d.gm2)||null;
+    const pmg=(d.pmg!==""&&d.pmg!=null)?pf(d.pmg):sug;
+    const rend=pf(d.rend)||null;
     const kg=chica ? (g?g/mc.a*10:null) : ((g&&pmg)?(g*pmg/1000)/mc.a*10:null);
     const pct=(kg&&rend)?kg/rend*100:null;
     return `<div class="modbox" data-mod="${m.id}">${hd(m,`${mc.t} · ${mc.d}${chica?" · por peso":""}`)}
       <div class="form" style="margin-bottom:6px">
         <div class="fld"><label>${chica?`Peso juntado en la ${mc.t.toLowerCase()} (g)`
                                       :`Granos en la ${mc.t.toLowerCase()}`}</label>
-          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="gm2"
+          <input type="text" inputmode="decimal" data-m="cosecha" data-campo="gm2"
                  value="${esc(d.gm2||"")}" style="font-size:17px;font-family:'Geist Mono',monospace">
           ${chica?`<small style="display:block;font-size:11px;color:var(--ink3);margin-top:3px">
             Pesá los granos juntados, no hace falta contarlos</small>`:""}</div>
         <div class="fld"><label>Rinde en el lugar (kg/ha)</label>
-          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="rend" value="${esc(d.rend||"")}"></div>
+          <input type="text" inputmode="decimal" data-m="cosecha" data-campo="rend" value="${esc(d.rend||"")}"></div>
         ${chica?"":`<div class="fld"><label>Peso de mil granos (g)</label>
-          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="pmg"
+          <input type="text" inputmode="decimal" data-m="cosecha" data-campo="pmg"
                  value="${esc(d.pmg??"")}" placeholder="${sug!=null?sug:"–"}"></div>`}
         <div class="fld"><label>Grano verde (%)</label>
-          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="verde" value="${esc(d.verde||"")}"></div>
+          <input type="text" inputmode="decimal" data-m="cosecha" data-campo="verde" value="${esc(d.verde||"")}"></div>
         <div class="fld"><label>Grano partido (%)</label>
-          <input type="number" step="any" inputmode="decimal" data-m="cosecha" data-campo="partido" value="${esc(d.partido||"")}"></div>
+          <input type="text" inputmode="decimal" data-m="cosecha" data-campo="partido" value="${esc(d.partido||"")}"></div>
         <div class="fld"><label>Contratista</label>
           <input data-m="cosecha" data-campo="contratista" list="dl-contratista" value="${esc(d.contratista||"")}"></div>
         <div class="fld"><label>Maquinista</label>
@@ -4867,7 +4871,7 @@ function valoresDe(){
     m.barbecho.estado==="1"?"Barbecho limpio":"Barbecho sucio");
 
   if(m.stand){
-    const plm=parseFloat(m.stand.pl_m), su=parseFloat(m.stand.surco);
+    const plm=pf(m.stand.pl_m), su=pf(m.stand.surco);
     push("stand","Plantas por metro lineal",plm,"Stand de plantas");
     push("stand","Espaciamiento entre surcos",su,"Stand de plantas");
     if(plm&&su){
@@ -4882,17 +4886,17 @@ function valoresDe(){
   if(m.cosecha&&m.cosecha.marco){
     const c=m.cosecha, occ="Control de pérdidas";
     const aro=(MARCOS.find(x=>x.id===c.marco)||MARCOS[0]).a;
-    const g=parseFloat(c.gm2), rend=parseFloat(c.rend);
+    const g=pf(c.gm2), rend=pf(c.rend);
     const chica=esChica(M.ctx?.cultivo);
-    const pmg=(c.pmg!==""&&c.pmg!=null)?parseFloat(c.pmg):p1000De(M.ctx?.cultivo);
+    const pmg=(c.pmg!==""&&c.pmg!=null)?pf(c.pmg):p1000De(M.ctx?.cultivo);
     // En semilla chica el dato cargado son GRAMOS, no granos: va a su
     // propio indicador para que la tabla no lea peso donde espera conteo.
     if(chica) push("cosecha","Peso de granos",g,occ);
     else{ push("cosecha","Granos por aro",g,occ);
           push("cosecha","Peso de mil granos",pmg,occ); }
     push("cosecha","Rinde en el lugar",rend,occ);
-    push("cosecha","Grano verde",parseFloat(c.verde),occ);
-    push("cosecha","Grano partido",parseFloat(c.partido),occ);
+    push("cosecha","Grano verde",pf(c.verde),occ);
+    push("cosecha","Grano partido",pf(c.partido),occ);
     const kg=chica ? (g?g/aro*10:null) : ((g&&pmg)?(g*pmg/1000)/aro*10:null);
     if(kg!=null){
       push("cosecha","Pérdida",kg,occ);
@@ -5433,7 +5437,7 @@ let cModoSel=null;
 const E={d:{}};
 
 function estimCalc(){
-  const n=k=>{const v=parseFloat(E.d[k]); return isFinite(v)?v:null;};
+  const n=k=>{const v=pf(E.d[k]); return isFinite(v)?v:null;};
   const den=n("densidad"), c1=n("comp1"), c2=n("comp2"), p=n("p1000");
   const def=estimDe(C.ctx?.cultivo);
   // sorgo y cualquier cultivo de dos componentes: comp2 no se pide
@@ -5447,7 +5451,7 @@ function cEstPintar(){
   if(E.d.p1000==null||E.d.p1000==="") E.d.p1000=p1000De(C.ctx?.cultivo)??"";
   const campo=(k,lab,hint)=>lab?`<div class="fld">
       <label>${esc(lab)}</label>
-      <input type="number" inputmode="decimal" step="any" data-e="${k}"
+      <input type="text" inputmode="decimal" data-e="${k}"
         value="${E.d[k]??""}" placeholder="0">
       ${hint?`<small>${esc(hint)}</small>`:""}
     </div>`:"";
@@ -5503,7 +5507,7 @@ async function cGuardarEstim(){
       lat:S.gps?.lat??null, lon:S.gps?.lon??null,
       origen:"app", ext_id:"est-"+uuid()}])}))[0];
     paso="guardar los componentes";
-    const num=v=>{const x=parseFloat(v); return isFinite(x)?x:null;};
+    const num=v=>{const x=pf(v); return isFinite(x)?x:null;};
     await api("mon_estimaciones",{method:"POST",prefer:"return=minimal",body:JSON.stringify([{
       monitoreo_id:mon.id, lote:C.lote, campania:CAMPANIA, fecha:hoyISO(),
       cultivo:C.ctx?.cultivo||null, variedad:C.ctx?.variedad||null,
