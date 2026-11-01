@@ -1103,7 +1103,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v78 · 23-09 · coma decimal";   // subí este número en cada cambio
+const BUILD = "v79 · 01-11 · pesar o contar";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -4476,11 +4476,17 @@ function pintarMods(){
 // Escala LIAG: 1 seco · 1+ 50 % CC · 2 75 % CC · 2+ capacidad de campo · 3 saturado
 const MARCOS=[{id:"aro",     t:"Aro",     a:0.25, d:"1/4 m²"},
               {id:"bandeja", t:"Bandeja", a:0.10, d:"0,1 m²"}];
-// Semilla chica: contar granos de camelina o colza a campo no es practico.
-// Se pesa lo juntado y se saltea el P1000, que ahi solo agrega error.
+// Pesar en vez de contar: con la balanza en la camioneta sale mas rapido y
+// con menos error que contar grano por grano, en cualquier cultivo. Se saltea
+// el P1000, que en ese camino solo agrega error.
 //   kg/ha = gramos / superficie del marco x 10
+// En semilla chica contar no es practico, asi que arranca ya en "pesar";
+// en el resto arranca en "contar" y se cambia con un toque.
 const SEM_CHICA=["camelina","colza","sesamo","sésamo","alfalfa","trebol","trébol"];
 const esChica=c=>SEM_CHICA.some(x=>String(c||"").toLowerCase().includes(x));
+const MODOS=[{id:"contar",t:"Contar granos",d:"con el P1000"},
+             {id:"pesar", t:"Pesar la muestra",d:"en gramos"}];
+const modoDe=(d,cultivo)=>d?.modo||(esChica(cultivo)?"pesar":"contar");
 // Peso de mil granos por cultivo, mediana de los 864 controles históricos de FT.
 // Es solo el valor sugerido: se puede corregir en el momento.
 const P1000={"trigo candeal":42,"trigo pan":40,"cebada":42,"garbanzo":374,"soja":172,
@@ -4531,9 +4537,15 @@ function pintarBoxes(){
     el("fotoEsp").click();});
   box.querySelectorAll(".fgrupo.marco").forEach(b=>b.onclick=()=>{
     M.mods.cosecha.marco=b.dataset.marco; pintarBoxes();});
+  // contar granos o pesar la muestra: el dato cargado cambia de significado,
+  // asi que al cambiar de modo se limpia lo que ya estaba escrito.
+  box.querySelectorAll(".fgrupo.modo").forEach(b=>b.onclick=()=>{
+    const n=b.dataset.modo;
+    if(modoDe(M.mods.cosecha,M.ctx?.cultivo)!==n) M.mods.cosecha.gm2="";
+    M.mods.cosecha.modo=n; pintarBoxes();});
   const cm=box.querySelector("#cambiarMarco");
   if(cm) cm.onclick=()=>{M.mods.cosecha.marco=(M.mods.cosecha.marco==="aro")?"bandeja":"aro";pintarBoxes();};
-  box.querySelectorAll(".fgrupo:not(.marco)").forEach(b=>b.onclick=()=>{
+  box.querySelectorAll(".fgrupo:not(.marco):not(.modo)").forEach(b=>b.onclick=()=>{
     M.mods.fenologia.grupo=(M.mods.fenologia.grupo===b.dataset.g)?null:b.dataset.g; pintarBoxes();});
   box.querySelectorAll(".festado").forEach(b=>b.onclick=()=>{
     M.mods.fenologia.valor=(M.mods.fenologia.valor===b.dataset.v)?null:b.dataset.v; pintarBoxes();});
@@ -4569,7 +4581,7 @@ function calcDe(mod,d){
     const mc=MARCOS.find(x=>x.id===d.marco)||MARCOS[0];
     const ctx=(C.lote?C.ctx:M.ctx)||{};
     const sug=p1000De(ctx.cultivo);
-    const chica=esChica(ctx.cultivo);
+    const chica=modoDe(d,ctx.cultivo)==="pesar";
     const g=pf(d.gm2)||null;
     const pmg=(d.pmg!==""&&d.pmg!=null)?pf(d.pmg):sug;
     const rend=pf(d.rend)||null;
@@ -4761,20 +4773,24 @@ function cajaDe(m){
 
     const mc=MARCOS.find(x=>x.id===d.marco);
     const sug=p1000De(M.ctx?.cultivo);
-    const chica=esChica(M.ctx?.cultivo);
+    const modo=modoDe(d,M.ctx?.cultivo);
+    const chica=modo==="pesar";
     const g=pf(d.gm2)||null;
     const pmg=(d.pmg!==""&&d.pmg!=null)?pf(d.pmg):sug;
     const rend=pf(d.rend)||null;
     const kg=chica ? (g?g/mc.a*10:null) : ((g&&pmg)?(g*pmg/1000)/mc.a*10:null);
     const pct=(kg&&rend)?kg/rend*100:null;
     return `<div class="modbox" data-mod="${m.id}">${hd(m,`${mc.t} · ${mc.d}${chica?" · por peso":""}`)}
+      <div class="fgrupos" style="margin:0 0 8px">${MODOS.map(x=>
+        `<button class="fgrupo modo" data-modo="${x.id}" aria-pressed="${x.id===modo}">${x.t}
+           <small style="display:block;font-weight:400;opacity:.7">${x.d}</small></button>`).join("")}</div>
       <div class="form" style="margin-bottom:6px">
         <div class="fld"><label>${chica?`Peso juntado en la ${mc.t.toLowerCase()} (g)`
                                       :`Granos en la ${mc.t.toLowerCase()}`}</label>
           <input type="text" inputmode="decimal" data-m="cosecha" data-campo="gm2"
                  value="${esc(d.gm2||"")}" style="font-size:17px;font-family:'Geist Mono',monospace">
           ${chica?`<small style="display:block;font-size:11px;color:var(--ink3);margin-top:3px">
-            Pesá los granos juntados, no hace falta contarlos</small>`:""}</div>
+            Pesá en la balanza los granos que juntaste, no hace falta contarlos</small>`:""}</div>
         <div class="fld"><label>Rinde en el lugar (kg/ha)</label>
           <input type="text" inputmode="decimal" data-m="cosecha" data-campo="rend" value="${esc(d.rend||"")}"></div>
         ${chica?"":`<div class="fld"><label>Peso de mil granos (g)</label>
@@ -4790,14 +4806,16 @@ function cajaDe(m){
           <input data-m="cosecha" data-campo="maquinista" value="${esc(d.maquinista||"")}"></div>
       </div>
       <datalist id="dl-contratista">${CONTRATISTAS.map(c=>`<option value="${esc(c)}">`).join("")}</datalist>
-      ${sug!=null&&(d.pmg===""||d.pmg==null)?`<div class="leyenda" style="margin-bottom:8px">
+      ${!chica&&sug!=null&&(d.pmg===""||d.pmg==null)?`<div class="leyenda" style="margin-bottom:8px">
         Peso de mil granos sugerido para ${esc(M.ctx?.cultivo||"el cultivo")}:
         <b>${nf(sug,1)} g</b>, mediana de los controles anteriores. Cambialo si tenés el dato del lote.</div>`:""}
       ${kg!=null?`<div class="calc">Pérdida <b>${nf(kg,1)}</b> kg/ha
         ${pct!=null?` · <b>${nf(pct,2)} %</b> del rinde`
                    :` · cargá el rinde para saber el porcentaje`}
         ${pct!=null?(pct>3?" — muy alta, parar y regular":pct>1.5?" — por encima del umbral":" — aceptable"):""}</div>`
-       :`<div class="leyenda">kg/ha = granos × peso de mil granos ÷ 1000 ÷ ${mc.d.replace(",",".")} × 10.</div>`}
+       :`<div class="leyenda">${chica
+          ?`kg/ha = gramos ÷ ${mc.d.replace(",",".")} × 10.`
+          :`kg/ha = granos × peso de mil granos ÷ 1000 ÷ ${mc.d.replace(",",".")} × 10.`}</div>`}
       <button class="btn sm" id="cambiarMarco" style="margin-top:10px">Cambiar a ${mc.id==="aro"?"bandeja":"aro"}</button>
       </div>`;}
 
@@ -4887,10 +4905,10 @@ function valoresDe(){
     const c=m.cosecha, occ="Control de pérdidas";
     const aro=(MARCOS.find(x=>x.id===c.marco)||MARCOS[0]).a;
     const g=pf(c.gm2), rend=pf(c.rend);
-    const chica=esChica(M.ctx?.cultivo);
+    const chica=modoDe(c,M.ctx?.cultivo)==="pesar";
     const pmg=(c.pmg!==""&&c.pmg!=null)?pf(c.pmg):p1000De(M.ctx?.cultivo);
-    // En semilla chica el dato cargado son GRAMOS, no granos: va a su
-    // propio indicador para que la tabla no lea peso donde espera conteo.
+    // Si se pesó, el dato cargado son GRAMOS, no granos: va a su propio
+    // indicador para que la tabla no lea peso donde espera conteo.
     if(chica) push("cosecha","Peso de granos",g,occ);
     else{ push("cosecha","Granos por aro",g,occ);
           push("cosecha","Peso de mil granos",pmg,occ); }
@@ -5647,6 +5665,10 @@ function cPintar(){
   M.mods.cosecha=guarda; M.ctx=guardaCtx;
 
   el("cBox").querySelectorAll(".fgrupo.marco").forEach(b=>b.onclick=()=>{C.d.marco=b.dataset.marco;cPintar();});
+  el("cBox").querySelectorAll(".fgrupo.modo").forEach(b=>b.onclick=()=>{
+    const n=b.dataset.modo;
+    if(modoDe(C.d,C.ctx?.cultivo)!==n) C.d.gm2="";
+    C.d.modo=n; cPintar();});
   const cm=el("cBox").querySelector("#cambiarMarco");
   if(cm) cm.onclick=()=>{C.d.marco=(C.d.marco==="aro")?"bandeja":"aro";cPintar();};
   el("cBox").querySelectorAll(".quitar").forEach(b=>b.style.display="none");
@@ -5673,14 +5695,17 @@ async function cGuardar(){
   M.mods=guarda; M.ctx=guardaCtx; M.lote=guardaLote;
 
   const nota=el("cNota").value.trim();
-  if(!V.length&&!nota&&!C.fotos.length) return cMsg("Cargá al menos los granos contados.","err");
+  if(!V.length&&!nota&&!C.fotos.length)
+    return cMsg(modoDe(C.d,C.ctx?.cultivo)==="pesar"
+      ?"Cargá al menos el peso de la muestra." :"Cargá al menos los granos contados.","err");
 
   el("cGuardar").disabled=true; cMsg("Guardando…","ok");
   let cpaso="crear el control", cId=null;
   try{
     const extra=[C.d.contratista?`contratista: ${C.d.contratista}`:null,
                  C.d.maquinista?`maquinista: ${C.d.maquinista}`:null,
-                 `medido con ${C.d.marco}`].filter(Boolean).join(" · ");
+                 `medido con ${C.d.marco}`,
+                 modoDe(C.d,C.ctx?.cultivo)==="pesar"?"muestra pesada":null].filter(Boolean).join(" · ");
     const mon=(await api("mon_monitoreos",{method:"POST",body:JSON.stringify([{
       fecha:hoyISO(), lote:C.lote, campania:CAMPANIA,
       cultivo:C.ctx?.cultivo||null, variedad:C.ctx?.variedad||null,
