@@ -292,6 +292,67 @@ footer.bot{display:flex;justify-content:flex-end;align-items:center;gap:16px;fle
 .topnav a{font-family:var(--cond);font-weight:600;font-size:14px;color:var(--ink);text-decoration:none;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(20,60,110,.45)}
 .topnav a:hover{border-color:var(--glow);color:var(--glow)}
 .simlink{display:inline-block;margin:10px 0 0 8px;font-size:13px;color:var(--glow)}
+
+/* ===== celular ===== */
+.layout{grid-template-columns:230px minmax(0,1fr)}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:760px){
+  .screen{padding:14px 12px 18px}
+  .top{gap:10px;margin-bottom:12px;align-items:flex-start}
+  .brand img{width:74px;height:auto}
+  .brand{padding-top:2px}
+  .topnav{gap:6px;margin-bottom:8px;flex-wrap:nowrap}
+  .topnav a{font-size:12.5px;padding:4px 9px;white-space:nowrap}
+  .kicker{font-size:13px}
+  h1{font-size:25px;margin:2px 0 4px}
+  .sub{font-size:13.5px;line-height:1.4}
+  .layout{gap:10px}
+  .side{position:sticky;top:0;z-index:15;padding:10px 10px 8px;border-radius:12px;background:#0a2342;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+  .side h2{display:none}
+  .side section+section{margin-top:8px}
+  .crops{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:2px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .crops::-webkit-scrollbar{display:none}
+  .crop{flex:none;width:auto;padding:6px 13px;font-size:15px;white-space:nowrap;scroll-snap-align:start}
+  .crop.sum{margin-top:0}
+  #toggles{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:5px;scrollbar-width:none;padding-bottom:2px}
+  #toggles::-webkit-scrollbar{display:none}
+  .tog{flex:none;white-space:nowrap}
+  .tog{width:auto;padding:3px 9px 3px 5px;border:1px solid var(--line);border-radius:999px;font-size:13px;gap:6px}
+  .tog .sw{transform:scale(.75);transform-origin:left center;margin-right:-6px}
+  .tog.all{border-color:var(--glow)}
+  #togBox hr,#toggles hr{display:none}
+  #legBox{display:none}
+  .status p{font-size:13px}
+  .chart{min-width:760px}
+  .chartwrap::after{content:"← deslizá para ver todo el ciclo →";display:block;text-align:center;font-size:12px;color:var(--faint);margin-top:2px}
+  .overlay{position:fixed;padding:0;align-items:flex-end;z-index:40}
+  .dlg{width:100%;max-height:92vh;overflow:auto;gap:8px;grid-template-columns:1fr}
+  .card{border-radius:16px 16px 0 0;padding:18px 14px 20px}
+  .close{position:fixed;top:auto;bottom:calc(92vh - 22px);right:12px;z-index:45}
+  .plan{overflow:visible}
+  .plan table{min-width:0;font-size:14px}
+  .plan thead{display:none}
+  .plan tr{display:block;padding:9px 0;border-bottom:1px solid rgba(169,200,230,.18)}
+  .plan td{display:block;padding:1px 0;border:0}
+  .plan td:first-child{font-size:13px}
+  .plan td:nth-child(2){font-weight:600;font-size:15px}
+  .plan td:nth-child(3),.plan td:nth-child(4){display:inline-block;margin:3px 8px 0 0;font-size:13px;color:#cfe3f3}
+  .plan td:nth-child(5){font-size:13.5px;color:#cfe3f3}
+  .plan td:nth-child(5)::before{content:"Para: ";color:var(--mute)}
+  .months{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+  .mon{padding:6px 2px;font-size:14px}
+  .sgrid{grid-template-columns:1fr}
+  .simsel{width:100%}
+  .simsel label{flex:1;min-width:140px}
+  .simsel select{width:100%}
+  .simsis{width:100%;flex-wrap:nowrap}
+  .simsis button{flex:1 1 0;min-width:0;padding:6px 4px;font-size:13px}
+  .simsis button small{margin-left:3px}
+  .simchart{overflow-x:auto}
+  .simsvg{min-width:720px}
+  .sk b{font-size:22px}
+  .sk{padding:10px 11px}
+}
 </style>
 </head>
 <body>
