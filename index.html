@@ -144,6 +144,24 @@ textarea:focus-visible,#qLote:focus{outline:2px solid var(--g400);outline-offset
   text-decoration:underline;cursor:pointer;padding:0;margin-left:9px}
 .saludo .cambiar:hover{color:var(--olivedk)}
 .home{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:22px 0}
+.hsec{font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);
+  margin:22px 2px -12px;display:flex;align-items:center;gap:10px}
+.hsec::after{content:"";flex:1;height:1px;background:var(--line)}
+.home2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+a.hcard{text-decoration:none;color:inherit}
+.hlink{background:linear-gradient(135deg,var(--panel) 55%,var(--hbg,var(--g50)))}
+.hlink[data-ext=protocolos]{--ac:var(--g700);--hbg:var(--g50)}
+.hlink[data-ext=balance]{--ac:#2F7FA6;--hbg:#EAF4F8}
+.hlink:hover{border-color:var(--ac)}
+.hlink .hico{position:absolute;right:18px;top:18px;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;
+  background:var(--hbg);border:1px solid var(--line)}
+.hlink .hico svg{width:20px;height:20px;fill:none;stroke:var(--ac);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.hlink .hd2{padding-right:46px}
+.hlink .harr{font-family:Geist,system-ui,sans-serif;font-size:18px;color:var(--ac);margin-left:4px;display:inline-block;transition:transform .15s}
+.hlink:hover .harr{transform:translateX(3px)}
+.hcard .hs .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ac);margin-right:6px;vertical-align:1px}
+@media(max-width:520px){.home.home2{grid-template-columns:1fr}.hsec{margin:16px 2px -6px}.hlink .hico{width:32px;height:32px;right:14px;top:14px}}
+
 .hcard{display:flex;flex-direction:column;gap:5px;text-align:left;background:var(--panel);
   border:1px solid var(--line);border-radius:var(--r-lg);padding:22px 21px;font:inherit;cursor:pointer;
   min-height:132px;box-shadow:0 1px 2px rgba(36,36,25,.03);
@@ -1167,6 +1185,7 @@ const BUILD = "v80 · 01-11 · pérdida en dos datos";   // subí este número e
 <section id="s-home">
   <div class="saludo" id="saludo"></div>
   <div class="franja" id="franja"></div>
+  <p class="hsec">En el campo</p>
   <div class="home">
     <button class="hcard" data-go="monitoreo">
       <span class="hi">Monitoreo</span>
@@ -1188,6 +1207,21 @@ const BUILD = "v80 · 01-11 · pérdida en dos datos";   // subí este número e
       <span class="hd2">Estado de todos los lotes de la campaña</span>
       <span class="hs" id="hsRes"></span>
     </button>
+  </div>
+  <p class="hsec">Planificar y regar</p>
+  <div class="home home2">
+    <a class="hcard hlink" data-ext="protocolos" href="protocolos.html">
+      <span class="hico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg></span>
+      <span class="hi">Protocolos <span class="harr">→</span></span>
+      <span class="hd2">Qué aplicar, cuándo y para qué en cada cultivo · resumen del mes · simulador de riego</span>
+      <span class="hs" id="hsPro"></span>
+    </a>
+    <a class="hcard hlink" data-ext="balance" href="https://pepeaguilar13.github.io/balance-hidrico-ft/">
+      <span class="hico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3c3.5 4.6 6 8 6 11a6 6 0 0 1-12 0c0-3 2.5-6.4 6-11z"/><path d="M9.5 15a2.6 2.6 0 0 0 2.5 2.5"/></svg></span>
+      <span class="hi">Balance hídrico <span class="harr">↗</span></span>
+      <span class="hd2">Agua en el perfil por lote, carga de riegos por equipo y simulaciones</span>
+      <span class="hs" id="hsBal"></span>
+    </a>
   </div>
 </section>
 
@@ -5217,6 +5251,18 @@ function ir(v,sv){
   window.scrollTo({top:0,behavior:"instant"});
 }
 
+// Accesos a Protocolos y Balance hídrico: una línea de estado liviana.
+let _linksOk=false;
+async function pintarLinks(){
+  const mes=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"][new Date().getMonth()];
+  el("hsPro").innerHTML=`<span class="dot"></span>${mes}: qué aplicar este mes`;
+  if(_linksOk) return;
+  el("hsBal").textContent="leyendo riegos…";
+  const r=await soft("riegos?select=created_at,autor&order=created_at.desc&limit=1");
+  if(r&&r[0]){const d=new Date(r[0].created_at);
+    el("hsBal").innerHTML=`<span class="dot"></span>último riego cargado ${d.getDate()}/${d.getMonth()+1}${r[0].autor?" · "+esc(r[0].autor):""}`;_linksOk=true;}
+  else el("hsBal").textContent="abrir la app de riego";
+}
 function pintarHome(){
   pintarFranja();
   if(YO){
@@ -5226,8 +5272,9 @@ function pintarHome(){
       <button class="cambiar" id="btnCambiar">cambiar de persona</button>`;
     const c=el("btnCambiar"); if(c) c.onclick=()=>pedirQuien();
   }
-  document.querySelectorAll(".hcard").forEach(b=>
+  document.querySelectorAll(".hcard[data-go]").forEach(b=>
     b.classList.toggle("apagada",!puedeCargar(b.dataset.go)));
+  pintarLinks();
   const R=resumenLotes();
   const crit=R.filter(r=>r._peor==="critico").length;
   const sin=R.filter(r=>r.sinMonitoreo).length;
@@ -5770,7 +5817,7 @@ function cReiniciar(){
 }
 
 /* =========================== eventos =========================== */
-document.querySelectorAll(".hcard").forEach(b=>b.onclick=()=>ir(b.dataset.go));
+document.querySelectorAll(".hcard[data-go]").forEach(b=>b.onclick=()=>ir(b.dataset.go));
 el("btnQuien").onclick=()=>pedirQuien();
 el("quienVolver").onclick=()=>pedirQuien();
 el("quienAtras").onclick=()=>{
