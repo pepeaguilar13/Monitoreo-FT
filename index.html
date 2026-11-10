@@ -144,24 +144,6 @@ textarea:focus-visible,#qLote:focus{outline:2px solid var(--g400);outline-offset
   text-decoration:underline;cursor:pointer;padding:0;margin-left:9px}
 .saludo .cambiar:hover{color:var(--olivedk)}
 .home{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:22px 0}
-.hsec{font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);
-  margin:22px 2px -12px;display:flex;align-items:center;gap:10px}
-.hsec::after{content:"";flex:1;height:1px;background:var(--line)}
-.home2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
-a.hcard{text-decoration:none;color:inherit}
-.hlink{background:linear-gradient(135deg,var(--panel) 55%,var(--hbg,var(--g50)))}
-.hlink[data-ext=protocolos]{--ac:var(--g700);--hbg:var(--g50)}
-.hlink[data-ext=balance]{--ac:#2F7FA6;--hbg:#EAF4F8}
-.hlink:hover{border-color:var(--ac)}
-.hlink .hico{position:absolute;right:18px;top:18px;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;
-  background:var(--hbg);border:1px solid var(--line)}
-.hlink .hico svg{width:20px;height:20px;fill:none;stroke:var(--ac);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-.hlink .hd2{padding-right:46px}
-.hlink .harr{font-family:Geist,system-ui,sans-serif;font-size:18px;color:var(--ac);margin-left:4px;display:inline-block;transition:transform .15s}
-.hlink:hover .harr{transform:translateX(3px)}
-.hcard .hs .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ac);margin-right:6px;vertical-align:1px}
-@media(max-width:520px){.home.home2{grid-template-columns:1fr}.hsec{margin:16px 2px -6px}.hlink .hico{width:32px;height:32px;right:14px;top:14px}}
-
 .hcard{display:flex;flex-direction:column;gap:5px;text-align:left;background:var(--panel);
   border:1px solid var(--line);border-radius:var(--r-lg);padding:22px 21px;font:inherit;cursor:pointer;
   min-height:132px;box-shadow:0 1px 2px rgba(36,36,25,.03);
@@ -1022,6 +1004,19 @@ canvas{max-width:100%;display:block}
 .modos button:hover{border-color:var(--g500);background:var(--sand)}
 .modos b{display:block;font-size:15px;font-weight:600;margin-bottom:4px}
 .modos span{font-size:12.5px;color:var(--ink2);line-height:1.4}
+/* barra de modo de la sección Cosecha: queda siempre arriba para poder
+   saltar entre estimación y pérdida sin tener que volver al inicio */
+.cbarra{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px}
+.cseg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+.cseg button{font-family:inherit;font-size:13px;padding:8px 14px;border:0;cursor:pointer;
+  background:var(--panel);color:var(--ink2);white-space:nowrap}
+.cseg button+button{border-left:1px solid var(--line)}
+.cseg button:hover{background:var(--sand)}
+.cseg button[aria-pressed=true]{background:var(--g700);color:#fff;font-weight:500}
+.cbarra .sp{margin-left:auto}
+.h2row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.h2row h2{margin:0}
+.h2row .btn{margin-left:auto}
 .ambs{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:6px}
 .ambs button{font-family:inherit;padding:12px 8px;border:1px solid var(--line);
   border-radius:var(--r-sm);background:var(--panel);cursor:pointer;color:var(--ink2);text-align:center}
@@ -1121,7 +1116,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v80 · 01-11 · pérdida en dos datos";   // subí este número en cada cambio
+const BUILD = "v81 · 10-11 · cosecha: ida y vuelta + Excel";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1185,7 +1180,6 @@ const BUILD = "v80 · 01-11 · pérdida en dos datos";   // subí este número e
 <section id="s-home">
   <div class="saludo" id="saludo"></div>
   <div class="franja" id="franja"></div>
-  <p class="hsec">En el campo</p>
   <div class="home">
     <button class="hcard" data-go="monitoreo">
       <span class="hi">Monitoreo</span>
@@ -1207,21 +1201,6 @@ const BUILD = "v80 · 01-11 · pérdida en dos datos";   // subí este número e
       <span class="hd2">Estado de todos los lotes de la campaña</span>
       <span class="hs" id="hsRes"></span>
     </button>
-  </div>
-  <p class="hsec">Planificar y regar</p>
-  <div class="home home2">
-    <a class="hcard hlink" data-ext="protocolos" href="protocolos.html">
-      <span class="hico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg></span>
-      <span class="hi">Protocolos <span class="harr">→</span></span>
-      <span class="hd2">Qué aplicar, cuándo y para qué en cada cultivo · resumen del mes · simulador de riego</span>
-      <span class="hs" id="hsPro"></span>
-    </a>
-    <a class="hcard hlink" data-ext="balance" href="https://pepeaguilar13.github.io/balance-hidrico-ft/">
-      <span class="hico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3c3.5 4.6 6 8 6 11a6 6 0 0 1-12 0c0-3 2.5-6.4 6-11z"/><path d="M9.5 15a2.6 2.6 0 0 0 2.5 2.5"/></svg></span>
-      <span class="hi">Balance hídrico <span class="harr">↗</span></span>
-      <span class="hd2">Agua en el perfil por lote, carga de riegos por equipo y simulaciones</span>
-      <span class="hs" id="hsBal"></span>
-    </a>
   </div>
 </section>
 
@@ -1482,6 +1461,13 @@ const BUILD = "v80 · 01-11 · pérdida en dos datos";   // subí este número e
       </button>
     </div>
   </div>
+  <div class="cbarra" id="cBarra" style="display:none">
+    <div class="cseg">
+      <button data-modo="estimacion">Estimación de rinde</button>
+      <button data-modo="perdida">Pérdida de cosecha</button>
+    </div>
+    <button class="btn sm" id="cVolverModo">← Volver al inicio</button>
+  </div>
   <div class="card" id="cPaso1" style="display:none">
     <h2>¿En qué lote estás controlando?</h2>
     <p class="cap">Elegí el lote y el sistema trae el cultivo y el peso de mil granos de referencia.</p>
@@ -1507,7 +1493,8 @@ const BUILD = "v80 · 01-11 · pérdida en dos datos";   // subí este número e
     </div>
   </div>
   <div class="card" id="cTablaEst" style="display:none">
-    <h2>Estimaciones de la campaña</h2>
+    <div class="h2row"><h2>Estimaciones de la campaña</h2>
+      <button class="btn sm xlsCos">Descargar Excel</button></div>
     <p class="cap" id="cCapEst"></p>
     <div class="tw"><table id="tEstim"><thead><tr>
       <th>Fecha</th><th>Lote</th><th>Cultivo</th><th>Amb.</th>
@@ -1516,7 +1503,8 @@ const BUILD = "v80 · 01-11 · pérdida en dos datos";   // subí este número e
     </tr></thead><tbody></tbody></table></div>
   </div>
   <div class="card" id="cTablaPer">
-    <h2>Controles de la campaña</h2>
+    <div class="h2row"><h2>Controles de la campaña</h2>
+      <button class="btn sm xlsCos">Descargar Excel</button></div>
     <p class="cap" id="cCap"></p>
     <div class="tw"><table id="tCosecha"><thead><tr>
       <th>Fecha</th><th>Lote</th><th>Cultivo</th><th>Granos</th><th>P1000</th>
@@ -5251,18 +5239,6 @@ function ir(v,sv){
   window.scrollTo({top:0,behavior:"instant"});
 }
 
-// Accesos a Protocolos y Balance hídrico: una línea de estado liviana.
-let _linksOk=false;
-async function pintarLinks(){
-  const mes=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"][new Date().getMonth()];
-  el("hsPro").innerHTML=`<span class="dot"></span>${mes}: qué aplicar este mes`;
-  if(_linksOk) return;
-  el("hsBal").textContent="leyendo riegos…";
-  const r=await soft("riegos?select=created_at,autor&order=created_at.desc&limit=1");
-  if(r&&r[0]){const d=new Date(r[0].created_at);
-    el("hsBal").innerHTML=`<span class="dot"></span>último riego cargado ${d.getDate()}/${d.getMonth()+1}${r[0].autor?" · "+esc(r[0].autor):""}`;_linksOk=true;}
-  else el("hsBal").textContent="abrir la app de riego";
-}
 function pintarHome(){
   pintarFranja();
   if(YO){
@@ -5272,9 +5248,8 @@ function pintarHome(){
       <button class="cambiar" id="btnCambiar">cambiar de persona</button>`;
     const c=el("btnCambiar"); if(c) c.onclick=()=>pedirQuien();
   }
-  document.querySelectorAll(".hcard[data-go]").forEach(b=>
+  document.querySelectorAll(".hcard").forEach(b=>
     b.classList.toggle("apagada",!puedeCargar(b.dataset.go)));
-  pintarLinks();
   const R=resumenLotes();
   const crit=R.filter(r=>r._peor==="critico").length;
   const sin=R.filter(r=>r.sinMonitoreo).length;
@@ -5613,6 +5588,97 @@ async function cGuardarEstim(){
   }finally{ el("cGuardar").disabled=false; }
 }
 
+/* ------- Excel de cosecha: estimaciones y pérdidas en un mismo libro -------
+   Van las dos hojas siempre, aunque se baje desde una sola tabla: en el
+   escritorio lo que se quiere comparar es justamente lo estimado contra lo
+   que se perdió, y tenerlo en archivos separados obliga a pegarlos a mano. */
+function excelCosecha(){
+  if(typeof XLSX==="undefined"){alert("No se pudo cargar la librería de Excel.");return;}
+  const sb=idxSiembra();
+  const ctx=l=>sb[K(l)]||{};
+
+  const hEst=(S.estim||[]).slice()
+    .sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)))
+    .map(x=>{const g=ctx(x.lote), def=estimDe(x.cultivo);
+      return {Fecha:x.fecha, Lote:x.lote, Sección:g.seccion||seccion(x.lote),
+        Sistema:g.sistema||"", Cultivo:x.cultivo||g.cultivo||"",
+        Variedad:x.variedad||g.variedad||"", ha:g.ha??null, Ambiente:x.ambiente||"",
+        // Los componentes se llaman distinto en cada cultivo (espigas/m² en
+        // trigo, plantas/m² en soja). Si se usaran de encabezado, cada cultivo
+        // abriría su propia columna y la hoja quedaría llena de huecos: van
+        // en columnas fijas y al lado qué midió cada una.
+        Densidad:x.densidad, "Densidad mide":def.d||"",
+        "Comp. 1":x.comp1, "Comp. 1 mide":def.c1||"",
+        "Comp. 2":x.comp2, "Comp. 2 mide":def.c2||"",
+        "Granos/m²":x.granos_m2, "P1000 (g)":x.p1000,
+        "Rinde (kg/ha)":x.rinde_kg_ha,
+        "Rinde (tn/ha)":x.rinde_kg_ha!=null?+(x.rinde_kg_ha/1000).toFixed(2):null,
+        Muestras:x.muestras??null, Estimó:x.scouter||"", Nota:x.nota||"",
+        Latitud:x.lat??null, Longitud:x.lon??null};});
+
+  const hPer=controlesCosecha().map(o=>{const g=ctx(o.lote);
+    return {Fecha:o.fecha, Lote:o.lote, Sección:g.seccion||seccion(o.lote),
+      Sistema:g.sistema||"", Cultivo:o.cultivo||g.cultivo||"",
+      Variedad:g.variedad||"", ha:g.ha??null,
+      "Granos contados":o.granos??null, "Peso muestra (g)":o.peso??null,
+      "P1000 (g)":o.pmg??null, "Rinde en el lugar (kg/ha)":o.rinde??null,
+      "Pérdida (kg/ha)":o.kg!=null?+o.kg.toFixed(1):null,
+      "Pérdida (%)":o.pct!=null?+o.pct.toFixed(2):null,
+      "Grano verde (%)":o.verde??null, "Grano partido (%)":o.partido??null,
+      Estado:o.sem==="critico"?"Crítico":o.sem==="atencion"?"Atención":o.sem==="ok"?"OK":"",
+      Controló:o.scouter||"", Nota:o.nota||""};});
+
+  // Una fila por lote con lo estimado y lo perdido al lado: es la lectura que
+  // se busca al bajar el archivo. Si un lote tiene varias tiradas o varios
+  // ambientes se promedia, y la cantidad de mediciones queda a la vista.
+  const porLote={};
+  const fila=l=>{const k=K(l), g=ctx(l);
+    return porLote[k]=porLote[k]||{Lote:l, Sección:g.seccion||seccion(l),
+      Sistema:g.sistema||"", Cultivo:g.cultivo||"", ha:g.ha??null,
+      Estimaciones:0, "Rinde prom. simple (kg/ha)":null,
+      "AP (kg/ha)":null, "PI (kg/ha)":null, "BP (kg/ha)":null,
+      Controles:0, "Pérdida media (kg/ha)":null, "Pérdida media (%)":null,
+      "Peor pérdida (%)":null, _e:[], _ap:[], _pi:[], _bp:[], _k:[], _p:[]};};
+  const med=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:null;
+  (S.estim||[]).forEach(x=>{const o=fila(x.lote); o.Estimaciones++;
+    if(x.rinde_kg_ha!=null){o._e.push(x.rinde_kg_ha);
+      if(x.ambiente==="AP")o._ap.push(x.rinde_kg_ha);
+      else if(x.ambiente==="PI")o._pi.push(x.rinde_kg_ha);
+      else if(x.ambiente==="BP")o._bp.push(x.rinde_kg_ha);}});
+  controlesCosecha().forEach(c=>{const o=fila(c.lote); o.Controles++;
+    if(c.kg!=null)o._k.push(c.kg); if(c.pct!=null)o._p.push(c.pct);});
+  const r1=v=>v==null?null:+v.toFixed(1), r2=v=>v==null?null:+v.toFixed(2);
+  const hRes=Object.values(porLote).map(o=>{
+    // Promedio SIN ponderar: si un lote tiene AP y BP, cada ambiente pesa
+    // igual aunque ocupen superficies muy distintas. Para el rinde del lote
+    // hay que ponderar por hectáreas de cada ambiente, que todavía no se cargan.
+    o["Rinde prom. simple (kg/ha)"]=r1(med(o._e));
+    o["AP (kg/ha)"]=r1(med(o._ap)); o["PI (kg/ha)"]=r1(med(o._pi)); o["BP (kg/ha)"]=r1(med(o._bp));
+    o["Pérdida media (kg/ha)"]=r1(med(o._k));
+    o["Pérdida media (%)"]=r2(med(o._p));
+    o["Peor pérdida (%)"]=o._p.length?r2(Math.max(...o._p)):null;
+    ["_e","_ap","_pi","_bp","_k","_p"].forEach(k=>delete o[k]);
+    return o;})
+    .sort((a,b)=>(b["Peor pérdida (%)"]??-1)-(a["Peor pérdida (%)"]??-1)
+                 ||String(a.Lote).localeCompare(String(b.Lote),"es"));
+
+  const wb=XLSX.utils.book_new();
+  const poner=(datos,nombre)=>{
+    if(!datos.length) return;
+    const ws=XLSX.utils.json_to_sheet(datos);
+    ws["!cols"]=Object.keys(datos[0]).map(k=>({wch:Math.min(42,Math.max(
+      k.length+2,...datos.slice(0,300).map(d=>String(d[k]??"").length+2)))}));
+    ws["!autofilter"]={ref:ws["!ref"]};
+    ws["!freeze"]={xSplit:0,ySplit:1};
+    XLSX.utils.book_append_sheet(wb,ws,nombre);
+  };
+  poner(hRes,"Resumen por lote");
+  poner(hEst,"Estimaciones");
+  poner(hPer,"Pérdidas");
+  if(!wb.SheetNames.length){alert("Todavía no hay estimaciones ni controles de pérdida cargados.");return;}
+  XLSX.writeFile(wb,`Cosecha_FT_${CAMPANIA.replace("/","-")}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
 function cTablaEstim(){
   const E_=(S.estim||[]).slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
   el("cCapEst").textContent=E_.length
@@ -5799,8 +5865,13 @@ async function cGuardar(){
       }catch(e){ console.error(e); }
     }
     const lote=C.lote;
-    await cargar(); cReiniciar(); tablaCosecha();
-    cMsg(`Control de ${lote} guardado${okF?`, ${okF} fotos`:""}.`,"ok");
+    // Se queda en el mismo lote, igual que la estimación: en la recorrida se
+    // suelen hacer varias tiradas seguidas y volver al inicio obligaba a
+    // elegir modo y lote de nuevo cada vez.
+    const marco=C.d.marco, modo=C.d.modo;
+    C.d={marco,modo}; C.fotos=[]; el("cNota").value=""; cThumbs(); cPintar();
+    await cargar(); tablaCosecha();
+    cMsg(`Control de ${lote} guardado${okF?`, ${okF} fotos`:""}. Podés cargar otra tirada o cambiar de lote.`,"ok");
   }catch(e){
     console.error("cosecha ·",cpaso,e);
     cMsg(`Falló al ${cpaso}. ${e.name||"Error"}: ${e.message}. ${cId
@@ -5810,14 +5881,15 @@ async function cGuardar(){
   finally{ el("cGuardar").disabled=false; }
 }
 function cReiniciar(){
-  C.lote=null;C.d={};C.fotos=[];E.d={};el("cNota").value="";cThumbs();
+  C.lote=null;C.d={};C.fotos=[];E.d={};el("cNota").value="";cThumbs();cMsg("");
   el("cPaso2").style.display="none";el("cPaso1").style.display="none";
+  el("cBarra").style.display="none";
   el("cModo").style.display="";cModoSel=null;
   el("cQLote").value="";cBuscar();
 }
 
 /* =========================== eventos =========================== */
-document.querySelectorAll(".hcard[data-go]").forEach(b=>b.onclick=()=>ir(b.dataset.go));
+document.querySelectorAll(".hcard").forEach(b=>b.onclick=()=>ir(b.dataset.go));
 el("btnQuien").onclick=()=>pedirQuien();
 el("quienVolver").onclick=()=>pedirQuien();
 el("quienAtras").onclick=()=>{
@@ -5918,18 +5990,36 @@ el("nFotos").addEventListener("change",e=>{
 /* cosecha */
 el("cGuardar").onclick=e=>{e.preventDefault();
   cModoSel==="estimacion"?cGuardarEstim():cGuardar();};
-el("cModo").querySelectorAll("[data-modo]").forEach(b=>b.onclick=()=>{
-  cModoSel=b.dataset.modo;
-  const est=cModoSel==="estimacion";
+// Un solo lugar decide qué modo está activo. Antes el cambio vivía dentro del
+// onclick de la pantalla de inicio, asi que una vez adentro de estimación no
+// habia vuelta: ahora la barra de arriba llama a esto mismo.
+function cSetModo(modo){
+  const cambia = cModoSel && cModoSel!==modo;
+  cModoSel=modo;
+  const est=modo==="estimacion";
   el("cModo").style.display="none";
-  el("cPaso1").style.display="";
+  el("cBarra").style.display="";
+  el("cBarra").querySelectorAll("[data-modo]").forEach(b=>
+    b.setAttribute("aria-pressed", b.dataset.modo===modo));
   el("cTablaEst").style.display=est?"":"none";
   el("cTablaPer").style.display=est?"none":"";
   el("cPaso1").querySelector("h2").textContent=est
     ? "¿En qué lote estás estimando?" : "¿En qué lote estás controlando?";
-  if(est) cTablaEstim();
-});
-el("cOtro").onclick=e=>{e.preventDefault();cReiniciar();};
+  est ? cTablaEstim() : tablaCosecha();
+  // Si ya habia un lote elegido se mantiene y se redibuja el formulario del
+  // modo nuevo; lo cargado se descarta porque son mediciones distintas.
+  if(C.lote && cambia){ C.d={}; E.d={}; cMsg(""); cElegir(C.lote); }
+  else if(!C.lote){ el("cPaso2").style.display="none"; el("cPaso1").style.display="";
+                    el("cQLote").value=""; cBuscar(); }
+}
+el("cModo").querySelectorAll("[data-modo]").forEach(b=>b.onclick=()=>cSetModo(b.dataset.modo));
+el("cBarra").querySelectorAll("[data-modo]").forEach(b=>b.onclick=()=>cSetModo(b.dataset.modo));
+el("cVolverModo").onclick=e=>{e.preventDefault();cReiniciar();};
+el("cOtro").onclick=e=>{e.preventDefault();
+  C.lote=null;C.d={};E.d={};C.fotos=[];el("cNota").value="";cThumbs();cMsg("");
+  el("cPaso2").style.display="none";el("cPaso1").style.display="";
+  el("cQLote").value="";cBuscar();};
+document.querySelectorAll(".xlsCos").forEach(b=>b.onclick=e=>{e.preventDefault();excelCosecha();});
 el("cQLote").addEventListener("input",cBuscar);
 el("cQLote").addEventListener("keydown",e=>{
   if(e.key!=="Enter")return;
