@@ -111,7 +111,10 @@ textarea:focus-visible,#qLote:focus{outline:2px solid var(--g400);outline-offset
 .frbar{display:flex;height:11px;border-radius:6px;overflow:hidden;background:var(--sand)}
 .frbar i{display:block;height:100%}
 .fr-critico{background:var(--crit)} .fr-atencion{background:#D19B22} .fr-ok{background:var(--g500)}
-.fr-neutro{background:var(--g200)} .fr-sin{background:#E8E4D6}
+.fr-neutro{background:var(--g200)} .fr-sin{background:#E8E4D6} .fr-fin{background:repeating-linear-gradient(135deg,#8C8977 0 4px,#A9A592 4px 8px)}
+.finchip{display:inline-block;padding:1px 7px;border-radius:9px;background:#54523F;color:#fff;font-size:10px;font-weight:600;letter-spacing:.2px;white-space:nowrap;vertical-align:middle}
+tr.filaLote.fin{opacity:.62} tr.filaLote.fin:hover{opacity:1}
+.btn.togfin.on{background:#54523F;border-color:#54523F;color:#fff}
 .frleg{display:flex;flex-wrap:wrap;gap:13px;margin-top:10px;font-size:11px;color:var(--ink2)}
 .frleg i{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:4px}
 .frleg b{font-family:'Geist Mono',monospace;color:var(--ink)}
@@ -1134,7 +1137,7 @@ details summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:4px 0}
 const SUPABASE_URL = window.SUPA_URL || "https://bnaurkovjdnclxtzvdsf.supabase.co";
 const SUPABASE_ANON_KEY = window.SUPA_KEY || "";
 const CAMPANIA = "26/27";
-const BUILD = "v82 · 10-11 · cosecha + accesos restaurados";   // subí este número en cada cambio
+const BUILD = "v83 · 16-11 · ciclo terminado (invierno)";   // subí este número en cada cambio
 </script>
 
 <header><div class="hd">
@@ -1261,7 +1264,8 @@ const BUILD = "v82 · 10-11 · cosecha + accesos restaurados";   // subí este n
   <div class="f"><label>Desde</label><input type="date" id="fD1"></div>
   <div class="f"><label>Hasta</label><input type="date" id="fD2"></div>
   <div class="f"><label>&nbsp;</label>
-    <button class="btn togvig" id="fVig" title="Ver solo lo recorrido en los últimos 10 días">Últimos 10 días</button></div>
+    <button class="btn togvig" id="fVig" title="Ver solo lo recorrido en los últimos 10 días">Últimos 10 días</button>
+    <button class="btn togfin" id="fFin" title="Ocultar los lotes con el ciclo terminado (cosechados)">Ocultar ciclo terminado</button></div>
   <div class="f"><label>&nbsp;</label><button class="btn" id="fReset">Limpiar</button></div>
   <div class="f"><label>&nbsp;</label><button class="btn pri" id="fExp" title="Descargar Excel o generar informe PDF">Exportar</button></div>
   <div class="f" id="fAviso" style="display:none"><label>&nbsp;</label>
@@ -1688,6 +1692,8 @@ async function cargar(){
     soft(`mon_stand_decision?select=*&campania=eq.${camp}&limit=3000`)
   ]);
   S.estim=await soft(`mon_estimaciones?select=*&campania=eq.${camp}&order=fecha.desc&limit=3000`);
+  // Ciclo terminado / cosechado por lote. Tabla compartida con Balance hídrico y el simulador de Protocolos.
+  S.ciclo=await soft(`mon_ciclo?select=*&campania=eq.${camp}&limit=3000`);
   // NDVI Sentinel-2. Va aparte y con soft(): si el pipeline de Copernicus
   // todavía no corrió, la app tiene que abrir igual y solo faltar esta capa.
   [S.ndviPas,S.ndviAl,S.ndviBarb,S.ndviCoh,S.ndviSerie]=await Promise.all([
@@ -1948,6 +1954,7 @@ function fichaLote(lote){
     <div class="fhero">
       <div class="fid">
         <div class="fnom">${esc(D.lote)}</div>
+        ${(()=>{const ci=cicloDe(D.lote);return ci?`<div style="margin:4px 0 2px"><span class="finchip">${ci.estado==="cosechando"?"cosechando":"ciclo terminado"}</span> <span style="font-size:11px;color:var(--ink3)">desde ${fd(ci.fecha_fin)}</span></div>`:"";})()}
         <div class="fsub">${esc(sb.sistema||"sistema sin dato")}${sb.seccion?" · sección "+esc(sb.seccion):""}${rg.equipos?.length?" · "+esc(rg.equipos.join("/")):""}</div>
       </div>
       <div>
@@ -2492,6 +2499,7 @@ function bxNotas(D){
 
 /* =========================== resumen =========================== */
 const VIGENCIA=10;   // días: una recorrida más vieja que esto ya no es vigente
+function cicloDe(l){return (S.ciclo||[]).find(c=>K(c.lote)===K(l))||null;}
 function resumenLotes(){
   const sb=idxSiembra(),rg=idxRiego(),f=F(),out={};
 
@@ -2553,6 +2561,8 @@ function resumenLotes(){
 
   const std={}; standData().forEach(d=>std[d.lote]=d);
   Object.values(out).forEach(o=>{
+    const ci=cicloDe(o.lote);
+    o.ciclo=ci?(ci.estado||"terminado"):null; o.ciclo_fin=ci?ci.fecha_fin:null;
     const r=rg[o.lote]||{}, d=std[o.lote];
     if(d){o.pl_ha=d.real; o.pl_obj=d.obj; o.pl_coef=d.coef; o.pl_m2=d.pl_m2;
           o.pl_fecha=d.fecha; o.pl_sem=d.sem;
@@ -2579,6 +2589,8 @@ function resumenLotes(){
       .flatMap(([,c])=>c.top))].slice(0,3);
     o._dias=o.fecha?Math.round((Date.now()-new Date(o.fecha+"T12:00:00"))/864e5):null;
     o._viejo=o._dias!=null&&o._dias>VIGENCIA;   // dato fuera de la ventana
+    // ciclo terminado: no cuenta como "sin recorrer" ni como recorrida atrasada, y no pide riego
+    if(o.ciclo){o._viejo=false; o.riego_pend=null;}
   });
 
   return Object.values(out).filter(o=>
@@ -2603,7 +2615,8 @@ function render(){
   kpis();tablaRes();mapa();chartCat();rank();chartEvo();tablaMon();stand();notas();}
 
 function kpis(){
-  const R=resumenLotes(),v=fVals();
+  const Rall=resumenLotes(),v=fVals();
+  const fin=Rall.filter(r=>r.ciclo), R=Rall.filter(r=>!r.ciclo);   // los KPI de recorrida miran lo que sigue en ciclo
   const crit=R.filter(r=>r._peor==="critico"),aten=R.filter(r=>r._peor==="atencion");
   const sin=R.filter(r=>r.sinMonitoreo);
   const ha=R.reduce((a,r)=>a+(Number(r.superficie_ha)||0),0);
@@ -2613,7 +2626,8 @@ function kpis(){
   const cob=R.length?(R.length-sin.length)/R.length*100:0;
   const viejo=R.filter(r=>r._dias!=null&&r._dias>14).length;
   el("kpis").innerHTML=[
-    ["Lotes",nf(R.length),`${nf(ha,0)} ha sembradas`,""],
+    ["Lotes en ciclo",nf(R.length),`${nf(ha,0)} ha sembradas`,""],
+    ["Ciclo terminado",nf(fin.length),`${nf(fin.reduce((a,r)=>a+(Number(r.superficie_ha)||0),0),0)} ha cosechadas o en cosecha`,""],
     ["Cobertura",nf(cob,0)+"<small>%</small>",`${sin.length} sin recorrer`,sin.length?"warn":""],
     ["En crítico",nf(crit.length),`${nf(haCrit,0)} ha comprometidas`,crit.length?"crit":""],
     ["En atención",nf(aten.length),"sobre umbral de control",aten.length?"warn":""],
@@ -2655,22 +2669,25 @@ function tablaRes(){
   let R=resumenLotes(); const f=F();
   if(f.sem)R=R.filter(r=>r._peor===f.sem);
   if(el("fVig")?.classList.contains("on")) R=R.filter(r=>!r.sinMonitoreo&&!r._viejo);
+  if(el("fFin")?.classList.contains("on")) R=R.filter(r=>!r.ciclo);
   // por defecto, lo recorrido más recientemente arriba; sin recorrer al final
   S.sort.res=S.sort.res||{k:"fecha",dir:-1};
   if(S.sort.res.k==="fecha"){
     R.sort((a,b)=>{
+      if(!!a.ciclo!==!!b.ciclo) return a.ciclo?1:-1;          // ciclo terminado al final
       if(a.sinMonitoreo!==b.sinMonitoreo) return a.sinMonitoreo?1:-1;
       const d=String(b.fecha||"").localeCompare(String(a.fecha||""));
       return S.sort.res.dir<0?d:-d;
     });
   } else R=sortBy("_peor",R,"res");
-  const sinN=R.filter(r=>r.sinMonitoreo).length, hu=R.filter(r=>r.huerfano).length;
-  el("capRes").innerHTML=`${R.length-hu} lotes sembrados · ${R.length-sinN} con recorrida · ${sinN} sin recorrer.`+
+  const sinN=R.filter(r=>r.sinMonitoreo&&!r.ciclo).length, hu=R.filter(r=>r.huerfano).length, finN=R.filter(r=>r.ciclo).length;
+  el("capRes").innerHTML=`${R.length-hu} lotes sembrados · ${R.length-sinN-finN} con recorrida · ${sinN} sin recorrer`+
+    (finN?` · <b>${finN} con ciclo terminado</b>`:"")+"."+
     (hu?` <b style="color:var(--warn)">${hu} con monitoreos pero sin siembra cargada.</b>`:"")+
     ` Tocá el encabezado para ordenar.`;
-  el("tRes").querySelector("tbody").innerHTML=R.length?R.map(r=>`<tr class="filaLote" data-lote="${esc(r.lote)}" title="Ver la ficha de ${esc(r.lote)}">
+  el("tRes").querySelector("tbody").innerHTML=R.length?R.map(r=>`<tr class="filaLote${r.ciclo?' fin':''}" data-lote="${esc(r.lote)}" title="Ver la ficha de ${esc(r.lote)}">
     <td><div class="lotecel"><b class="mono">${esc(r.lote)}</b>
-        <small>${esc(r.sistema||"–")}${r.equipo?" · "+esc(r.equipo):""}</small></div></td>
+        <small>${esc(r.sistema||"–")}${r.equipo?" · "+esc(r.equipo):""}</small>${r.ciclo?`<span class="finchip" title="desde ${fd(r.ciclo_fin)}">${r.ciclo==="cosechando"?"cosechando":"ciclo terminado"}</span>`:""}</div></td>
     <td class="num">${nf(r.superficie_ha,0)}</td><td>${esc(r.cultivo||"–")}</td>
     <td>${r.siembras>1
         ? `<span title="${esc(r.variedad||"")}">${esc(String(r.variedad||"").split(" + ")[0])}
@@ -2692,7 +2709,7 @@ function tablaRes(){
         ? (r.pl_ha!=null?`<span class="mono" style="font-size:12px" title="sin objetivo cargado">${nf(r.pl_ha/1e3,0)}k</span>`:'<span style="color:var(--ink3)">–</span>')
         : `${sqOf("stand",r)} <span class="mono" style="font-size:12px">${nf(r.pl_coef*100,0)}%</span>`}</td>
     <td>${r._peor?`<span class="pill ${r._peor}">${r._peor}</span> <span style="font-size:11px;color:var(--ink2)">${esc(r._alertas.join(", "))}</span>`
-        :r.sinMonitoreo?'<span class="pill na">sin recorrer</span>':'<span class="pill na">sin umbral</span>'}</td>
+        :r.ciclo?'<span class="pill na">ciclo terminado</span>':r.sinMonitoreo?'<span class="pill na">sin recorrer</span>':'<span class="pill na">sin umbral</span>'}</td>
   </tr>`).join(""):`<tr><td colspan="14"><div class="empty"><b>Sin datos con estos filtros</b>Probá limpiarlos.</div></td></tr>`;
   marcarOrden("tRes","res");
   el("tRes").querySelectorAll("tr.filaLote").forEach(tr=>tr.onclick=()=>{
@@ -5299,13 +5316,13 @@ function pintarHome(){
   pintarLinks();
   const R=resumenLotes();
   const crit=R.filter(r=>r._peor==="critico").length;
-  const sin=R.filter(r=>r.sinMonitoreo).length;
+  const sin=R.filter(r=>r.sinMonitoreo&&!r.ciclo).length, finH=R.filter(r=>r.ciclo).length;
   const d7=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
   el("hsMon").innerHTML=`${R.filter(r=>r.fecha&&r.fecha>=d7).length} lotes en los últimos 7 días`;
   el("hsSie").innerHTML=`${S.siembras.length} lotes sembrados`;
   const cos=controlesCosecha();
   el("hsCos").innerHTML=cos.length?`${cos.length} controles en la campaña`:"sin controles todavía";
-  el("hsRes").innerHTML=`${R.length} lotes · ${crit?`<b>${crit} en crítico</b>`:"nada en crítico"} · ${sin} sin recorrer`;
+  el("hsRes").innerHTML=`${R.length} lotes · ${crit?`<b>${crit} en crítico</b>`:"nada en crítico"} · ${sin} sin recorrer${finH?` · ${finH} ciclo terminado`:""}`;
   [["monitoreo","hsMon"],["siembra","hsSie"],["cosecha","hsCos"]].forEach(([v,id])=>{
     if(!puedeCargar(v)) el(id).textContent="no habilitado";});
 }
@@ -5316,11 +5333,12 @@ function pintarFranja(){
   const ha=v=>R.filter(v).reduce((a,r)=>a+(Number(r.superficie_ha)||0),0);
   const tot=ha(()=>true)||1;
   const seg=[
-    ["critico","Crítico",  ha(r=>r._peor==="critico")],
-    ["atencion","Atención",ha(r=>r._peor==="atencion")],
-    ["ok","Sin alertas",   ha(r=>r._peor==="ok")],
-    ["neutro","Recorrido sin umbral", ha(r=>!r._peor&&!r.sinMonitoreo)],
-    ["sin","Sin recorrer", ha(r=>r.sinMonitoreo)],
+    ["critico","Crítico",  ha(r=>r._peor==="critico"&&!r.ciclo)],
+    ["atencion","Atención",ha(r=>r._peor==="atencion"&&!r.ciclo)],
+    ["ok","Sin alertas",   ha(r=>r._peor==="ok"&&!r.ciclo)],
+    ["neutro","Recorrido sin umbral", ha(r=>!r._peor&&!r.sinMonitoreo&&!r.ciclo)],
+    ["sin","Sin recorrer", ha(r=>r.sinMonitoreo&&!r.ciclo)],
+    ["fin","Ciclo terminado", ha(r=>r.ciclo)],
   ].filter(x=>x[2]>0);
   const d7=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
   el("franja").innerHTML=`
@@ -5951,6 +5969,7 @@ el("quienPinIn").addEventListener("keydown",e=>{if(e.key==="Enter")el("quienGo")
 el("btnHome").onclick=()=>ir("home");
 el("btnImprimir").onclick=()=>window.print();
 el("fVig").onclick=()=>{ el("fVig").classList.toggle("on"); render(); };
+el("fFin").onclick=()=>{ el("fFin").classList.toggle("on"); render(); };
 el("pendTog")?.addEventListener("click",()=>{
   const b=el("pendLista").style.display==="none";
   el("pendLista").style.display=b?"":"none";
