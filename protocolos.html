@@ -283,6 +283,8 @@ footer.bot{display:flex;justify-content:flex-end;align-items:center;gap:16px;fle
 .simseg button{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;font-size:13.5px}
 .simseg button[aria-pressed="true"]{background:#1c5fb8;border-color:#5aa2ff}
 .simnote{font-size:13px;color:#cfe3f3;margin:8px 0 0;line-height:1.45}
+.simfin{display:block;margin-top:10px;padding:7px 14px;border-radius:999px;border:1px solid #c9b98a;background:rgba(84,82,63,.55);color:#fff;font-family:var(--cond);font-weight:600;font-size:14px;cursor:pointer}
+.simfin[aria-pressed="true"]{background:transparent;border-style:dashed;color:#e9dfbf}
 .simup{display:inline-block;margin-top:10px;padding:6px 12px;border-radius:999px;border:1px dashed var(--glow);font-size:13px;cursor:pointer;color:var(--ink)}
 .simup input{display:none}
 .simhow{margin-top:12px;font-size:13.5px;color:#cfe3f3}
@@ -1112,7 +1114,7 @@ const SUPA={url:'https://bnaurkovjdnclxtzvdsf.supabase.co',key:'sb_publishable_x
 const SDAY=864e5, SW0=Date.UTC(2026,4,11); // semana 0 del balance hídrico: lunes 11-may-2026
 const SCC=200, SPMP=40, SINI=150, SPRE=21;   // mismos parámetros que la app de balance
 const SMES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-const SIM={lote:null,grp:null,sis:'Aspersión',extra:[],lluvia:'nada',live:false,liveAt:null,sie:null,rg:null,rgLive:{},clima:null,last:null,hover:null};
+const SIM={ciclo:null,cicloLive:false,lote:null,grp:null,sis:'Aspersión',extra:[],lluvia:'nada',live:false,liveAt:null,sie:null,rg:null,rgLive:{},clima:null,last:null,hover:null};
 const sud=s=>{const [y,m,d]=String(s).slice(0,10).split('-').map(Number);return Date.UTC(y,m-1,d)};
 const sfd=t=>{const d=new Date(t);return d.getUTCDate()+' '+SMES[d.getUTCMonth()]};
 const siso=t=>new Date(t).toISOString().slice(0,10);
@@ -1128,6 +1130,22 @@ function skcModel(s){const g=sgrp(s.cult),v=(s.var||'').toLowerCase();
   if(g==='Trigo')return /rubi|rubí|catalpa|mignon/.test(v)?'Trigo Intermedio- largo':'Trigo Corto';
   return ({Cebada:'Trigo Corto',Cobertura:'Avena',Garbanzo:'Garbanzo',Colza:'Colza',Camelina:'Camelina','Cártamo':'Cartamo',Girasol:'Girasol',Soja:'Soja',Poroto:'Poroto','Sésamo':'Sesamo','Maíz':'Maiz','Algodón':'Algodón'})[g]||'Garbanzo'}
 function sumbral(s){return ['Garbanzo','Colza','Cártamo','Camelina','Girasol','Sésamo','Poroto'].includes(sgrp(s.cult))?{v:90,a:40}:{v:120,a:90}}
+
+/* ---------- ciclo terminado (tabla mon_ciclo, compartida con Monitoreo y Balance) ---------- */
+const SCICLO_SNAP=["A02", "A03", "A05", "A06", "A08", "A09", "A11", "A12", "A13", "A14", "A15", "A16", "A17", "A18", "B07", "B09c", "B09n", "B09s", "B11n", "B11s", "B14", "B15", "B17", "B19", "B22", "D05", "D07", "D09", "D10", "D13", "D14", "E02", "E04", "E05", "E06", "E07a", "E07b", "E08", "F06", "F07", "F11", "F12", "F14", "G01", "G02", "G03", "G04", "G05", "G06", "G07", "G08", "G09", "G10", "G11", "H09", "H11", "H13", "H14Sec", "H18sec", "I02b", "I04", "I05", "I07", "I10", "I11", "I12", "Iri01", "Iri02", "Iri03", "Iri04n", "Iri04s", "J01a", "J01b", "J01c", "J01d", "J02a", "J02b", "J02c", "J02d", "Jsec", "Ka", "Kb", "Kc", "L01a", "L01b", "L01c", "L01d", "L01e", "L02a", "L02b", "L02c", "L02d", "L02e", "L03a", "L03b", "L03c", "L03d", "L03e", "Lsec", "M01a", "M01b", "M01c", "M01d", "M02a", "M02b", "M02c", "M02d", "M02e", "Msec", "Na", "Nb", "Nc", "Nd", "NNa", "NNb", "NNc", "NNd", "NNe", "NNsec", "Nsec", "O11", "O12", "O13", "O14", "O21", "O22", "O23", "O24", "P11", "P12", "P13", "P15", "P21", "P22", "P23", "P25", "P26", "P31", "P32", "P33", "P35", "P36", "P41", "P42", "P44", "P45", "P46", "P51", "P52", "P54", "P55", "P56", "Q11", "Q12", "Q13", "Q14", "Q15", "Q16", "Q21", "Q22", "Q24", "Q25", "Q26", "Q31", "Q32", "Q34", "Q35", "Q36", "Q41", "Q42", "Q44", "Q45", "Q46", "Q51", "Q52", "Q54", "Q55", "Q56", "Qsec", "R13", "R14", "R17", "R22", "R23", "R24", "R25", "R34", "R35", "R36"]; // instantánea 16-nov-2026: invierno 26/27 cosechado o en cosecha
+function simCiclo(){if(!SIM.ciclo){SIM.ciclo={};SCICLO_SNAP.forEach(l=>SIM.ciclo[skey(l)]={lote:l,estado:'terminado',fecha_fin:'2026-11-16'})}return SIM.ciclo}
+const scDe=l=>simCiclo()[skey(l)]||null;
+async function simLoadCiclo(){try{const rows=await simFetch('mon_ciclo?select=lote,estado,fecha_fin&campania=eq.26%2F27&limit=3000');
+  const m={};rows.forEach(r=>m[skey(r.lote)]=r);SIM.ciclo=m;SIM.cicloLive=true}catch(e){}}
+async function simSetCiclo(s,on){const h={apikey:SUPA.key,Authorization:'Bearer '+SUPA.key,'Content-Type':'application/json'};
+  try{let r;
+    if(on)r=await fetch(SUPA.url+'/rest/v1/mon_ciclo?on_conflict=lote,campania',{method:'POST',headers:Object.assign({Prefer:'resolution=merge-duplicates,return=minimal'},h),
+      body:JSON.stringify({lote:s.lote,campania:'26/27',cultivo:s.cult,estado:'terminado',fecha_fin:siso(shoy()),nota:'marcado desde el simulador'})});
+    else r=await fetch(SUPA.url+'/rest/v1/mon_ciclo?campania=eq.26%2F27&lote=eq.'+encodeURIComponent(s.lote),{method:'DELETE',headers:h});
+    if(!r.ok)throw new Error(r.status);
+    const c=simCiclo();if(on)c[skey(s.lote)]={lote:s.lote,estado:'terminado',fecha_fin:siso(shoy())};else delete c[skey(s.lote)];
+  }catch(e){alert('No se pudo guardar el estado del ciclo ('+e.message+'). Revisá la conexión.')}
+  simRender()}
 
 /* ---------- datos ---------- */
 function simClima(){if(SIM.clima)return SIM.clima;let c=SIMD.clima;
@@ -1159,7 +1177,8 @@ function simRiegosDe(lote){const k=skey(lote);if(SIM.rgLive[k])return SIM.rgLive
 /* ---------- modelo diario ---------- */
 function simRun(s){const C=simClima(),c0=sud(C.desde),cN=sud(C.hasta),kc=SIMD.kc[skcModel(s)]||SIMD.kc.Garbanzo;
   const fs=sud(s.fecha),t0=fs-SPRE*SDAY,tEnd=fs+kc.length*7*SDAY,hoy=shoy();
-  const tLast=Math.min(tEnd,Math.max(hoy,cN)+60*SDAY);
+  const ci=scDe(s.lote),tFin=ci?sud(ci.fecha_fin):null;
+  const tLast=Math.min(tEnd,tFin||Infinity,Math.max(hoy,cN)+60*SDAY);
   const rg={};simRiegosDe(s.lote).forEach(([w,mm])=>{const t=SW0+(w*7+3)*SDAY;rg[t]=(rg[t]||0)+mm});
   const ex={};SIM.extra.forEach(e=>{ex[e.t]=(ex[e.t]||0)+e.mm});
   let S=SINI;const out=[];
@@ -1176,13 +1195,13 @@ function simRun(s){const C=simClima(),c0=sud(C.desde),cN=sud(C.hasta),kc=SIMD.kc
     S=Math.min(SCC,Math.max(0,S+pe+r+x-eta));
     out.push({t,S,k,et0,etc:eta,ll:lluvia,pe,rg:r,ex:x,obs,proj:!obs});
   }
-  return {s,out,fs,t0,tEnd,cN,hoy,u:sumbral(s),kcm:skcModel(s)}}
+  return {s,out,fs,t0,tEnd,tFin,ci,cN,hoy,u:sumbral(s),kcm:skcModel(s)}}
 function simDiag(R){const {out,u,hoy,fs}=R;const iH=out.findIndex(o=>o.t>=hoy);const h=out[iH<0?out.length-1:iH];
   let cruceA=null,cruceV=null;for(const o of out){if(o.t<h.t)continue;if(cruceV==null&&o.S<u.v)cruceV=o;if(o.S<u.a){cruceA=o;break}}
   let bajo=null;if(h.S<u.a){const iH2=out.indexOf(h);for(let j=iH2;j>=0&&out[j].S<u.a;j--)bajo=out[j]}
   const desde=out.filter(o=>o.t>=fs&&o.t<=h.t);
   const sum=k=>desde.reduce((a,o)=>a+o[k],0);
-  return {h,cruceA,cruceV,bajo,ll:sum('ll'),rg:sum('rg')+sum('ex'),etc:sum('etc'),dds:Math.round((h.t-fs)/SDAY),fin:R.tEnd<=h.t}}
+  return {h,cruceA,cruceV,bajo,ll:sum('ll'),rg:sum('rg')+sum('ex'),etc:sum('etc'),dds:Math.round((h.t-fs)/SDAY),fin:!!R.ci||R.tEnd<=h.t,cerrado:!!R.ci}}
 
 /* ---------- gráfico ---------- */
 function simSVG(R,D){const W=1100,H=440,L=54,Rr=18,T=18,PH=280,G=34,FH=86,x0=R.t0,x1=R.out[R.out.length-1].t;
@@ -1235,7 +1254,7 @@ function simOpen(cropId,sis){if(typeof closeLab==='function')closeLab();
   SIM.grp=SGRP_CROP[cropId]||null;SIM.sis=sis||'Aspersión';SIM.extra=[];
   if(!SIM.sie)SIM.sie=simSnapSiembras();
   $('simOv').classList.add('open');document.body.style.overflow='hidden';simRender();
-  Promise.all([simLoadLive(),simLoadClima()]).then(()=>{simRender()})}
+  Promise.all([simLoadLive(),simLoadClima(),simLoadCiclo()]).then(()=>{simRender()})}
 function simClose(){$('simOv').classList.remove('open');document.body.style.overflow=''}
 function simLots(){const all=SIM.sie||[];return all.filter(s=>(!SIM.grp||sgrp(s.cult)===SIM.grp)&&(!SIM.sis||s.sis===SIM.sis)).sort((a,b)=>a.lote.localeCompare(b.lote,'es',{numeric:true}))}
 async function simPick(lote){SIM.lote=lote;SIM.extra=[];simRender();await simLoadRiegos(lote);simRender()}
@@ -1246,18 +1265,18 @@ function simRender(){const box=$('simBody');const C=simClima();
   const s=lots.find(l=>l.lote===SIM.lote);
   let h=`<div class="simtop"><div><p class="kicker">Simulador de riego · balance diario del lote</p><h2 class="simh">${s?esc(s.lote)+' · '+esc(s.cult)+(s.var?' '+esc(s.var):''):'Elegí un lote'}</h2>${s&&s.sis!=='Aspersión'?`<p class="simwarn">${s.sis==='Secano'?'Lote de secano: el balance corre sólo con lluvia.':'Gravedad: Balance hídrico no registra estos riegos; cargalos como riegos simulados para verlos en la curva.'}</p>`:''}</div>
    <div class="simsel"><div class="simsis" role="group" aria-label="Sistema de riego">${['Aspersión','Gravedad','Secano'].map(k=>`<button data-sis="${k}" aria-pressed="${SIM.sis===k}">${k}<small>${sisN(k)}</small></button>`).join('')}<button data-sis="" aria-pressed="${!SIM.sis}">Todos</button></div><label>Cultivo<select id="simG"><option value="">Todos</option>${grps.map(g=>`<option ${g===SIM.grp?'selected':''}>${g}</option>`).join('')}</select></label>
-   <label>Lote<select id="simL">${lots.map(l=>`<option value="${esc(l.lote)}" ${l.lote===SIM.lote?'selected':''}>${esc(l.lote)} · ${esc(l.cult)} · ${sfd(sud(l.fecha))}${SIM.sis?'':' · '+l.sis}</option>`).join('')}</select></label></div></div>`;
+   <label>Lote<select id="simL">${lots.map(l=>`<option value="${esc(l.lote)}" ${l.lote===SIM.lote?'selected':''}>${esc(l.lote)} · ${esc(l.cult)} · ${sfd(sud(l.fecha))}${SIM.sis?'':' · '+l.sis}${scDe(l.lote)?' · ✓ ciclo terminado':''}</option>`).join('')}</select></label></div></div>`;
   if(!s){box.innerHTML=h+'<p class="sempty">No hay lotes sembrados con ese cultivo y sistema.</p>';simWire();return}
   const R=simRun(s),D=simDiag(R),u=R.u,S=D.h.S;
-  const est=S>=u.v?['ok','Óptimo']:S>=u.a?['warn','Atención']:['bad','Regar ya'];
+  const est=D.fin?['','Ciclo cerrado']:S>=u.v?['ok','Óptimo']:S>=u.a?['warn','Atención']:['bad','Regar ya'];
   const pct=Math.round((S-SPMP)/(SCC-SPMP)*100);
   const horiz=Math.round((R.out[R.out.length-1].t-D.h.t)/SDAY);
   const proxTxt=D.fin?'Ciclo terminado':D.bajo?'Regar ya':D.cruceA?sfd(D.cruceA.t):'Sin apuro';
   const dias=!D.bajo&&D.cruceA?Math.round((D.cruceA.t-D.h.t)/SDAY):null;
-  const proxSub=D.fin?'el cultivo ya cumplió su ciclo de consumo':D.bajo?'por debajo de '+u.a+' mm desde el '+sfd(D.bajo.t):dias!=null?'en '+dias+' días, al bajar de '+u.a+' mm':'no baja de '+u.a+' mm en los próximos '+horiz+' días';
+  const proxSub=D.cerrado?(R.ci.estado==='cosechando'?'en cosecha':'cosechado')+' · cerrado el '+sfd(R.tFin):D.fin?'el cultivo ya cumplió su ciclo de consumo':D.bajo?'por debajo de '+u.a+' mm desde el '+sfd(D.bajo.t):dias!=null?'en '+dias+' días, al bajar de '+u.a+' mm':'no baja de '+u.a+' mm en los próximos '+horiz+' días';
   h+=`<div class="simkpis">
-   <div class="sk ${est[0]}"><span>Agua útil hoy</span><b>${Math.round(S)} mm</b><em>${est[1]} · ${pct} % del agua disponible</em></div>
-   <div class="sk ${D.bajo||(dias!=null&&dias<=7)?'bad':dias!=null&&dias<=14?'warn':'ok'}"><span>Próximo riego</span><b>${proxTxt}</b><em>${proxSub}</em></div>
+   <div class="sk ${est[0]}"><span>${D.cerrado?'Agua útil al cierre':'Agua útil hoy'}</span><b>${Math.round(S)} mm</b><em>${est[1]} · ${pct} % del agua disponible</em></div>
+   <div class="sk ${D.fin?'':D.bajo||(dias!=null&&dias<=7)?'bad':dias!=null&&dias<=14?'warn':'ok'}"><span>Próximo riego</span><b>${proxTxt}</b><em>${proxSub}</em></div>
    <div class="sk"><span>Lámina para llenar el perfil</span><b>${Math.max(0,Math.round(SCC-S))} mm</b><em>hasta capacidad de campo (200 mm)</em></div>
    <div class="sk"><span>Desde la siembra · ${D.dds} días</span><b>${Math.round(D.rg)} + ${Math.round(D.ll)} mm</b><em>riego + lluvia · consumo ${Math.round(D.etc)} mm · Kc ${D.h.k.toFixed(2)}</em></div></div>`;
   h+=`<div class="simchart" id="simChart">${simSVG(R,D)}<div class="stip" id="simTip" hidden></div></div>
@@ -1268,6 +1287,7 @@ function simRender(){const box=$('simBody');const C=simClima();
    <div class="simbox"><h3>Lluvia en la proyección</h3><div class="simseg"><button data-ll="nada" aria-pressed="${SIM.lluvia==='nada'}">Sin lluvia</button><button data-ll="prom" aria-pressed="${SIM.lluvia==='prom'}">Promedio histórico</button></div>
      <p class="simnote">La proyección usa la ET0 promedio de 2003–2025 para cada día del año.</p></div>
    <div class="simbox"><h3>Datos</h3><p class="simnote">Siembra y riegos: ${SIM.live?'en vivo desde Monitoreo y Balance hídrico ('+SIM.liveAt.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+')':'instantánea del '+sfd(sud(SIMD.snap.fecha))+' (sin conexión)'}.<br>Clima: estación Tolloche, real hasta el ${sfd(sud(C.hasta))}${SIM.climaLive?' (en vivo)':' (copia del archivo)'}.</p>
+     ${s?`<button class="simfin" id="simFin" aria-pressed="${D.cerrado}">${D.cerrado?'Reabrir ciclo del lote':'Marcar ciclo terminado'}</button>`:''}
      <label class="simup">Actualizar clima (.xlsx)<input type="file" id="simX" accept=".xlsx"></label><a class="simlink" href="https://pepeaguilar13.github.io/balance-hidrico-ft/" target="_blank" rel="noopener">Cargar riegos en Balance hídrico ↗</a></div></div>
    <details class="simhow"><summary>Cómo calcula</summary><p>Balance diario de un perfil de 200 mm (punto de marchitez 40 mm), igual que la app de Balance hídrico: arranca con ${SINI} mm ${SPRE} días antes de la siembra. Cada día suma la lluvia efectiva (80 % de las lluvias de 5 mm o más) y el riego, y resta el consumo del cultivo, ET0 × Kc (curva ${esc(R.kcm)}). Por debajo de 120 mm el consumo se reduce en proporción, como hace la planta con estrés. El riego semanal cargado en Balance hídrico se ubica a mitad de semana. Umbrales del cultivo: óptimo desde ${u.v} mm, regar por debajo de ${u.a} mm.</p></details>`;
   box.innerHTML=h;simWire(R)}
@@ -1280,6 +1300,8 @@ function simWire(R){const q=id=>$(id);
   document.querySelectorAll('#simBody [data-x]').forEach(b=>b.onclick=()=>{SIM.extra.splice(+b.dataset.x,1);simRender()});
   document.querySelectorAll('#simBody [data-ll]').forEach(b=>b.onclick=()=>{SIM.lluvia=b.dataset.ll;simRender()});
   if(q('simX'))q('simX').onchange=e=>simXlsx(e.target.files[0]);
+  if(q('simFin'))q('simFin').onclick=()=>{const s=simLots().find(l=>l.lote===SIM.lote);if(!s)return;const on=!scDe(s.lote);
+    if(confirm(on?`¿Marcar ${s.lote} con el ciclo terminado? Se ve también en Monitoreo y Balance hídrico.`:`¿Reabrir el ciclo de ${s.lote}?`))simSetCiclo(s,on)};
   if(!R)return;const svg=document.querySelector('#simChart svg'),tip=q('simTip');if(!svg)return;
   const hit=svg.querySelector('.shit');
   hit.onmousemove=hit.ontouchmove=ev=>{const p=(ev.touches?ev.touches[0]:ev);const bb=svg.getBoundingClientRect();
